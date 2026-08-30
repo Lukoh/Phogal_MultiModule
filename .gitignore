@@ -1,0 +1,19 @@
+# Built application files
+*.apk
+*.aar
+*.apks
+*.dex
+
+# Gradle and Build Directories
+.gradle/
+build/
+app/build/
+**/build/
+
+# Android Studio / IntelliJ IDEA
+.idea/
+*.iml
+.DS_Store
+
+# Local configuration file
+local.properties

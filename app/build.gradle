@@ -1,0 +1,297 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
+plugins {
+    alias(libs.plugins.android.application)
+    alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.kotlin.compose)        // REQUIRED for Kotlin 2.0+
+    alias(libs.plugins.kotlin.parcelize)
+    alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.ksp)                   // Replaces kapt (약 2배 빠름)
+    alias(libs.plugins.hilt.android)
+    alias(libs.plugins.google.services)
+}
+
+android {
+    namespace 'com.goforer.phogal'
+    // AGP 8.7.3은 최대 API 35까지 지원합니다. API 36은 AGP 8.11+ 필요.
+    compileSdk = 37  // 기존 'compileSdk 36'에서 '=' 추가
+
+    defaultConfig {
+        applicationId "com.goforer.phogal"
+        minSdk 28
+        //noinspection OldTargetApi
+        targetSdk 36
+        versionCode 1
+        versionName "1.0"
+
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        vectorDrawables {
+            useSupportLibrary true
+        }
+    }
+
+    buildTypes {
+        debug {
+            jniDebuggable true
+            minifyEnabled false
+            shrinkResources false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            enableUnitTestCoverage true
+            enableAndroidTestCoverage true
+        }
+        release {
+            ndk {
+                debugSymbolLevel 'FULL'
+            }
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    lint {
+        checkReleaseBuilds false
+        checkDependencies true
+        abortOnError false
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+        coreLibraryDesugaringEnabled true
+    }
+
+    // Kotlin 2.0.21: kotlin { ... } DSL 사용
+    kotlin {
+        jvmToolchain(17)
+        compilerOptions {
+            jvmTarget = JvmTarget.JVM_17
+            // Kotlin 2.0 새 기능 활용
+            freeCompilerArgs.addAll(
+                    "-opt-in=kotlin.RequiresOptIn"
+            )
+        }
+    }
+
+    buildFeatures {
+        compose true
+        buildConfig true
+    }
+
+    // NOTE:
+    //   Kotlin 2.0.21 + Compose Compiler plugin 조합에서는
+    //   composeOptions 블록이 더 이상 필요 없습니다.
+    //   Compose Compiler 버전은 Kotlin 버전과 자동 동기화됩니다.
+
+    // AGP 8.7+: packagingOptions도 동작하지만 'packaging'이 표준 명칭
+    packaging {
+        resources {
+            excludes += [
+                    '/META-INF/{AL2.0,LGPL2.1}',
+                    'META-INF/LICENSE*',
+                    'META-INF/NOTICE*',
+                    'META-INF/*.kotlin_module'
+            ]
+        }
+    }
+
+    sourceSets {
+        String sharedTestDir = 'src/commonTest/kotlin'
+        main {
+            java.srcDirs += 'src/main/kotlin'
+        }
+        test {
+            java.srcDirs += ['src/test/kotlin', sharedTestDir]
+        }
+        androidTest {
+            java.srcDirs += ['src/androidTest/kotlin', sharedTestDir]
+            resources.srcDirs += ['src/commonTest/resources']
+        }
+    }
+
+    flavorDimensions += "default"
+
+    productFlavors {
+        prod {
+            dimension "default"
+            manifestPlaceholders = [appNameGradle: "Phogal", appLabel: "@string/app_name"]
+            buildConfigField "String", "apiServer", "\"https://api.unsplash.com/\""
+            buildConfigField "String", "clientId", "\"V9sYHDmwcPc46chEOLA_bhTV3hwsWG0P1ta1vNZjmLs\""
+        }
+        stg {
+            dimension "default"
+            applicationIdSuffix = ".stg"
+            manifestPlaceholders = [appNameGradle: "Phogal_stg", appLabel: "Phogal_Stg"]
+            buildConfigField "String", "apiServer", "\"https://api.unsplash.com/\""
+            buildConfigField "String", "clientId", "\"V9sYHDmwcPc46chEOLA_bhTV3hwsWG0P1ta1vNZjmLs\""
+        }
+        dev {
+            dimension "default"
+            applicationIdSuffix = ".dev"
+            manifestPlaceholders = [appNameGradle: "Phogal_Dev", appLabel: "Phogal_Dev"]
+            buildConfigField "String", "apiServer", "\"https://api.unsplash.com/\""
+            buildConfigField "String", "clientId", "\"V9sYHDmwcPc46chEOLA_bhTV3hwsWG0P1ta1vNZjmLs\""
+        }
+    }
+
+    splits {
+        abi {
+            enable true
+            reset()
+            // 제거: armeabi, mips, mips64 (deprecated ABIs)
+            include 'x86', 'x86_64', 'armeabi-v7a', 'arm64-v8a'
+            universalApk true
+        }
+    }
+    kotlinOptions {
+        freeCompilerArgs = ['-XXLanguage:+PropertyParamAnnotationDefaultTargetMode']
+    }
+}
+
+composeCompiler {
+    reportsDestination = layout.buildDirectory.dir("compose_compiler")
+    metricsDestination = layout.buildDirectory.dir("compose_compiler")
+
+    enableStrongSkippingMode = true
+}
+
+dependencies {
+    // --- Project modules (multi-module migration) ---
+    implementation project(':core:common')
+    implementation project(':core:model')
+    implementation project(':core:network')
+    implementation project(':core:database')
+    implementation project(':core:datastore')
+    implementation project(':core:ui')
+    implementation project(':feature:common')
+    implementation project(':feature:gallery')
+    implementation project(':feature:popularphotos')
+    implementation project(':feature:notification')
+    implementation project(':feature:setting')
+
+    implementation libs.androidx.compose.runtime
+
+    // --- Core & lifecycle ---
+    implementation libs.androidx.core.ktx
+    implementation libs.androidx.foundation
+    implementation libs.androidx.lifecycle.runtime.ktx
+    implementation libs.androidx.lifecycle.runtime.compose
+    implementation libs.androidx.lifecycle.viewmodel.compose
+    implementation libs.androidx.activity.compose
+
+    // --- Navigation ---
+    implementation libs.androidx.navigation.compose
+
+    // --- Navigation 3 (1.1.0, stable) ---
+    // This project is Nav3-only. Nav2 (androidx.navigation:navigation-compose)
+    // has been fully removed.
+    implementation libs.androidx.navigation3.runtime
+    implementation libs.androidx.navigation3.ui
+    implementation libs.androidx.lifecycle.viewmodel.navigation3
+    // Adaptive layouts (list-detail etc.) for tablets and foldables
+    implementation libs.androidx.compose.material3.adaptive.navigation3
+    implementation libs.androidx.ui
+    implementation(libs.kotlinx.serialization.core)
+
+    // --- Data Store  (1.2.1, stable) ---
+    implementation(libs.androidx.datastore.preferences)
+    implementation(libs.androidx.datastore)
+
+    // --- Paging ---
+    implementation libs.androidx.paging.common.ktx
+    implementation libs.androidx.paging.runtime.ktx
+    implementation libs.androidx.paging.compose
+
+    // --- Room (Local DB - SSOT: REST -> Room -> DAO Flow -> Repository -> ViewModel -> View) ---
+    implementation libs.androidx.room.runtime
+    implementation libs.androidx.room.ktx      // withTransaction, coroutine support
+    implementation libs.androidx.room.paging   // Room-generated PagingSource for RemoteMediator
+    ksp            libs.androidx.room.compiler
+
+    // --- Security / Browser / Splashscreen / Tracing / Profile installer ---
+    implementation libs.androidx.security.crypto.ktx
+    implementation libs.androidx.browser
+    implementation libs.androidx.core.splashscreen
+    implementation libs.androidx.tracing
+    implementation libs.androidx.tracing.ktx
+    implementation libs.androidx.profileinstaller
+    implementation libs.androidx.compose.material3.adaptive.navigation3
+    implementation libs.androidx.compose.animation
+    implementation libs.androidx.compose.material.core
+    implementation libs.androidx.runner
+    implementation libs.volley
+
+    // --- Compose (BOM-managed) ---
+    def composeBom = platform(libs.androidx.compose.bom)
+    implementation composeBom
+    androidTestImplementation composeBom
+
+    implementation libs.androidx.compose.ui
+    implementation libs.androidx.compose.ui.tooling.preview
+    implementation libs.androidx.compose.foundation
+    implementation libs.androidx.compose.material
+    implementation libs.androidx.compose.material.icons.core
+    implementation libs.androidx.compose.material.icons.extended
+    implementation libs.androidx.compose.material3
+    implementation libs.androidx.compose.material3.window.size
+
+    debugImplementation libs.androidx.compose.ui.tooling
+    debugImplementation libs.androidx.compose.ui.test.manifest
+    androidTestImplementation libs.androidx.compose.ui.test.junit4
+
+    // --- Hilt (KSP-based, no kapt) ---
+    implementation libs.hilt.android
+    ksp          libs.hilt.compiler
+    implementation libs.androidx.hilt.navigation.compose
+    ksp          libs.androidx.hilt.compiler
+
+    // --- Kotlinx serialization ---
+    implementation libs.kotlinx.serialization.json
+
+    implementation(libs.kotlinx.collections.immutable)
+
+    // --- Accompanist ---
+    implementation libs.accompanist.webview
+    implementation libs.accompanist.permissions
+
+    // --- Firebase ---
+    implementation platform(libs.firebase.bom)
+    implementation libs.firebase.analytics
+    implementation libs.play.services.measurement.api
+
+    // --- Networking ---
+    implementation libs.retrofit
+    // Replaced converter-gson with the kotlinx.serialization converter as part
+    // of the Gson → kotlinx.serialization migration (April 2026).
+    // The Json instance is provided by AppModule.provideJson() and configured
+    // for production-grade resilience (ignoreUnknownKeys = true, etc).
+    implementation libs.retrofit.converter.kotlinx.serialization
+    implementation platform(libs.okhttp.bom)
+    implementation libs.okhttp
+    implementation libs.okhttp.logging.interceptor
+    implementation libs.okio
+
+    // --- Cookies / Logging ---
+    implementation libs.persistent.cookie.jar
+    implementation libs.logger
+    implementation libs.timber
+
+    // --- Images / Animation ---
+    implementation libs.coil
+    implementation libs.coil.compose
+    implementation libs.coil.svg
+    implementation libs.lottie.compose
+
+    // --- Java 8+ API desugaring ---
+    coreLibraryDesugaring libs.desugar.jdk.libs
+
+    // --- Tests ---
+    testImplementation        libs.junit
+    androidTestImplementation libs.androidx.test.ext.junit
+    androidTestImplementation libs.androidx.test.espresso.core
+}
+
+// KSP config: Hilt 성능 개선
+ksp {
+    arg("dagger.hilt.android.internal.disableAndroidSuperclassValidation", "true")
+}

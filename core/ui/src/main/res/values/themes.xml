@@ -1,0 +1,38 @@
+<resources>
+    <!-- Base application theme. -->
+    <style name="NightAdjusted.Theme.Phogal" parent="android:Theme.Material.Light.NoActionBar">
+        <!-- Customize your theme here. -->
+        <item name="android:windowDisablePreview">true</item>
+        <item name="android:background">@android:color/transparent</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowActionModeOverlay">true</item>
+        <item name="android:fontFamily">sans-serif</item>
+        <item name="android:windowAnimationStyle">@null</item>
+
+        <item name="android:windowDrawsSystemBarBackgrounds">true</item>
+
+        <item name="android:windowContentTransitions">true</item>
+        <item name="android:windowActivityTransitions">true</item>
+
+        <item name="android:windowSharedElementEnterTransition">@android:transition/move</item>
+        <item name="android:windowSharedElementExitTransition">@android:transition/explode</item>
+
+        <item name="android:ambientShadowAlpha">0.05</item>
+        <item name="android:spotShadowAlpha">0.05</item>
+    </style>
+
+    <style name="PlatformAdjusted.Theme.Phogal" parent="NightAdjusted.Theme.Phogal">
+        <item name="android:statusBarColor">@color/black_30</item>
+    </style>
+
+    <style name="Theme.Phogal" parent="PlatformAdjusted.Theme.Phogal" />
+
+    <style name="NightAdjusted.Theme.Splash" parent="Theme.SplashScreen">
+        <item name="android:windowLightStatusBar">true</item>
+    </style>
+
+    <style name="Theme.Phogal.Splash" parent="NightAdjusted.Theme.Splash">
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_splash</item>
+        <item name="postSplashScreenTheme">@style/Theme.Phogal</item>
+    </style>
+</resources>

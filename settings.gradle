@@ -1,0 +1,47 @@
+pluginManagement {
+    repositories {
+        google {
+            content {
+                includeGroupByRegex("com\\.android.*")
+                includeGroupByRegex("com\\.google.*")
+                includeGroupByRegex("androidx.*")
+            }
+        }
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+
+plugins {
+    // Foojay Toolchain Resolver - Gradle이 JDK 17을 자동 프로비저닝
+    id 'org.gradle.toolchains.foojay-resolver-convention' version '1.0.0'
+}
+
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories {
+        google()
+        mavenCentral()
+        maven { url = uri('https://jitpack.io') }
+        maven {
+            name = 'glide-snapshot'
+            url = uri('https://oss.sonatype.org/content/repositories/snapshots')
+        }
+        // Reference local .aar file if it doesn't exist in maven
+        flatDir { dirs '../../' }
+    }
+}
+
+rootProject.name = "Phogal"
+include ':app'
+include ':core:common'
+include ':core:model'
+include ':core:network'
+include ':core:database'
+include ':core:datastore'
+include ':core:ui'
+include ':feature:common'
+include ':feature:gallery'
+include ':feature:popularphotos'
+include ':feature:notification'
+include ':feature:setting'
