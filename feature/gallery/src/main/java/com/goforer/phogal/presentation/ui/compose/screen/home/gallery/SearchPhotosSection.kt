@@ -52,8 +52,11 @@ import com.goforer.phogal.presentation.ui.compose.screen.home.common.photo.Photo
 import com.goforer.phogal.presentation.ui.compose.screen.home.common.photo.ShowUpButton
 import com.goforer.designsystem.theme.Blue15
 import com.goforer.designsystem.theme.Blue95
+import kotlinx.coroutines.Delay
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.time.delay
 import timber.log.Timber
 
 private const val PAGE_SIZE_HINT = 10
@@ -210,7 +213,6 @@ private fun LazyListScope.renderLoadState(
                     )
                 }
             }
-
             is LoadState.NotLoading -> {
                 if (sectionUiState.loadingDone) {
                     item { EmptyState() }
@@ -225,7 +227,6 @@ private fun LazyListScope.renderLoadState(
                     }
                 }
             }
-
             is LoadState.Error -> {
                 onLoadSuccess(false)
                 val error = (loadState.refresh as LoadState.Error).error
@@ -233,23 +234,27 @@ private fun LazyListScope.renderLoadState(
             }
         }
     } else {
-        if (loadState.refresh is LoadState.NotLoading) {
-            onLoadSuccess(true)
-        }
+        photoItems(
+            photos = photos,
+            bookmarkViewModel = bookmarkViewModel,
+            followViewModel = followViewModel,
+            onShowUserInfo = onShowUserInfo,
+            onItemClicked = onItemClicked,
+            onViewPhotos = onViewPhotos
+        )
 
-        if (loadState.refresh is LoadState.Error) {
-            onLoadSuccess(false)
-            val error = (loadState.refresh as LoadState.Error).error
-            item { ErrorRow(throwable = error, onRetry = { photos.retry() }) }
-        } else {
-            photoItems(
-                photos = photos,
-                bookmarkViewModel = bookmarkViewModel,
-                followViewModel = followViewModel,
-                onShowUserInfo = onShowUserInfo,
-                onItemClicked = onItemClicked,
-                onViewPhotos = onViewPhotos
-            )
+        when (loadState.refresh) {
+            is LoadState.NotLoading -> {
+                onLoadSuccess(true)
+            }
+            is LoadState.Error -> {
+                onLoadSuccess(false)
+                val error = (loadState.refresh as LoadState.Error).error
+                item { ErrorRow(throwable = error, onRetry = { photos.retry() }) }
+            }
+            is LoadState.Loading -> {
+                onLoadSuccess(true)
+            }
         }
     }
     
@@ -257,14 +262,12 @@ private fun LazyListScope.renderLoadState(
         is LoadState.Loading -> {
             Timber.d("Pagination Loading")
         }
-
         is LoadState.Error -> {
             Timber.d("Pagination broken Error")
             onLoadSuccess(false)
             val error = (loadState.append as LoadState.Error).error
             item { ErrorRow(throwable = error, onRetry = { photos.retry() }) }
         }
-
         else -> Unit
     }
 }

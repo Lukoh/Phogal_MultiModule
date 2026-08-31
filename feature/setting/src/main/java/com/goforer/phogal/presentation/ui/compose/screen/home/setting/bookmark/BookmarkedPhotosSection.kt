@@ -105,7 +105,7 @@ fun BookmarkedPhotosSection(
                 state = lazyListState,
                 contentPadding = PaddingValues(
                     start = paddingValues.calculateLeftPadding(layoutDirection),
-                    top = paddingValues.calculateLeftPadding(layoutDirection),
+                    top = 0.dp,
                     end = paddingValues.calculateRightPadding(layoutDirection) ,
                     bottom = paddingValues.calculateBottomPadding() + 64.dp
                 )
@@ -192,7 +192,6 @@ private fun LazyListScope.renderLoadState(
                     )
                 }
             }
-
             is LoadState.NotLoading -> {
                 if (sectionUiState.loadingDone) {
                     item { EmptyState() }
@@ -207,24 +206,31 @@ private fun LazyListScope.renderLoadState(
                     }
                 }
             }
-
             is LoadState.Error -> {
                 val error = (loadState.refresh as LoadState.Error).error
                 item { ErrorRow(throwable = error, onRetry = { photos.retry() }) }
             }
         }
     } else {
-        if (loadState.refresh is LoadState.Error) {
-            val error = (loadState.refresh as LoadState.Error).error
-            item { ErrorRow(throwable = error, onRetry = { photos.retry() }) }
-        } else {
-            pictureItems(
-                photos = photos,
-                followViewModel = followViewModel,
-                onShowUserInfo = onShowUserInfo,
-                onItemClicked = onItemClicked,
-                onViewPhotos = onViewPhotos
-            )
+        pictureItems(
+            photos = photos,
+            followViewModel = followViewModel,
+            onShowUserInfo = onShowUserInfo,
+            onItemClicked = onItemClicked,
+            onViewPhotos = onViewPhotos
+        )
+
+        when (loadState.refresh) {
+            is LoadState.NotLoading -> {
+                sectionUiState.setLoadingDone()
+            }
+            is LoadState.Error -> {
+                val error = (loadState.refresh as LoadState.Error).error
+                item { ErrorRow(throwable = error, onRetry = { photos.retry() }) }
+            }
+            is LoadState.Loading -> {
+                sectionUiState.setLoadingStarted()
+            }
         }
     }
 
@@ -233,13 +239,11 @@ private fun LazyListScope.renderLoadState(
         is LoadState.Loading -> {
             Timber.d("Pagination Loading")
         }
-
         is LoadState.Error -> {
             Timber.d("Pagination broken Error")
             val error = (loadState.append as LoadState.Error).error
             item { ErrorRow(throwable = error, onRetry = { photos.retry() }) }
         }
-
         else -> Unit
     }
 }
