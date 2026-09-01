@@ -36,7 +36,7 @@ fun <T : Any> LazyListScope.renderPagingLoadState(
     errorRow: LazyListScope.(Throwable) -> Unit = { error ->
         item { ErrorRow(throwable = error, onRetry = { items.retry() }) }
     },
-    appendLoading: LazyListScope.() -> Unit = {}
+    appendLoading: LazyListScope.() -> Unit
 ) {
     val refresh = items.loadState.refresh
     val append = items.loadState.append

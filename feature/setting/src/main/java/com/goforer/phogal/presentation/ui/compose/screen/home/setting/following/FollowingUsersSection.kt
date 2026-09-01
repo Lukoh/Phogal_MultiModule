@@ -44,6 +44,8 @@ import com.goforer.designsystem.component.paging.renderPagingLoadState
 import com.goforer.phogal.presentation.ui.compose.screen.home.common.photo.ShowUpButton
 import com.goforer.designsystem.theme.Blue15
 import com.goforer.designsystem.theme.Blue95
+import com.goforer.phogal.presentation.ui.compose.screen.home.common.photo.LoadingPicture
+import timber.log.Timber
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -182,6 +184,10 @@ private fun LazyListScope.renderLoadState(
             contentItems(
                 items = users,
                 key = { index, user -> "${user.id}_$index" },
+                onLoadedPhotos = { isLoadedPhotos ->
+                    if (isLoadedPhotos)
+                        Timber.d("Loaded all photos")
+                },
                 content = { padding, index, user ->
                     FollowingUsersItem(
                         modifier = Modifier
@@ -208,6 +214,9 @@ private fun LazyListScope.renderLoadState(
                         .fillMaxWidth()
                 )
             }
+        },
+        appendLoading = {
+            item { LoadingPicture() }
         },
         emptyState = {
             item {

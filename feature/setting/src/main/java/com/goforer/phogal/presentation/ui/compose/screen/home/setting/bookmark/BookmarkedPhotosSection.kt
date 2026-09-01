@@ -44,6 +44,7 @@ import com.goforer.phogal.presentation.ui.compose.screen.home.common.photo.Loadi
 import com.goforer.phogal.presentation.ui.compose.screen.home.common.photo.ShowUpButton
 import com.goforer.designsystem.theme.Blue15
 import com.goforer.designsystem.theme.Blue95
+import timber.log.Timber
 
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -189,6 +190,10 @@ private fun LazyListScope.renderLoadState(
             contentItems(
                 items = photos,
                 key = { index, photo -> "${photo.id}_$index" },
+                onLoadedPhotos = { isLoadedPhotos ->
+                    if (isLoadedPhotos)
+                        Timber.d("Loaded all photos")
+                },
                 content = { padding, index, photo ->
                     PictureItem(
                         modifier = Modifier
@@ -219,6 +224,9 @@ private fun LazyListScope.renderLoadState(
                     enableLoadIndicator = index == 0
                 )
             }
+        },
+        appendLoading = {
+            item { LoadingPicture() }
         }
     )
 }

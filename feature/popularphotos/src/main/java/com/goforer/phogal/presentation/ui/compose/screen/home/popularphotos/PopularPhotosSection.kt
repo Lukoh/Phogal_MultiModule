@@ -233,6 +233,9 @@ private fun LazyListScope.renderLoadState(
                     enableLoadIndicator = index == 0
                 )
             }
+        },
+        appendLoading = {
+            item { LoadingPicture() }
         }
     )
 }

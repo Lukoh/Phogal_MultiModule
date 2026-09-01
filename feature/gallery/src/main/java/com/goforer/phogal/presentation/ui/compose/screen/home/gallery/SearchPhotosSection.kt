@@ -51,6 +51,7 @@ import com.goforer.phogal.presentation.ui.compose.screen.home.common.photo.Photo
 import com.goforer.phogal.presentation.ui.compose.screen.home.common.photo.ShowUpButton
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
+import timber.log.Timber
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
@@ -200,6 +201,10 @@ private fun LazyListScope.renderLoadState(
             contentItems(
                 items = photos,
                 key = { index, photo -> "${photo.id}_$index" },
+                onLoadedPhotos = { isLoadedPhotos ->
+                    if (isLoadedPhotos)
+                        Timber.d("Loaded all photos")
+                },
                 content = { padding, index, photo ->
                     PhotoItem(
                         modifier = Modifier
@@ -235,6 +240,9 @@ private fun LazyListScope.renderLoadState(
                     enableLoadIndicator = index == 0
                 )
             }
+        },
+        appendLoading = {
+            item { LoadingPicture() }
         }
     )
 }

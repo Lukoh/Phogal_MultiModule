@@ -103,14 +103,14 @@ fun LazyListState.rememberCurrentScrollOffset(): State<Int> {
 fun <T : Any> LazyListScope.contentItems(
     items: LazyPagingItems<T>,
     key: ((index: Int, item: T) -> Any)? = null,
-    onLoadedPhotos: (isLoadedPhotos: Boolean) -> Unit = {},
+    onLoadedPhotos: (isLoadedPhotos: Boolean) -> Unit,
     content: @Composable LazyItemScope.(padding: Dp, index: Int, item: T) -> Unit
 ) {
     items(
         count = items.itemCount,
         key = key?.let { k ->
             { index ->
-                items.peek(index)?.let { item -> k(index, item) } ?: index
+                items[index]?.let { item -> k(index, item) } ?: index
             }
         },
         contentType = items.itemContentType()
