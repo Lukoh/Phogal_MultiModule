@@ -6,10 +6,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
@@ -32,8 +30,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.paging.LoadState
 import androidx.paging.compose.LazyPagingItems
-import androidx.paging.compose.itemContentType
-import com.goforer.designsystem.component.state.rememberLazyListState
+import com.goforer.designsystem.component.paging.rememberLazyListState
 import com.goforer.phogal.core.ui.R
 import com.goforer.phogal.data.model.remote.response.gallery.common.user.User
 import com.goforer.phogal.presentation.stateholder.uistate.UIConstants.SCROLL_OFFSET_SIGNAL
@@ -41,12 +38,12 @@ import com.goforer.phogal.presentation.stateholder.uistate.UIConstants.UP_BUTTON
 import com.goforer.phogal.presentation.stateholder.uistate.home.setting.following.FollowingUserSectionUiState
 import com.goforer.phogal.presentation.stateholder.uistate.home.setting.following.rememberFollowingUserSectionUiState
 import com.goforer.phogal.presentation.stateholder.uistate.home.setting.following.rememberFollowingUserItemUiState
-import com.goforer.phogal.presentation.ui.compose.screen.home.common.EmptyState
-import com.goforer.phogal.presentation.ui.compose.screen.home.common.ErrorRow
+import com.goforer.designsystem.component.EmptyContent
+import com.goforer.designsystem.component.paging.contentItems
+import com.goforer.designsystem.component.paging.renderPagingLoadState
 import com.goforer.phogal.presentation.ui.compose.screen.home.common.photo.ShowUpButton
 import com.goforer.designsystem.theme.Blue15
 import com.goforer.designsystem.theme.Blue95
-import timber.log.Timber
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -169,108 +166,56 @@ private fun LazyListScope.renderLoadState(
     onOpenWebView: (firstName: String, url: String?) -> Unit,
     onFollow: (userUiState: User) -> Unit
 ) {
-    val loadState = users.loadState
-
-    if (users.itemCount == 0) {
-        when (loadState.refresh) {
-            is LoadState.Loading -> {
-                items(5) {
-                    LoadingUser(
+    renderPagingLoadState(
+        items = users,
+        loadingDone = sectionUiState.loadingDone,
+        onLoading = {
+            sectionUiState.setLoadingStarted()
+        },
+        onSuccess = {
+            sectionUiState.setLoadingDone()
+        },
+        onError = { _ ->
+            sectionUiState.setLoadingDone()
+        },
+        content = {
+            contentItems(
+                items = users,
+                key = { index, user -> "${user.id}_$index" },
+                content = { padding, index, user ->
+                    FollowingUsersItem(
                         modifier = Modifier
-                            .padding(horizontal = 16.dp, vertical = 8.dp)
-                            .fillMaxWidth()
+                            .padding(top = padding)
+                            .animateItem(tween(durationMillis = 250)),
+                        followingUserItemUiState = rememberFollowingUserItemUiState(
+                            index = rememberSaveable { mutableIntStateOf(index) },
+                            user = rememberSaveable { mutableStateOf(user.toString()) },
+                            visibleViewButton = rememberSaveable { mutableStateOf(true) },
+                            followed = rememberSaveable { mutableStateOf(true) }
+                        ),
+                        onViewPhotos = onViewPhotos,
+                        onOpenWebView = onOpenWebView,
+                        onFollow = onFollow
                     )
                 }
-            }
-            is LoadState.NotLoading -> {
-                if (sectionUiState.loadingDone) {
-                    item {
-                        EmptyState(
-                            text = stringResource(id = R.string.setting_no_following)
-                        )
-                    }
-                } else {
-                    items(5) {
-                        LoadingUser(
-                            modifier = Modifier
-                                .padding(horizontal = 16.dp, vertical = 8.dp)
-                                .fillMaxWidth()
-                        )
-                    }
-                }
-            }
-            is LoadState.Error -> {
-                val error = (loadState.refresh as LoadState.Error).error
-                item { ErrorRow(throwable = error, onRetry = { users.retry() }) }
-            }
-        }
-    } else {
-        userItems(
-            users = users,
-            onViewPhotos = onViewPhotos,
-            onOpenWebView = onOpenWebView,
-            onFollow = onFollow
-        )
-
-        when (loadState.refresh) {
-            is LoadState.NotLoading -> {
-                sectionUiState.setLoadingDone()
-            }
-            is LoadState.Error -> {
-                val error = (loadState.refresh as LoadState.Error).error
-                item { ErrorRow(throwable = error, onRetry = { users.retry() }) }
-            }
-            is LoadState.Loading -> {
-                sectionUiState.setLoadingStarted()
-            }
-        }
-    }
-
-    // Append (next-page) state is rendered independently from refresh state.
-    when (loadState.append) {
-        is LoadState.Loading -> {
-            Timber.d("Pagination Loading")
-        }
-        is LoadState.Error -> {
-            Timber.d("Pagination broken Error")
-            val error = (loadState.append as LoadState.Error).error
-            item { ErrorRow(throwable = error, onRetry = { users.retry() }) }
-        }
-        else -> Unit
-    }
-}
-
-@OptIn(ExperimentalFoundationApi::class)
-private fun LazyListScope.userItems(
-    users: LazyPagingItems<User>,
-    onViewPhotos: (name: String, firstName: String, lastName: String, username: String) -> Unit,
-    onOpenWebView: (firstName: String, url: String?) -> Unit,
-    onFollow: (userUiState: User) -> Unit
-) {
-    items(
-        count = users.itemCount,
-        key = { index ->
-            val user = users.peek(index)
-            "${user?.id ?: index}_$index"
+            )
         },
-        contentType = users.itemContentType()
-    ) { index ->
-        FollowingUsersItem(
-            modifier = Modifier.animateItem(
-                tween(durationMillis = 250)
-            ),
-            followingUserItemUiState = rememberFollowingUserItemUiState(
-                index = rememberSaveable { mutableIntStateOf(index) },
-                user = rememberSaveable { mutableStateOf(users[index]!!.toString()) },
-                visibleViewButton = rememberSaveable { mutableStateOf(true) },
-                followed = rememberSaveable { mutableStateOf(true) }
-            ),
-            onViewPhotos = onViewPhotos,
-            onOpenWebView = onOpenWebView,
-            onFollow = onFollow
-        )
-
-        if (index == users.itemCount - 1)
-            Spacer(modifier = Modifier.height(26.dp))
-    }
+        loadingPlaceholder = {
+            items(5) {
+                LoadingUser(
+                    modifier = Modifier
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                        .fillMaxWidth()
+                )
+            }
+        },
+        emptyState = {
+            item {
+                EmptyContent(
+                    text = stringResource(id = R.string.setting_no_following)
+                )
+            }
+        }
+    )
 }
+

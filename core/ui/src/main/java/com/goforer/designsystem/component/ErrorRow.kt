@@ -1,4 +1,4 @@
-package com.goforer.phogal.presentation.ui.compose.screen.home.common
+package com.goforer.designsystem.component
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandIn
@@ -13,7 +13,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.res.stringResource
 import com.goforer.phogal.core.ui.R
-import com.goforer.phogal.presentation.ui.compose.screen.home.common.error.ErrorContent
 
 @Composable
 fun ErrorRow(

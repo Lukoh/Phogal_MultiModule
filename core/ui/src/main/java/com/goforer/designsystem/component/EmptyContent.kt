@@ -1,4 +1,4 @@
-package com.goforer.phogal.presentation.ui.compose.screen.home.common
+package com.goforer.designsystem.component
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Spacer
@@ -17,7 +17,7 @@ import com.goforer.phogal.core.ui.R
 import com.goforer.designsystem.theme.ColorSystemGray7
 
 @Composable
-fun EmptyState(
+fun EmptyContent(
     modifier: Modifier = Modifier,
     text: String = stringResource(id = R.string.no_picture)
 ) {

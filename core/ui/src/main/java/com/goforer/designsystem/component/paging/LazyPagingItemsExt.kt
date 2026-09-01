@@ -1,6 +1,7 @@
-package com.goforer.designsystem.component.state
+package com.goforer.designsystem.component.paging
 
 import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.rememberLazyListState as rememberStandardLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.paging.compose.LazyPagingItems
@@ -14,6 +15,6 @@ fun <T : Any> LazyPagingItems<T>.rememberLazyListState(): LazyListState {
         // Return a different LazyListState instance.
         0 -> remember(this) { LazyListState(0, 0) }
         // Return rememberLazyListState (normal case).
-        else -> androidx.compose.foundation.lazy.rememberLazyListState()
+        else -> rememberStandardLazyListState()
     }
 }

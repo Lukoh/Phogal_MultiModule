@@ -213,8 +213,6 @@ fun UserContainerContent(
             Spacer(modifier = Modifier.height(10.dp))
         }
     }
-
-
 }
 
 @Composable
@@ -226,7 +224,9 @@ fun ShowProfileImage(
     onViewPhotos: (name: String, firstName: String, lastName: String, username: String) -> Unit,
 ) {
     IconContainer(profileImageSize) {
-        Box {
+        Box(
+            modifier = Modifier.snsShimmer()
+        ) {
             val painter = loadImagePainter(
                 data = user.profileImage.small,
                 size = Size.ORIGINAL

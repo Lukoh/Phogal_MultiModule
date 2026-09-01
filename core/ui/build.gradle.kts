@@ -1,6 +1,5 @@
 plugins {
     alias(libs.plugins.android.library)
-    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
 }
 
@@ -45,6 +44,7 @@ dependencies {
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     debugImplementation(libs.androidx.compose.ui.tooling)
     implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.core.splashscreen)
     implementation(libs.coil)
     implementation(libs.coil.compose)
     implementation(libs.coil.svg)
@@ -52,5 +52,6 @@ dependencies {
     implementation(libs.kotlinx.collections.immutable)
     implementation(libs.androidx.paging.runtime.ktx)
     implementation(libs.androidx.paging.compose)
+    implementation(libs.timber)
     coreLibraryDesugaring(libs.desugar.jdk.libs)
 }

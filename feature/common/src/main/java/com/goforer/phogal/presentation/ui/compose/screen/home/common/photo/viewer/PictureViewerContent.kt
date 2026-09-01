@@ -92,7 +92,7 @@ import com.goforer.phogal.data.model.remote.response.gallery.common.user.User
 import com.goforer.phogal.presentation.stateholder.uistate.UiState
 import com.goforer.phogal.presentation.stateholder.uistate.home.common.photo.PhotoContentUiState
 import com.goforer.phogal.presentation.stateholder.uistate.home.common.user.rememberUserContainerUiState
-import com.goforer.phogal.presentation.ui.compose.screen.home.common.error.ErrorContent
+import com.goforer.designsystem.component.ErrorContent
 import com.goforer.phogal.presentation.ui.compose.screen.home.common.user.UserContainer
 import com.goforer.designsystem.theme.Blue75
 import com.goforer.designsystem.theme.ColorSnowWhite

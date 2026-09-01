@@ -129,7 +129,7 @@ fun PictureItem(
 
                     Image(
                         painter = painter,
-                        contentDescription = "Picture by ${picture.user?.name}",
+                        contentDescription = "Picture by ${picture.user.name}",
                         contentScale = ContentScale.Crop,
                         modifier = imageModifier,
                         colorFilter = ColorFilter.colorMatrix(ColorMatrix().apply {
@@ -166,9 +166,9 @@ fun PictureItem(
 fun PictureItemPreview() {
     val mockPicture = PreviewMockData.createMockPicture()
     val mockUiState = rememberPictureItemUiState(
-        initialPicture = mockPicture,
-        initialIndex = 0,
-        initialVisibleViewButton = true
+        picture = remember { mutableStateOf(mockPicture) },
+        index = remember { mutableIntStateOf(0) },
+        visibleViewButton = remember { mutableStateOf(true) }
     )
 
     PhogalTheme {
@@ -255,28 +255,6 @@ object PreviewMockData {
             ),
             likedByUser = false,
             bookmarked = false
-        )
-    }
-}
-
-@Composable
-fun rememberPictureItemUiState(
-    initialPicture: Picture = PreviewMockData.createMockPicture(),
-    initialIndex: Int = 0,
-    initialVisibleViewButton: Boolean = true,
-    initialClicked: Boolean = false
-): PictureItemUiState {
-    val indexState = remember { mutableIntStateOf(initialIndex) }
-    val pictureState = remember { mutableStateOf(initialPicture) }
-    val visibleViewButtonState = remember { mutableStateOf(initialVisibleViewButton) }
-    val clickedState = remember { mutableStateOf(initialClicked) }
-
-    return remember(indexState, pictureState, visibleViewButtonState, clickedState) {
-        PictureItemUiState(
-            _index = indexState,
-            _picture = pictureState,
-            _visibleViewButton = visibleViewButtonState,
-            _clicked = clickedState
         )
     }
 }

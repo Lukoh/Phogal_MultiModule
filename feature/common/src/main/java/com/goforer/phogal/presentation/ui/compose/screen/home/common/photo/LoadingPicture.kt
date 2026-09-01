@@ -1,6 +1,7 @@
 package com.goforer.phogal.presentation.ui.compose.screen.home.common.photo
 
 import android.content.res.Configuration
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -31,7 +32,10 @@ fun LoadingPicture(
         colors = CardDefaults.elevatedCardColors(
             containerColor = MaterialTheme.colorScheme.surface
         ),
-        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp)
+        elevation = CardDefaults.elevatedCardElevation(
+            defaultElevation = 2.dp,
+            pressedElevation = 0.dp
+        )
     ) {
         Column(
             modifier = Modifier
@@ -139,7 +143,7 @@ fun LoadingPicture(
 @Composable
 fun LoadingPicturePreview() {
     PhogalTheme {
-        Box(modifier = Modifier.padding(16.dp)) {
+        Box(modifier = Modifier.padding(8.dp)) {
             LoadingPicture(
                 modifier = Modifier.fillMaxWidth(),
                 enableLoadIndicator = true

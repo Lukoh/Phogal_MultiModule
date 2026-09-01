@@ -1,5 +1,10 @@
-package com.goforer.designsystem.component.state
+package com.goforer.designsystem.component.paging
 
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.lazy.LazyItemScope
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -11,6 +16,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
+import androidx.paging.compose.LazyPagingItems
+import androidx.paging.compose.itemContentType
+import com.goforer.designsystem.component.paging.PagingConstants.PAGE_SIZE_HINT
 
 @Composable
 fun LazyListState.isScrollingUp(): Boolean {
@@ -83,4 +94,41 @@ fun LazyListState.rememberCurrentScrollOffset(): State<Int> {
     }
 
     return currentScrollOffset
+}
+
+/**
+ * A unified renderer for items in a [LazyListScope].
+ */
+@OptIn(ExperimentalFoundationApi::class)
+fun <T : Any> LazyListScope.contentItems(
+    items: LazyPagingItems<T>,
+    key: ((index: Int, item: T) -> Any)? = null,
+    onLoadedPhotos: (isLoadedPhotos: Boolean) -> Unit = {},
+    content: @Composable LazyItemScope.(padding: Dp, index: Int, item: T) -> Unit
+) {
+    items(
+        count = items.itemCount,
+        key = key?.let { k ->
+            { index ->
+                items.peek(index)?.let { item -> k(index, item) } ?: index
+            }
+        },
+        contentType = items.itemContentType()
+    ) { index ->
+        val item = items[index] ?: return@items
+        val padding = if (index == 0)
+            2.dp
+        else
+            0.5.dp
+
+        if (index == items.itemCount - 1) {
+            onLoadedPhotos(true)
+        }
+
+        content(padding, index, item)
+
+        if (items.itemCount < PAGE_SIZE_HINT && index == items.itemCount - 1) {
+            Spacer(modifier = Modifier.height(26.dp))
+        }
+    }
 }

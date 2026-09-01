@@ -1,4 +1,4 @@
-package com.goforer.phogal.presentation.ui.compose.screen.home.common.error
+package com.goforer.designsystem.component
 
 import android.content.res.Configuration
 import androidx.compose.foundation.Image

@@ -2,7 +2,6 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
     alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)        // REQUIRED for Kotlin 2.0+
     alias(libs.plugins.kotlin.parcelize)
     alias(libs.plugins.kotlin.serialization)
@@ -18,9 +17,9 @@ android {
 
     defaultConfig {
         applicationId "com.goforer.phogal"
-        minSdk 28
+        minSdk = 28
         //noinspection OldTargetApi
-        targetSdk 36
+        targetSdk = 36
         versionCode 1
         versionName "1.0"
 
@@ -68,7 +67,8 @@ android {
             jvmTarget = JvmTarget.JVM_17
             // Kotlin 2.0 새 기능 활용
             freeCompilerArgs.addAll(
-                    "-opt-in=kotlin.RequiresOptIn"
+                    "-opt-in=kotlin.RequiresOptIn",
+                    "-XXLanguage:+PropertyParamAnnotationDefaultTargetMode"
             )
         }
     }
@@ -86,30 +86,28 @@ android {
     // AGP 8.7+: packagingOptions도 동작하지만 'packaging'이 표준 명칭
     packaging {
         resources {
-            excludes += [
-                    '/META-INF/{AL2.0,LGPL2.1}',
-                    'META-INF/LICENSE*',
-                    'META-INF/NOTICE*',
-                    'META-INF/*.kotlin_module'
-            ]
+            excludes.add('/META-INF/{AL2.0,LGPL2.1}')
+            excludes.add('META-INF/LICENSE*')
+            excludes.add('META-INF/NOTICE*')
+            excludes.add('META-INF/*.kotlin_module')
         }
     }
 
     sourceSets {
         String sharedTestDir = 'src/commonTest/kotlin'
         main {
-            java.srcDirs += 'src/main/kotlin'
+            kotlin.srcDirs += 'src/main/kotlin'
         }
         test {
-            java.srcDirs += ['src/test/kotlin', sharedTestDir]
+            kotlin.srcDirs += ['src/test/kotlin', sharedTestDir]
         }
         androidTest {
-            java.srcDirs += ['src/androidTest/kotlin', sharedTestDir]
+            kotlin.srcDirs += ['src/androidTest/kotlin', sharedTestDir]
             resources.srcDirs += ['src/commonTest/resources']
         }
     }
 
-    flavorDimensions += "default"
+    flavorDimensions = ["default"]
 
     productFlavors {
         prod {
@@ -142,9 +140,6 @@ android {
             include 'x86', 'x86_64', 'armeabi-v7a', 'arm64-v8a'
             universalApk true
         }
-    }
-    kotlinOptions {
-        freeCompilerArgs = ['-XXLanguage:+PropertyParamAnnotationDefaultTargetMode']
     }
 }
 

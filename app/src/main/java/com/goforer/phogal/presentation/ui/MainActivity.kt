@@ -21,6 +21,7 @@ import androidx.lifecycle.repeatOnLifecycle
 import com.goforer.phogal.presentation.ui.compose.screen.MainScreen
 import com.goforer.designsystem.theme.PhogalTheme
 import dagger.hilt.android.AndroidEntryPoint
+import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -40,7 +41,7 @@ class MainActivity : ComponentActivity() {
 
         lifecycleScope.launch {
             lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                delay(SPLASH_WAIT_TIME)
+                delay(SPLASH_WAIT_TIME.milliseconds)
                 keepOnSplash = true
             }
         }
@@ -59,10 +60,10 @@ class MainActivity : ComponentActivity() {
         setContent {
             val darkTheme = isSystemInDarkTheme()
 
-            CompositionLocalProvider() {
+            CompositionLocalProvider {
                 PhogalTheme(
                     darkTheme = darkTheme,
-                    androidTheme = true
+                    androidTheme = true,
                 ) {
                     // A surface container using the 'background' color from the theme
                     Surface(
