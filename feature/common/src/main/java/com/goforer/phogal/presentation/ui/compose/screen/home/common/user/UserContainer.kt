@@ -79,7 +79,7 @@ fun UserContainer(
     state: UserContainerUiState = rememberUserContainerUiState(),
     followViewModel: FollowViewModel?,
     onShowUserInfo: (User) -> Unit,
-    onViewPhotos: (name: String, firstName: String, lastName: String, username: String) -> Unit
+    onViewPhotos: (name: String, firstName: String, lastName: String, username: String) -> Unit,
 ) {
     if (state.user.isEmpty()) return
 
@@ -105,7 +105,7 @@ fun UserContainerContent(
     isFollowed: Boolean,
     onFollowClick: (User) -> Unit,
     onShowUserInfo: (User) -> Unit,
-    onViewPhotos: (name: String, firstName: String, lastName: String, username: String) -> Unit
+    onViewPhotos: (name: String, firstName: String, lastName: String, username: String) -> Unit,
 ) {
     val focusManager = LocalFocusManager.current
     val lastName = user.lastName ?: stringResource(id = R.string.picture_no_last_name)
@@ -136,9 +136,10 @@ fun UserContainerContent(
                 onViewPhotos = onViewPhotos
             )
             Spacer(modifier = Modifier.width(14.dp))
-            Column(modifier = Modifier
-                .height(IntrinsicSize.Min)
-                .widthIn(186.dp)
+            Column(
+                modifier = Modifier
+                    .height(IntrinsicSize.Min)
+                    .widthIn(186.dp),
             ) {
                 Text(
                     text = user.name,

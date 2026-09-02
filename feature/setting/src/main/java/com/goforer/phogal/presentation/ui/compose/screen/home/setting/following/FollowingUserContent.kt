@@ -20,6 +20,7 @@ fun FollowingUsersContent(
     paddingValues: PaddingValues,
     users: LazyPagingItems<User>,
     enabledLoadPhotos: Boolean,
+    onLoadResult: (isSuccessful: Boolean, message: String) -> Unit,
     onViewPhotos: (name: String, firstName: String, lastName: String, username: String) -> Unit,
     onOpenWebView: (firstName: String, url: String?) -> Unit,
     onFollow: (userUiState: User) -> Unit
@@ -29,6 +30,7 @@ fun FollowingUsersContent(
             modifier = modifier,
             paddingValues = paddingValues,
             users = users,
+            onLoadResult = onLoadResult,
             onViewPhotos = onViewPhotos,
             onOpenWebView = onOpenWebView,
             onFollow = onFollow

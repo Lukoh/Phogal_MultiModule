@@ -8,6 +8,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.shrinkOut
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -67,12 +68,12 @@ fun PictureViewerScreen(
     onBackPressed: () -> Unit,
     onOpenWebView: (firstName: String, url: String) -> Unit,
     onStart: () -> Unit = {},
-    onStop: () -> Unit = {}
+    onStop: () -> Unit = {},
 ) {
     val currentOnStart by rememberUpdatedState(onStart)
     val currentOnStop by rememberUpdatedState(onStop)
     val snackbarHostState = remember { SnackbarHostState() }
-    val backHandlingEnabled by remember { mutableStateOf(true) }
+    val backHandlingEnabled by remember { mutableStateOf(value = true) }
 
     BackHandler(backHandlingEnabled) { onBackPressed() }
 
@@ -121,6 +122,7 @@ fun PictureViewerScreen(
         @Composable {
             SnackbarHost(
                 snackbarHostState,
+                modifier = Modifier.navigationBarsPadding(),
                 snackbar = { snackbarData: SnackbarData ->
                     CardSnackBar(modifier = Modifier, snackbarData)
                 }
@@ -156,7 +158,7 @@ fun PictureViewerScreen(
                     }
                 },
                 actions = {
-                    if (contentUiState.visibleActions && currentPicture != null) {
+                    if (contentUiState.visibleActions && (currentPicture != null)) {
                         // Stable lambdas. The capture set is the bare minimum needed for the
                         // operation, which keeps Compose from invalidating these on every parent
                         // recomposition.
@@ -226,10 +228,9 @@ fun PictureViewerScreen(
                     onShowUserInfo = { selectedUserForInfo = it },
                     onViewPhotos = onViewPhotos,
                     onShownPhoto = onShownPhoto,
-                    onSuccess = { isSuccessful: Boolean ->
-                        if (!isSuccessful) contentUiState.setVisibleActions(false)
-                    }
-                )
+                ) { isSuccessful: Boolean ->
+                    if (!isSuccessful) contentUiState.setVisibleActions(visibleActions = false)
+                }
             }
 
             selectedUserForInfo?.let { user ->
@@ -244,7 +245,7 @@ fun PictureViewerScreen(
                             val portfolioUrl = user.portfolioUrl
                             if (portfolioUrl.isNullOrEmpty()) {
                                 contentUiState.baseUiState.scope.launch {
-                                    snackbarHostState.showSnackbar("${user.firstName} ${text}")
+                                    snackbarHostState.showSnackbar("${user.firstName} $text")
                                 }
                             } else {
                                 onOpenWebView(user.firstName, portfolioUrl)
@@ -279,9 +280,9 @@ private fun LikeActionHandle(pictureViewModel: PictureViewModel) {
         visible = true,
         modifier = Modifier,
         enter = scaleIn(transformOrigin = TransformOrigin(0f, 0f)) +
-            fadeIn() + expandIn(expandFrom = Alignment.TopStart),
+                fadeIn() + expandIn(expandFrom = Alignment.TopStart),
         exit = scaleOut(transformOrigin = TransformOrigin(0f, 0f)) +
-            fadeOut() + shrinkOut(shrinkTowards = Alignment.TopStart)
+                fadeOut() + shrinkOut(shrinkTowards = Alignment.TopStart),
     ) {
         ErrorDialog(
             title = if (errorState.code !in 200..299) {

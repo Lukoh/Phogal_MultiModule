@@ -1,5 +1,6 @@
 package com.goforer.phogal.presentation.ui.compose.screen.home.setting.notification
 
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.CenterAlignedTopAppBar
@@ -71,12 +72,16 @@ fun NotificationSettingScreen(
 
     Scaffold(
         contentColor = ColorBgSecondary,
-        snackbarHost = { SnackbarHost(
-            snackbarHostState, snackbar = { snackbarData: SnackbarData ->
-                CardSnackBar(modifier = Modifier, snackbarData)
-            }
-        )
-        }, topBar = {
+        snackbarHost = {
+            SnackbarHost(
+                snackbarHostState,
+                modifier = Modifier.navigationBarsPadding(),
+                snackbar = { snackbarData: SnackbarData ->
+                    CardSnackBar(modifier = Modifier, snackbarData)
+                }
+            )
+        },
+        topBar = {
             CenterAlignedTopAppBar(
                 title = {
                     Text(

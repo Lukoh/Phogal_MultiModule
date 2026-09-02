@@ -1,19 +1,19 @@
 package com.goforer.designsystem.component
 
 import android.content.res.Configuration
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
-import androidx.compose.foundation.indication
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentWidth
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
@@ -22,64 +22,74 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.goforer.phogal.core.ui.R
 import com.goforer.designsystem.theme.PhogalTheme
+import com.goforer.phogal.core.ui.R
 
 @Composable
-inline fun IconButton(
+fun IconButton(
     modifier: Modifier = Modifier,
-    height: Dp,
-    colors: ButtonColors = ButtonDefaults.buttonColors(),
-    noinline onClick: () -> Unit,
-    crossinline icon: @Composable () -> Unit,
-    crossinline text: @Composable () -> Unit,
-    interactionSource: MutableInteractionSource =
-        remember { MutableInteractionSource() },
+    height: Dp = 48.dp,
+    colors: ButtonColors = ButtonDefaults.buttonColors(
+        containerColor = MaterialTheme.colorScheme.primary,
+        contentColor = MaterialTheme.colorScheme.onPrimary,
+    ),
+    enabled: Boolean = true,
+    onClick: () -> Unit,
+    icon: @Composable (() -> Unit)? = null,
+    text: @Composable (() -> Unit)? = null,
+    interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
 ) {
     val isPressed by interactionSource.collectIsPressedAsState()
-    /*
-    val isButtonEnabled = remember { mutableStateOf(true) }
-    val animatedButtonColor = animateColorAsState(
-        targetValue = if (isButtonEnabled.value) Color.White else Color.Gray,
-        animationSpec = tween(1000, 0, LinearEasing))
-
-     */
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.96f else 1f,
+        label = "ButtonScale"
+    )
 
     Button(
         onClick = onClick,
         modifier = modifier
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
             .wrapContentWidth()
-            .heightIn(height)
-            .indication(
-                interactionSource = interactionSource,
-                indication  = ripple(bounded = true, color = Color.Blue)
-            ),
-        shape = MaterialTheme.shapes.small,
+            .height(height),
+        enabled = enabled,
+        shape = CircleShape,
         colors = colors,
+        elevation = ButtonDefaults.buttonElevation(
+            defaultElevation = 0.dp,
+            pressedElevation = 2.dp,
+            hoveredElevation = 1.dp
+        ),
+        contentPadding = ButtonDefaults.ContentPadding,
         interactionSource = interactionSource
     ) {
-        AnimatedVisibility(visible = isPressed) {
-            if (isPressed) {
-                Row(modifier = Modifier.animateContentSize()) {
-                    icon()
-                    Spacer(Modifier.size(ButtonDefaults.IconSpacing))
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.animateContentSize()
+        ) {
+            if (icon != null) {
+                icon()
+                if (text != null) {
+                    Spacer(modifier = Modifier.width(8.dp))
                 }
             }
+            
+            text?.invoke()
         }
-        text()
     }
 }
 
@@ -91,44 +101,50 @@ inline fun IconButton(
     showSystemUi = true
 )
 @Composable
-fun IconButtonPreview(modifier: Modifier = Modifier) {
+fun IconButtonPreview() {
     PhogalTheme {
-        val interactionSource: MutableInteractionSource = remember { MutableInteractionSource() }
-        val isPressed by interactionSource.collectIsPressedAsState()
-        /*
-        val isButtonEnabled = remember { mutableStateOf(true) }
-        val animatedButtonColor = animateColorAsState(
-            targetValue = if (isButtonEnabled.value) Color.White else Color.Gray,
-            animationSpec = tween(1000, 0, LinearEasing))
-
-         */
-
-        Button(
-            onClick = {},
-            modifier = modifier
-                .height(IntrinsicSize.Min)
-                .wrapContentHeight()
-                .wrapContentWidth()
-                .heightIn(48.dp),
-            shape = MaterialTheme.shapes.small,
-            interactionSource = interactionSource
+        Row(
+            modifier = Modifier
+                .padding(16.dp)
+                .fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            AnimatedVisibility(visible = isPressed) {
-                if (isPressed) {
-                    Row(modifier = Modifier.animateContentSize()) {
-                        Icon(
-                            imageVector = Icons.Default.Search,
-                            contentDescription = null,
+            IconButton(
+                onClick = {},
+                icon = {
+                    Icon(
+                        imageVector = Icons.Default.Search,
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp)
+                    )
+                },
+                text = {
+                    Text(
+                        text = stringResource(id = R.string.placeholder_search),
+                        style = MaterialTheme.typography.labelLarge.copy(
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 15.sp
                         )
-                        Spacer(Modifier.size(ButtonDefaults.IconSpacing))
-                    }
+                    )
                 }
-            }
-            Text(
-                stringResource(id = R.string.placeholder_search),
-                fontFamily = FontFamily.SansSerif,
-                fontSize = 15.sp,
-                fontStyle = FontStyle.Italic
+            )
+            
+            Spacer(modifier = Modifier.width(16.dp))
+
+            IconButton(
+                onClick = {},
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                ),
+                text = {
+                    Text(
+                        text = "Follow",
+                        style = MaterialTheme.typography.labelLarge.copy(
+                            fontWeight = FontWeight.Bold
+                        )
+                    )
+                }
             )
         }
     }

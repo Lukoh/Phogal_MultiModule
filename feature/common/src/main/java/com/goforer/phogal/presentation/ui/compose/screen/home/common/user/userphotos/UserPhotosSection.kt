@@ -17,7 +17,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -33,6 +32,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.paging.LoadState
 import androidx.paging.compose.LazyPagingItems
+import com.goforer.designsystem.component.paging.PagingLoadStateEffect
 import com.goforer.designsystem.component.paging.rememberLazyListState
 import com.goforer.phogal.data.model.remote.response.gallery.common.photo.Photo
 import com.goforer.phogal.data.model.remote.response.gallery.common.user.User
@@ -65,14 +65,24 @@ fun UserPhotosSection(
     onShowUserInfo: (User) -> Unit,
     onItemClicked: (item: Photo, index: Int) -> Unit,
     onViewPhotos: (name: String, firstName: String, lastName: String, username: String) -> Unit,
-    onSuccess: (isSuccessful: Boolean) -> Unit
+    onLoadResult: (isSuccessful: Boolean, message: String) -> Unit
 ) {
     val lazyListState = photos.rememberLazyListState()
-    val isRefreshing by remember(photos.loadState.refresh, photos.itemCount) {
+    var manualRefreshing by remember { mutableStateOf(false) }
+    val isRefreshing by remember(photos.loadState.refresh, manualRefreshing, sectionUiState.loadingDone) {
         derivedStateOf {
-            photos.loadState.refresh is LoadState.Loading && photos.itemCount > 0
+            manualRefreshing || (sectionUiState.loadingDone && photos.itemCount > 0 && photos.loadState.refresh is LoadState.Loading)
         }
     }
+
+    PagingLoadStateEffect(
+        pagingItems = photos,
+        onLoadingStarted = { sectionUiState.setLoadingStarted() },
+        onLoadingDone = { sectionUiState.setLoadingDone() },
+        onLoadResult = { isSuccessful, message -> onLoadResult(isSuccessful, message) },
+        onRefreshTransition = { manualRefreshing = it },
+        logTag = "UserPhotosSection"
+    )
 
     // derivedStateOf: only triggers recomposition when the boolean actually flips,
     // not on every scroll tick.
@@ -88,7 +98,10 @@ fun UserPhotosSection(
         modifier = modifier
             .clip(RoundedCornerShape(2.dp)),
         isRefreshing = isRefreshing,
-        onRefresh = photos::refresh
+        onRefresh = {
+            manualRefreshing = true
+            photos.refresh()
+        }
     ) {
         val layoutDirection = LocalLayoutDirection.current
 
@@ -121,8 +134,7 @@ fun UserPhotosSection(
                     followViewModel = followViewModel,
                     onShowUserInfo = onShowUserInfo,
                     onItemClicked = onItemClicked,
-                    onViewPhotos = onViewPhotos,
-                    onSuccess = onSuccess
+                    onViewPhotos = onViewPhotos
                 )
             }
 
@@ -141,36 +153,6 @@ fun UserPhotosSection(
                 }
             )
         }
-
-        LaunchedEffect(lazyListState, sectionUiState.clicked) {
-            if (sectionUiState.clicked) {
-                lazyListState.animateScrollToItem (0)
-                sectionUiState.setUpButtonVisibilityChanged(false)
-            }
-
-            sectionUiState.setScrollConsumed()
-        }
-
-        LaunchedEffect(photos) {
-            sectionUiState.setLoadingStarted()
-        }
-
-        var hasStartedLoading by remember(photos) { mutableStateOf(false) }
-
-        LaunchedEffect(photos.loadState.refresh) {
-            when (photos.loadState.refresh) {
-                is LoadState.Loading -> {
-                    hasStartedLoading = true
-                    sectionUiState.setLoadingStarted()
-                }
-                is LoadState.NotLoading -> {
-                    if (photos.itemCount > 0 || (hasStartedLoading && photos.loadState.append.endOfPaginationReached)) {
-                        sectionUiState.setLoadingDone()
-                    }
-                }
-                else -> Unit
-            }
-        }
     }
 }
 
@@ -187,15 +169,11 @@ private fun LazyListScope.renderLoadState(
     followViewModel: FollowViewModel,
     onShowUserInfo: (User) -> Unit,
     onItemClicked: (item: Photo, index: Int) -> Unit,
-    onViewPhotos: (name: String, firstName: String, lastName: String, username: String) -> Unit,
-    onSuccess: (Boolean) -> Unit
+    onViewPhotos: (name: String, firstName: String, lastName: String, username: String) -> Unit
 ) {
     renderPagingLoadState(
         items = photos,
         loadingDone = sectionUiState.loadingDone,
-        onLoading = { sectionUiState.setLoadingStarted() },
-        onSuccess = { onSuccess(true) },
-        onError = { _ -> onSuccess(false) },
         content = {
             contentItems(
                 items = photos,
@@ -245,71 +223,3 @@ private fun LazyListScope.renderLoadState(
         }
     )
 }
-
-
-/*
-@Preview(name = "Light Mode")
-@Preview(
-    uiMode = Configuration.UI_MODE_NIGHT_YES,
-    showBackground = true,
-    name = "Dark Mode",
-    showSystemUi = true
-)
-@Composable
-fun ListSectionPreview(modifier: Modifier = Modifier) {
-    PhogalTheme {
-        val lazyListState: LazyListState = rememberLazyListState()
-        val photos = mutableListOf(
-            Document("_SBS","news", "2017-01-21T15:59:30.000+09:00", "한국경제TV","http://v.media.daum.net/v/20170621155930002",457, "http://t1.daumcdn.net/news/201706/21/kedtv/20170621155930292vyyx.jpg", 185,"https://search2.kakaocdn.net/argon/138x78_80_pr/FRkbdWEKr4F", "https://search2.kakaocdn.net/argon/130x130_85_c/36hQpoTrVZp","AOA 지민·김용만, 돼지꼬리 맛에 정신혼미 ‘극찬세례’", "http://tv.kakao.com/channel/2653417/cliplink/304487728?playlistId=87634"),
-            Document("_JTBC","news", "2017-02-21T15:59:30.000+09:00", "한국경제TV","http://v.media.daum.net/v/20170621155930002",457, "http://t1.daumcdn.net/news/201706/21/kedtv/20170621155930292vyyx.jpg", 185,"https://search2.kakaocdn.net/argon/138x78_80_pr/FRkbdWEKr4F", "https://search2.kakaocdn.net/argon/130x130_85_c/36hQpoTrVZp","AOA 지민·김용만, 돼지꼬리 맛에 정신혼미 ‘극찬세례’", "http://tv.kakao.com/channel/2653417/cliplink/304487728?playlistId=87634"),
-            Document("_KBS","news", "2017-03-21T15:59:30.000+09:00", "한국경제TV","http://v.media.daum.net/v/20170621155930002",457, "http://t1.daumcdn.net/news/201706/21/kedtv/20170621155930292vyyx.jpg", 185,"https://search2.kakaocdn.net/argon/138x78_80_pr/FRkbdWEKr4F", "https://search2.kakaocdn.net/argon/130x130_85_c/36hQpoTrVZp","AOA 지민·김용만, 돼지꼬리 맛에 정신혼미 ‘극찬세례’", "http://tv.kakao.com/channel/2653417/cliplink/304487728?playlistId=87634"),
-            Document("_SBS","news", "2017-04-21T15:59:30.000+09:00", "한국경제TV","http://v.media.daum.net/v/20170621155930002",457,"http://t1.daumcdn.net/news/201706/21/kedtv/20170621155930292vyyx.jpg", 185,"https://search2.kakaocdn.net/argon/138x78_80_pr/FRkbdWEKr4F", "https://search2.kakaocdn.net/argon/130x130_85_c/36hQpoTrVZp","AOA 지민·김용만, 돼지꼬리 맛에 정신혼미 ‘극찬세례’", "http://tv.kakao.com/channel/2653417/cliplink/304487728?playlistId=87634"),
-            Document("_SBS","news", "2017-05-21T15:59:30.000+09:00", "한국경제TV","http://v.media.daum.net/v/20170621155930002",457,"http://t1.daumcdn.net/news/201706/21/kedtv/20170621155930292vyyx.jpg", 185,"https://search2.kakaocdn.net/argon/138x78_80_pr/FRkbdWEKr4F", "https://search2.kakaocdn.net/argon/130x130_85_c/36hQpoTrVZp","AOA 지민·김용만, 돼지꼬리 맛에 정신혼미 ‘극찬세례’", "http://tv.kakao.com/channel/2653417/cliplink/304487728?playlistId=87634"),
-            Document("_SBS","news", "2017-06-21T15:59:30.000+09:00", "한국경제TV","http://v.media.daum.net/v/20170621155930002",457,"http://t1.daumcdn.net/news/201706/21/kedtv/20170621155930292vyyx.jpg", 185,"https://search2.kakaocdn.net/argon/138x78_80_pr/FRkbdWEKr4F", "https://search2.kakaocdn.net/argon/130x130_85_c/36hQpoTrVZp","AOA 지민·김용만, 돼지꼬리 맛에 정신혼미 ‘극찬세례’", "http://tv.kakao.com/channel/2653417/cliplink/304487728?playlistId=87634"),
-            Document("_SBS","news", "2017-07-21T15:59:30.000+09:00", "한국경제TV","http://v.media.daum.net/v/20170621155930002",457, "http://t1.daumcdn.net/news/201706/21/kedtv/20170621155930292vyyx.jpg", 185,"https://search2.kakaocdn.net/argon/138x78_80_pr/FRkbdWEKr4F", "https://search2.kakaocdn.net/argon/130x130_85_c/36hQpoTrVZp","AOA 지민·김용만, 돼지꼬리 맛에 정신혼미 ‘극찬세례’", "http://tv.kakao.com/channel/2653417/cliplink/304487728?playlistId=87634"),
-            Document("_SBS","news", "2017-08-21T15:59:30.000+09:00", "한국경제TV","http://v.media.daum.net/v/20170621155930002",457, "http://t1.daumcdn.net/news/201706/21/kedtv/20170621155930292vyyx.jpg", 185,"https://search2.kakaocdn.net/argon/138x78_80_pr/FRkbdWEKr4F", "https://search2.kakaocdn.net/argon/130x130_85_c/36hQpoTrVZp","AOA 지민·김용만, 돼지꼬리 맛에 정신혼미 ‘극찬세례’", "http://tv.kakao.com/channel/2653417/cliplink/304487728?playlistId=87634"),
-            Document("_SBS","news", "2017-09-21T15:59:30.000+09:00", "한국경제TV","http://v.media.daum.net/v/20170621155930002",457, "http://t1.daumcdn.net/news/201706/21/kedtv/20170621155930292vyyx.jpg", 185,"https://search2.kakaocdn.net/argon/138x78_80_pr/FRkbdWEKr4F", "https://search2.kakaocdn.net/argon/130x130_85_c/36hQpoTrVZp","AOA 지민·김용만, 돼지꼬리 맛에 정신혼미 ‘극찬세례’", "http://tv.kakao.com/channel/2653417/cliplink/304487728?playlistId=87634"),
-            Document("_SBS","news", "2017-10-21T15:59:30.000+09:00", "한국경제TV","http://v.media.daum.net/v/20170621155930002",457, "http://t1.daumcdn.net/news/201706/21/kedtv/20170621155930292vyyx.jpg", 185,"https://search2.kakaocdn.net/argon/138x78_80_pr/FRkbdWEKr4F", "https://search2.kakaocdn.net/argon/130x130_85_c/36hQpoTrVZp","AOA 지민·김용만, 돼지꼬리 맛에 정신혼미 ‘극찬세례’", "http://tv.kakao.com/channel/2653417/cliplink/304487728?playlistId=87634"),
-            Document("_SBS","news", "2017-11-21T15:59:30.000+09:00", "한국경제TV","http://v.media.daum.net/v/20170621155930002",457, "http://t1.daumcdn.net/news/201706/21/kedtv/20170621155930292vyyx.jpg", 185,"https://search2.kakaocdn.net/argon/138x78_80_pr/FRkbdWEKr4F", "https://search2.kakaocdn.net/argon/130x130_85_c/36hQpoTrVZp","AOA 지민·김용만, 돼지꼬리 맛에 정신혼미 ‘극찬세례’", "http://tv.kakao.com/channel/2653417/cliplink/304487728?playlistId=87634")
-        )
-
-        BoxWithConstraints(modifier = modifier) {
-            LazyColumn(
-                modifier = Modifier,
-                state = lazyListState,
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                itemsIndexed(
-                    photos,
-                    key = { _, item -> item.datetime },
-                    itemContent = { index, item ->
-                        PhotoItem(
-                            modifier = modifier,
-                            index = index,
-                            photo = item,
-                            onItemClicked = { _, _ -> }
-                        )
-                    })
-            }
-
-            AnimatedVisibility(
-                visible = true,
-                modifier = Modifier.align(Alignment.BottomEnd)
-            ) {
-                FloatingActionButton(
-                    modifier = Modifier
-                        .align(Alignment.BottomEnd)
-                        .navigationBarsPadding()
-                        .padding(bottom = 4.dp, end = 8.dp),
-                    backgroundColor = MaterialTheme.colorScheme.primary,
-                    onClick = {
-                    }
-                ) {
-                    Text("Up!")
-                }
-            }
-        }
-    }
-}
-
- */

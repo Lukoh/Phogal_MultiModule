@@ -59,7 +59,7 @@ fun SearchPhotosScreen(
     onViewPhotos: (name: String, firstName: String, lastName: String, username: String) -> Unit,
     onOpenWebView: (firstName: String, url: String) -> Unit,
     onStart: () -> Unit = {},
-    onStop: () -> Unit = {}
+    onStop: () -> Unit = {},
 ) {
     if (!ConnectionUtils.isNetworkAvailable(contentUiState.baseUiState.context)) {
         OfflineScreen(modifier = Modifier)
@@ -84,7 +84,7 @@ fun SearchPhotosScreen(
         // recomposition.
         val onSearch: (String) -> Unit = remember(contentUiState.galleryViewModel, contentUiState) {
             { keyword ->
-                if (keyword.isNotEmpty() && keyword != contentUiState.galleryUiState.currentQuery) {
+                if (keyword.isNotEmpty() && (keyword != contentUiState.galleryUiState.currentQuery)) {
                     contentUiState.baseUiState.keyboardController?.hide()
                     contentUiState.galleryViewModel.onQueryChanged(keyword)
                     contentUiState.galleryViewModel.commitSearch()
@@ -96,14 +96,14 @@ fun SearchPhotosScreen(
         // Note: SearchSection text input is now hoisted into rememberSearchSectionUiState
         // alongside the screen, so the chip-tap path goes through the same channel as
         // typed input. This collapses two state mutation paths into one.
-        val sectionUiState = rememberSearchSectionUiState(enabled = remember { mutableStateOf(false) })
+        val sectionUiState = rememberSearchSectionUiState(enabled = remember { mutableStateOf(value = false) })
 
         // Stable lambdas. The capture set is the bare minimum needed for the
         // operation, which keeps Compose from invalidating these on every parent
         // recomposition.
         val onChipClicked: (String) -> Unit = remember(contentUiState.galleryViewModel, contentUiState,sectionUiState) {
             { keyword ->
-                if (keyword.isNotEmpty() && keyword != contentUiState.galleryUiState.currentQuery) {
+                if (keyword.isNotEmpty() && (keyword != contentUiState.galleryUiState.currentQuery)) {
                     sectionUiState.editableInputState.textState = keyword
                     contentUiState.galleryViewModel.onQueryChanged(keyword, immediate = true)
                 }
@@ -143,7 +143,14 @@ fun SearchPhotosScreen(
                         onShowUserInfo = { selectedUserForInfo = it },
                         onItemClicked = onItemClicked,
                         onViewPhotos = onViewPhotos,
-                        onLoadSuccess = contentUiState::setActionsVisibilityChanged
+                        onLoadResult = { isSuccessful, message ->
+                            contentUiState.setActionsVisibilityChanged(isSuccessful)
+                            if (!isSuccessful) {
+                                contentUiState.baseUiState.scope.launch {
+                                    snackbarHostState.showSnackbar(message)
+                                }
+                            }
+                        },
                     )
                 }
 
@@ -159,7 +166,7 @@ fun SearchPhotosScreen(
                                 val portfolioUrl = user.portfolioUrl
                                 if (portfolioUrl.isNullOrEmpty()) {
                                     contentUiState.baseUiState.scope.launch {
-                                        snackbarHostState.showSnackbar("${user.firstName} ${text}")
+                                        snackbarHostState.showSnackbar("${user.firstName} $text")
                                     }
                                 } else {
                                     onOpenWebView(user.firstName, portfolioUrl)

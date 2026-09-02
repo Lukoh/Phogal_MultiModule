@@ -15,7 +15,7 @@ import androidx.compose.ui.res.stringResource
 import com.goforer.phogal.core.ui.R
 
 @Composable
-fun ErrorRow(
+fun ErrorStateHost(
     throwable: Throwable,
     onRetry: () -> Unit,
     modifier: Modifier = Modifier
@@ -28,7 +28,7 @@ fun ErrorRow(
         exit = scaleOut(transformOrigin = TransformOrigin(0f, 0f)) + fadeOut() +
                 shrinkOut(shrinkTowards = Alignment.TopStart)
     ) {
-        ErrorContent(
+        ErrorStatePlaceholder(
             title = stringResource(id = R.string.error_dialog_title),
             message = throwable.message ?: stringResource(id = R.string.error_dialog_content),
             onRetry = onRetry

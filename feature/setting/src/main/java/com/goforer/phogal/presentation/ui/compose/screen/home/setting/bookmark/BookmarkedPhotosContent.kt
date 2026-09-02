@@ -23,6 +23,7 @@ fun BookmarkedPhotosContent(
     enabledLoadPhotos: Boolean,
     onShowUserInfo: (User) -> Unit,
     onItemClicked: (item: Picture, index: Int) -> Unit,
+    onLoadResult: (isSuccessful: Boolean, message: String) -> Unit,
     onViewPhotos: (name: String, firstName: String, lastName: String, username: String) -> Unit
 ) {
     if (bookmarkedPictures.itemCount > 0) {
@@ -32,6 +33,7 @@ fun BookmarkedPhotosContent(
             photos = bookmarkedPictures,
             onShowUserInfo = onShowUserInfo,
             onItemClicked = onItemClicked,
+            onLoadResult = onLoadResult,
             onViewPhotos = onViewPhotos
         )
     } else {

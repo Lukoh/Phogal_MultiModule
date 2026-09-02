@@ -14,12 +14,12 @@ import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -30,21 +30,23 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.paging.LoadState
 import androidx.paging.compose.LazyPagingItems
+import com.goforer.designsystem.component.EmptyStatePlaceholder
+import com.goforer.designsystem.component.paging.PagingLoadStateEffect
+import com.goforer.designsystem.component.paging.contentItems
 import com.goforer.designsystem.component.paging.rememberLazyListState
+import com.goforer.designsystem.component.paging.renderPagingLoadState
+import com.goforer.designsystem.theme.Blue15
+import com.goforer.designsystem.theme.Blue95
 import com.goforer.phogal.core.ui.R
 import com.goforer.phogal.data.model.remote.response.gallery.common.user.User
 import com.goforer.phogal.presentation.stateholder.uistate.UIConstants.SCROLL_OFFSET_SIGNAL
 import com.goforer.phogal.presentation.stateholder.uistate.UIConstants.UP_BUTTON_THRESHOLD
 import com.goforer.phogal.presentation.stateholder.uistate.home.setting.following.FollowingUserSectionUiState
-import com.goforer.phogal.presentation.stateholder.uistate.home.setting.following.rememberFollowingUserSectionUiState
 import com.goforer.phogal.presentation.stateholder.uistate.home.setting.following.rememberFollowingUserItemUiState
-import com.goforer.designsystem.component.EmptyContent
-import com.goforer.designsystem.component.paging.contentItems
-import com.goforer.designsystem.component.paging.renderPagingLoadState
-import com.goforer.phogal.presentation.ui.compose.screen.home.common.photo.ShowUpButton
-import com.goforer.designsystem.theme.Blue15
-import com.goforer.designsystem.theme.Blue95
+import com.goforer.phogal.presentation.stateholder.uistate.home.setting.following.rememberFollowingUserSectionUiState
 import com.goforer.phogal.presentation.ui.compose.screen.home.common.photo.LoadingPicture
+import com.goforer.phogal.presentation.ui.compose.screen.home.common.photo.ShowUpButton
+import kotlinx.coroutines.launch
 import timber.log.Timber
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -54,16 +56,32 @@ fun FollowingUsersSection(
     paddingValues: PaddingValues,
     sectionUiState: FollowingUserSectionUiState = rememberFollowingUserSectionUiState(),
     users: LazyPagingItems<User>,
+    onLoadResult: (isSuccessful: Boolean, message: String) -> Unit,
     onViewPhotos: (name: String, firstName: String, lastName: String, username: String) -> Unit,
     onOpenWebView: (firstName: String, url: String?) -> Unit,
     onFollow: (userUiState: User) -> Unit
 ) {
     val lazyListState = users.rememberLazyListState()
-    val isRefreshing by remember(users.loadState.refresh, users.itemCount) {
+    val scope = rememberCoroutineScope()
+    var manualRefreshing by remember { mutableStateOf(false) }
+    // Uncomment the code below to improve the Following feature using Room.
+    /*
+    val isRefreshing by remember(users.loadState.refresh, manualRefreshing, sectionUiState.loadingDone) {
         derivedStateOf {
-            users.loadState.refresh is LoadState.Loading && users.itemCount > 0
+            manualRefreshing || (sectionUiState.loadingDone && users.itemCount > 0 && users.loadState.refresh is LoadState.Loading)
         }
     }
+
+     */
+
+    PagingLoadStateEffect(
+        pagingItems = users,
+        onLoadingStarted = { sectionUiState.setLoadingStarted() },
+        onLoadingDone = { sectionUiState.setLoadingDone() },
+        onLoadResult = onLoadResult,
+        onRefreshTransition = { manualRefreshing = it },
+        logTag = "FollowingUsersSection"
+    )
 
     // derivedStateOf: only triggers recomposition when the boolean actually flips,
     // not on every scroll tick.
@@ -76,8 +94,11 @@ fun FollowingUsersSection(
 
     PullToRefreshBox(
         modifier = modifier.clip(RoundedCornerShape(2.dp)),
-        isRefreshing = isRefreshing,
-        onRefresh = users::refresh
+        isRefreshing = false, //isRefreshing :Uncomment the code below to improve the Following feature using Room.
+        onRefresh = {
+            manualRefreshing = true
+            users.refresh()
+        }
     ) {
         Box(
             modifier = modifier.clip(RoundedCornerShape(0.2.dp))
@@ -120,38 +141,13 @@ fun FollowingUsersSection(
                     bottom = paddingValues.calculateBottomPadding() + 18.dp
                 ),
             visible = isScrolledPastThreshold,
-            onClick = { sectionUiState.setClicked(true) }
-        )
-    }
-
-    LaunchedEffect(lazyListState, sectionUiState.clicked) {
-        if (sectionUiState.clicked) {
-            lazyListState.animateScrollToItem (0)
-            sectionUiState.setVisibleUpButton(false)
-        }
-
-        sectionUiState.setClicked(false)
-    }
-
-    LaunchedEffect(users) {
-        sectionUiState.setLoadingStarted()
-    }
-
-    var hasStartedLoading by remember(users) { mutableStateOf(false) }
-
-    LaunchedEffect(users.loadState.refresh) {
-        when (users.loadState.refresh) {
-            is LoadState.Loading -> {
-                hasStartedLoading = true
-                sectionUiState.setLoadingStarted()
-            }
-            is LoadState.NotLoading -> {
-                if (users.itemCount > 0 || (hasStartedLoading && users.loadState.append.endOfPaginationReached)) {
-                    sectionUiState.setLoadingDone()
+            onClick = {
+                scope.launch {
+                    lazyListState.animateScrollToItem (0)
+                    sectionUiState.setVisibleUpButton(false)
                 }
             }
-            else -> Unit
-        }
+        )
     }
 }
 
@@ -171,15 +167,6 @@ private fun LazyListScope.renderLoadState(
     renderPagingLoadState(
         items = users,
         loadingDone = sectionUiState.loadingDone,
-        onLoading = {
-            sectionUiState.setLoadingStarted()
-        },
-        onSuccess = {
-            sectionUiState.setLoadingDone()
-        },
-        onError = { _ ->
-            sectionUiState.setLoadingDone()
-        },
         content = {
             contentItems(
                 items = users,
@@ -220,11 +207,10 @@ private fun LazyListScope.renderLoadState(
         },
         emptyState = {
             item {
-                EmptyContent(
+                EmptyStatePlaceholder(
                     text = stringResource(id = R.string.setting_no_following)
                 )
             }
         }
     )
 }
-

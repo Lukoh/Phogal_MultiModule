@@ -68,7 +68,7 @@ class MainActivity : ComponentActivity() {
                     // A surface container using the 'background' color from the theme
                     Surface(
                         modifier = Modifier.fillMaxSize().statusBarsPadding(),
-                        color = MaterialTheme.colorScheme.background
+                        color = MaterialTheme.colorScheme.background,
                     ) {
                         MainScreen(windowSizeClass = calculateWindowSizeClass(this))
                     }

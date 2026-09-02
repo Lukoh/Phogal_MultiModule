@@ -57,7 +57,7 @@ fun SearchPhotosContent(
     onShowUserInfo: (User) -> Unit,
     onItemClicked: (id: String) -> Unit,
     onViewPhotos: (name: String, firstName: String, lastName: String, username: String) -> Unit,
-    onLoadSuccess: (isSuccessful: Boolean) -> Unit
+    onLoadResult: (isSuccessful: Boolean, message: String) -> Unit
 ) {
     Column(
         modifier = modifier.clickable {
@@ -86,7 +86,7 @@ fun SearchPhotosContent(
             onShowUserInfo = onShowUserInfo,
             onItemClicked = { photo, _ -> onItemClicked(photo.id) },
             onViewPhotos = onViewPhotos,
-            onLoadSuccess = onLoadSuccess,
+            onLoadResult = onLoadResult,
             onScroll = contentUiState::setScrollingChanged
         )
     }
@@ -159,7 +159,7 @@ private fun ColumnScope.PhotosOrInitScreen(
     onShowUserInfo: (User) -> Unit,
     onItemClicked: (Photo, Int) -> Unit,
     onViewPhotos: (name: String, firstName: String, lastName: String, username: String) -> Unit,
-    onLoadSuccess: (Boolean) -> Unit,
+    onLoadResult: (isSuccessful: Boolean, message: String) -> Unit,
     onScroll: (Boolean) -> Unit
 ) {
     if (query.isNotBlank()) {
@@ -173,7 +173,7 @@ private fun ColumnScope.PhotosOrInitScreen(
             onShowUserInfo = onShowUserInfo,
             onItemClicked = onItemClicked,
             onViewPhotos = onViewPhotos,
-            onLoadSuccess = onLoadSuccess,
+            onLoadResult = onLoadResult,
             onScroll = onScroll
         )
     } else {

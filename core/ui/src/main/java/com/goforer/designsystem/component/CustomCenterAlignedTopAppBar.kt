@@ -4,29 +4,32 @@ import android.content.res.Configuration
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.CenterAlignedTopAppBar
-import androidx.compose.material3.DividerDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarColors
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.goforer.phogal.core.ui.R
 import com.goforer.designsystem.theme.PhogalTheme
+import com.goforer.phogal.core.ui.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -36,29 +39,38 @@ fun CustomCenterAlignedTopAppBar(
     navigationIcon: @Composable () -> Unit = {},
     actions: @Composable RowScope.() -> Unit = {},
     windowInsets: WindowInsets = TopAppBarDefaults.windowInsets,
-    colors: TopAppBarColors = TopAppBarDefaults.centerAlignedTopAppBarColors(),
+    colors: TopAppBarColors = TopAppBarDefaults.topAppBarColors(
+        containerColor = MaterialTheme.colorScheme.surface,
+        titleContentColor = MaterialTheme.colorScheme.onSurface,
+        navigationIconContentColor = MaterialTheme.colorScheme.onSurface,
+        actionIconContentColor = MaterialTheme.colorScheme.onSurface
+    ),
     scrollBehavior: TopAppBarScrollBehavior? = null,
     enabledBottomLine: Boolean = true,
-    bottomLineShadow: Dp = 2.dp
+    bottomLineColor: Color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
 ) {
-    Column {
-        CenterAlignedTopAppBar(
-            title = title,
-            modifier = modifier,
-            navigationIcon = navigationIcon,
-            actions = actions,
-            windowInsets = windowInsets,
-            colors = colors,
-            scrollBehavior = scrollBehavior
-        )
-        if (enabledBottomLine) {
-            HorizontalDivider(
-                modifier = Modifier
-                    .height(0.5.dp)
-                    .shadow(bottomLineShadow),
-                thickness = DividerDefaults.Thickness,
-                color = DividerDefaults.color
+    Surface(
+        modifier = modifier,
+        color = MaterialTheme.colorScheme.surface,
+        tonalElevation = 0.dp,
+        shadowElevation = 0.dp
+    ) {
+        Column {
+            CenterAlignedTopAppBar(
+                title = title,
+                navigationIcon = navigationIcon,
+                actions = actions,
+                windowInsets = windowInsets,
+                colors = colors,
+                scrollBehavior = scrollBehavior
             )
+            if (enabledBottomLine) {
+                HorizontalDivider(
+                    modifier = Modifier.fillMaxWidth(),
+                    thickness = 0.5.dp,
+                    color = bottomLineColor
+                )
+            }
         }
     }
 }
@@ -72,36 +84,36 @@ fun CustomCenterAlignedTopAppBar(
     showSystemUi = true
 )
 @Composable
-fun CustomCenterAlignedTopAppBarPreview(modifier: Modifier = Modifier) {
-    val enabledBottomLine = true
-
+fun CustomCenterAlignedTopAppBarPreview() {
     PhogalTheme {
-        Column {
-            CenterAlignedTopAppBar(
-                title = {
-                    Text(
-                        stringResource(id = R.string.app_name),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        fontFamily = FontFamily.SansSerif,
-                        fontSize = 20.sp,
-                        fontStyle = FontStyle.Normal,
+        CustomCenterAlignedTopAppBar(
+            title = {
+                Text(
+                    stringResource(id = R.string.app_name),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    style = MaterialTheme.typography.titleLarge.copy(
                         fontWeight = FontWeight.Bold,
+                        fontSize = 20.sp
                     )
-                },
-                modifier = modifier,
-                navigationIcon = {},
-                actions = {}
-            )
-            if (enabledBottomLine) {
-                HorizontalDivider(
-                    modifier = Modifier
-                        .height(0.5.dp)
-                        .shadow(2.dp),
-                    thickness = DividerDefaults.Thickness,
-                    color = DividerDefaults.color
                 )
+            },
+            navigationIcon = {
+                IconButton(onClick = {}) {
+                    Icon(
+                        imageVector = Icons.Default.Menu,
+                        contentDescription = null
+                    )
+                }
+            },
+            actions = {
+                IconButton(onClick = {}) {
+                    Icon(
+                        imageVector = Icons.Default.Favorite,
+                        contentDescription = null
+                    )
+                }
             }
-        }
+        )
     }
 }

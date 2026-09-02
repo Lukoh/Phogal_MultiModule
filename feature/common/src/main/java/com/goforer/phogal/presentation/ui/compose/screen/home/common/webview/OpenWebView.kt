@@ -2,18 +2,17 @@ package com.goforer.phogal.presentation.ui.compose.screen.home.common.webview
 
 import android.annotation.SuppressLint
 import android.webkit.WebSettings
-import android.webkit.WebView
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.google.accompanist.web.WebView
 import com.google.accompanist.web.rememberWebViewNavigator
 import com.google.accompanist.web.rememberWebViewState
 
+@Suppress("DEPRECATION")
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
 fun OpenWebView(
@@ -46,7 +45,6 @@ fun OpenWebView(
                     displayZoomControls = false
                     setSupportZoom(true)
                     defaultTextEncodingName = "utf-8"
-                    pluginState = WebSettings.PluginState.ON
                 }
             }
         }

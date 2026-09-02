@@ -3,6 +3,7 @@ package com.goforer.phogal.presentation.ui.compose.screen.home.common.user.userp
 import android.annotation.SuppressLint
 import android.content.res.Configuration
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Favorite
@@ -73,6 +74,7 @@ fun UserPhotosScreen(
         @Composable {
             SnackbarHost(
                 snackbarHostState,
+                modifier = Modifier.navigationBarsPadding(),
                 snackbar = { snackbarData: SnackbarData ->
                     CardSnackBar(modifier = Modifier, snackbarData)
                 }
@@ -153,7 +155,7 @@ fun UserPhotosScreen(
         }, content = { paddingValues ->
             var selectedUserForInfo by rememberSaveable { mutableStateOf<User?>(null) }
 
-            ScaffoldContent(paddingValues.calculateTopPadding()) {
+            ScaffoldContent(topInterval = paddingValues.calculateTopPadding()) {
                 UserPhotosContent(
                     modifier = modifier,
                     paddingValues = paddingValues,
@@ -161,8 +163,13 @@ fun UserPhotosScreen(
                     photos = contentUiState.photos,
                     onShowUserInfo = { selectedUserForInfo = it },
                     onItemClicked = onItemClicked,
-                    onSuccess = { isSuccessful: Boolean ->
+                    onLoadResult = { isSuccessful, message ->
                         contentUiState.setVisibleAction(isSuccessful)
+                        if (!isSuccessful) {
+                            contentUiState.baseUiState.scope.launch {
+                                snackbarHostState.showSnackbar(message)
+                            }
+                        }
                     }
                 )
             }

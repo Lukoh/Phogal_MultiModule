@@ -24,9 +24,9 @@ fun PopularPhotosContent(
     paddingValues: PaddingValues,
     photos: LazyPagingItems<Photo>,
     onShowUserInfo: (User) -> Unit,
-    onItemClicked: (id: String) -> Unit,
+    onItemClicked: (id: String, index: Int) -> Unit,
     onViewPhotos: (name: String, firstName: String, lastName: String, username: String) -> Unit,
-    onSuccess: (isSuccessful: Boolean) -> Unit,
+    onLoadResult: (isSuccessful: Boolean, message: String) -> Unit,
     onLoadedPhotos: (isLoadedPhotos: Boolean) -> Unit
 ) {
     PopularPhotosSection(
@@ -34,9 +34,9 @@ fun PopularPhotosContent(
         paddingValues = paddingValues,
         photos = photos,
         onShowUserInfo = onShowUserInfo,
-        onItemClicked = { photo: Photo, index: Int -> onItemClicked(photo.id) },
+        onItemClicked = { photo: Photo, index: Int -> onItemClicked(photo.id, index) },
         onViewPhotos = onViewPhotos,
-        onSuccess = onSuccess,
+        onLoadResult = onLoadResult,
         onLoadedPhotos = onLoadedPhotos
     )
 }

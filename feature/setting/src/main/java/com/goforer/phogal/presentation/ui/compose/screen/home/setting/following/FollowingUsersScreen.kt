@@ -1,6 +1,7 @@
 package com.goforer.phogal.presentation.ui.compose.screen.home.setting.following
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -63,6 +64,7 @@ fun FollowingUsersScreen(
         @Composable {
             SnackbarHost(
                 snackbarHostState,
+                modifier = Modifier.navigationBarsPadding(),
                 snackbar = { snackbarData: SnackbarData ->
                     CardSnackBar(modifier = Modifier, snackbarData)
                 }
@@ -146,6 +148,14 @@ fun FollowingUsersScreen(
                     paddingValues = paddingValues,
                     users = contentUiState.users,
                     enabledLoadPhotos = contentUiState.enabledLoadPhotos,
+                    onLoadResult = { isSuccessful, message ->
+                        contentUiState.setEnabledLoadPhotos(isSuccessful)
+                        if (!isSuccessful) {
+                            contentUiState.baseUiState.scope.launch {
+                                snackbarHostState.showSnackbar(message)
+                            }
+                        }
+                    },
                     onViewPhotos = onViewPhotos,
                     onOpenWebView = onOpenWebView,
                     onFollow = {

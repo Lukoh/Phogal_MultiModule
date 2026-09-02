@@ -24,6 +24,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -32,9 +33,10 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.paging.LoadState
 import androidx.paging.compose.LazyPagingItems
+import com.goforer.designsystem.component.paging.PagingLoadStateEffect
+import com.goforer.designsystem.component.paging.contentItems
 import com.goforer.designsystem.component.paging.rememberLazyListState
 import com.goforer.designsystem.component.paging.renderPagingLoadState
-import com.goforer.designsystem.component.paging.contentItems
 import com.goforer.designsystem.theme.Blue15
 import com.goforer.designsystem.theme.Blue95
 import com.goforer.phogal.data.model.remote.response.gallery.common.photo.Photo
@@ -68,15 +70,25 @@ fun SearchPhotosSection(
     onShowUserInfo: (User) -> Unit,
     onItemClicked: (item: Photo, index: Int) -> Unit,
     onViewPhotos: (name: String, firstName: String, lastName: String, username: String) -> Unit,
-    onLoadSuccess: (isSuccessful: Boolean) -> Unit,
+    onLoadResult: (isSuccessful: Boolean, message: String) -> Unit,
     onScroll: (isScrolling: Boolean) -> Unit
 ) {
     val lazyListState = photos.rememberLazyListState()
-    val isRefreshing by remember(photos.loadState.refresh, photos.itemCount) {
+    var manualRefreshing by remember { mutableStateOf(false) }
+    val isRefreshing by remember(photos.loadState.refresh, manualRefreshing, sectionUiState.loadingDone) {
         derivedStateOf {
-            photos.loadState.refresh is LoadState.Loading && photos.itemCount > 0
+            manualRefreshing || (sectionUiState.loadingDone && photos.itemCount > 0 && photos.loadState.refresh is LoadState.Loading)
         }
     }
+
+    PagingLoadStateEffect(
+        pagingItems = photos,
+        onLoadingStarted = { sectionUiState.setLoadingStarted() },
+        onLoadingDone = { sectionUiState.setLoadingDone() },
+        onLoadResult = { isSuccessful, message -> onLoadResult(isSuccessful, message) },
+        onRefreshTransition = { manualRefreshing = it },
+        logTag = "SearchPhotosSection"
+    )
 
     // derivedStateOf: only triggers recomposition when the boolean actually flips,
     // not on every scroll tick.
@@ -95,34 +107,16 @@ fun SearchPhotosSection(
         }
     }
 
-    LaunchedEffect(photos) {
-        sectionUiState.setLoadingStarted()
-    }
-
-    var hasStartedLoading by remember(photos) { mutableStateOf(false) }
-
-    LaunchedEffect(photos.loadState.refresh) {
-        when (photos.loadState.refresh) {
-            is LoadState.Loading -> {
-                hasStartedLoading = true
-                sectionUiState.setLoadingStarted()
-            }
-            is LoadState.NotLoading -> {
-                if (photos.itemCount > 0 || (hasStartedLoading && photos.loadState.append.endOfPaginationReached)) {
-                    sectionUiState.setLoadingDone()
-                }
-            }
-            else -> Unit
-        }
-    }
-
     // Nav3-stable Material 3 PullToRefreshBox replaces the deprecated
     // androidx.compose.material.pullrefresh.* APIs. The container handles the
     // refresh indicator itself — no separate PullRefreshIndicator needed.
     PullToRefreshBox(
         modifier = modifier.clip(RoundedCornerShape(2.dp)),
         isRefreshing = isRefreshing,
-        onRefresh = photos::refresh
+        onRefresh = {
+            manualRefreshing = true
+            photos.refresh()
+        }
     ) {
         val layoutDirection = LocalLayoutDirection.current
         val isDark = isSystemInDarkTheme()
@@ -151,8 +145,7 @@ fun SearchPhotosSection(
                 followViewModel = followViewModel,
                 onShowUserInfo = onShowUserInfo,
                 onItemClicked = onItemClicked,
-                onViewPhotos = onViewPhotos,
-                onLoadSuccess = onLoadSuccess
+                onViewPhotos = onViewPhotos
             )
         }
 
@@ -188,15 +181,11 @@ private fun LazyListScope.renderLoadState(
     followViewModel: FollowViewModel,
     onShowUserInfo: (User) -> Unit,
     onItemClicked: (item: Photo, index: Int) -> Unit,
-    onViewPhotos: (name: String, firstName: String, lastName: String, username: String) -> Unit,
-    onLoadSuccess: (Boolean) -> Unit
+    onViewPhotos: (name: String, firstName: String, lastName: String, username: String) -> Unit
 ) {
     renderPagingLoadState(
         items = photos,
         loadingDone = sectionUiState.loadingDone,
-        onLoading = { sectionUiState.setLoadingStarted() },
-        onSuccess = { onLoadSuccess(true) },
-        onError = { _ -> onLoadSuccess(false) },
         content = {
             contentItems(
                 items = photos,
@@ -253,5 +242,5 @@ private fun LazyListScope.renderLoadState(
  * system — not polling — drives the emissions.
  */
 private fun snapshotFlowScrollState(state: LazyListState) =
-    androidx.compose.runtime.snapshotFlow { state.isScrollInProgress }
+    snapshotFlow { state.isScrollInProgress }
         .distinctUntilChanged()

@@ -16,7 +16,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -32,9 +31,10 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.paging.LoadState
 import androidx.paging.compose.LazyPagingItems
+import com.goforer.designsystem.component.paging.PagingLoadStateEffect
+import com.goforer.designsystem.component.paging.contentItems
 import com.goforer.designsystem.component.paging.rememberLazyListState
 import com.goforer.designsystem.component.paging.renderPagingLoadState
-import com.goforer.designsystem.component.paging.contentItems
 import com.goforer.designsystem.theme.Blue15
 import com.goforer.designsystem.theme.Blue95
 import com.goforer.phogal.data.model.remote.response.gallery.common.photo.Photo
@@ -63,22 +63,25 @@ fun PopularPhotosSection(
     onShowUserInfo: (User) -> Unit,
     onItemClicked: (item: Photo, index: Int) -> Unit,
     onViewPhotos: (name: String, firstName: String, lastName: String, username: String) -> Unit,
-    onSuccess: (isSuccessful: Boolean) -> Unit,
+    onLoadResult: (isSuccessful: Boolean, message: String) -> Unit,
     onLoadedPhotos: (isLoadedPhotos: Boolean) -> Unit
 ) {
     val lazyListState = photos.rememberLazyListState()
     var manualRefreshing by remember { mutableStateOf(false) }
-    val isRefreshing by remember(photos.loadState.refresh, manualRefreshing) {
+    val isRefreshing by remember(photos.loadState.refresh, manualRefreshing, sectionUiState.loadingDone) {
         derivedStateOf {
-            manualRefreshing || photos.loadState.refresh is LoadState.Loading
+            manualRefreshing || (sectionUiState.loadingDone && photos.itemCount > 0 && photos.loadState.refresh is LoadState.Loading)
         }
     }
 
-    LaunchedEffect(photos.loadState.refresh) {
-        if (photos.loadState.refresh !is LoadState.Loading) {
-            manualRefreshing = false
-        }
-    }
+    PagingLoadStateEffect(
+        pagingItems = photos,
+        onLoadingStarted = { sectionUiState.setLoadingStarted() },
+        onLoadingDone = { sectionUiState.setLoadingDone() },
+        onLoadResult = onLoadResult,
+        onRefreshTransition = { manualRefreshing = it },
+        logTag = "PopularPhotosSection"
+    )
 
     // derivedStateOf: only triggers recomposition when the boolean actually flips,
     // not on every scroll tick.
@@ -127,7 +130,6 @@ fun PopularPhotosSection(
                 onShowUserInfo = onShowUserInfo,
                 onItemClicked = onItemClicked,
                 onViewPhotos = onViewPhotos,
-                onSuccess = onSuccess,
                 onLoadedPhotos = onLoadedPhotos
             )
         }
@@ -147,26 +149,6 @@ fun PopularPhotosSection(
             }
         )
 
-        LaunchedEffect(photos) {
-            sectionUiState.setLoadingStarted()
-        }
-
-        var hasStartedLoading by remember(photos) { mutableStateOf(false) }
-
-        LaunchedEffect(photos.loadState.refresh) {
-            when (photos.loadState.refresh) {
-                is LoadState.Loading -> {
-                    hasStartedLoading = true
-                    sectionUiState.setLoadingStarted()
-                }
-                is LoadState.NotLoading -> {
-                    if (photos.itemCount > 0 || (hasStartedLoading && photos.loadState.append.endOfPaginationReached)) {
-                        sectionUiState.setLoadingDone()
-                    }
-                }
-                else -> Unit
-            }
-        }
     }
 }
 
@@ -184,15 +166,11 @@ private fun LazyListScope.renderLoadState(
     onShowUserInfo: (User) -> Unit,
     onItemClicked: (item: Photo, index: Int) -> Unit,
     onViewPhotos: (name: String, firstName: String, lastName: String, username: String) -> Unit,
-    onSuccess: (Boolean) -> Unit,
     onLoadedPhotos: (isLoadedPhotos: Boolean) -> Unit
 ) {
     renderPagingLoadState(
         items = photos,
         loadingDone = sectionUiState.loadingDone,
-        onLoading = { sectionUiState.setLoadingStarted() },
-        onSuccess = { onSuccess(true) },
-        onError = { _ -> onSuccess(false) },
         content = {
             contentItems(
                 items = photos,

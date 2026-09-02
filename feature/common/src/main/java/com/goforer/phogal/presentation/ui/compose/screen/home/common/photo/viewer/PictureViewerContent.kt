@@ -84,6 +84,7 @@ import com.goforer.designsystem.component.dialog.AlertDialog
 import com.goforer.designsystem.component.dialog.AutoDismissDialog
 import com.goforer.designsystem.component.loadImagePainter
 import com.goforer.base.utils.download.PhotoAlreadyExistsException
+import com.goforer.designsystem.component.ErrorStatePlaceholder
 import com.goforer.phogal.core.ui.R
 import com.goforer.phogal.data.model.remote.response.gallery.photo.download.TrackDownload
 import com.goforer.phogal.data.model.remote.response.gallery.photo.photoinfo.Exif
@@ -92,7 +93,6 @@ import com.goforer.phogal.data.model.remote.response.gallery.common.user.User
 import com.goforer.phogal.presentation.stateholder.uistate.UiState
 import com.goforer.phogal.presentation.stateholder.uistate.home.common.photo.PhotoContentUiState
 import com.goforer.phogal.presentation.stateholder.uistate.home.common.user.rememberUserContainerUiState
-import com.goforer.designsystem.component.ErrorContent
 import com.goforer.phogal.presentation.ui.compose.screen.home.common.user.UserContainer
 import com.goforer.designsystem.theme.Blue75
 import com.goforer.designsystem.theme.ColorSnowWhite
@@ -248,7 +248,7 @@ fun PictureBody(
                     exit = scaleOut(transformOrigin = TransformOrigin(0f, 0f)) +
                             fadeOut() + shrinkOut(shrinkTowards = Alignment.TopStart)
                 ) {
-                    ErrorContent(
+                    ErrorStatePlaceholder(
                         modifier = Modifier,
                         title = if (pictureState.code !in 200..299)
                             stringResource(id = R.string.error_dialog_network_title)
@@ -300,7 +300,7 @@ fun DownloadPhoto(
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                     elevation = CardDefaults.cardElevation(defaultElevation = 16.dp)
                 ) {
-                    ErrorContent(
+                    ErrorStatePlaceholder(
                         modifier = Modifier.padding(16.dp),
                         isFullMaxSize = false,
                         title = if (trackDownloadState.code !in 200..299)

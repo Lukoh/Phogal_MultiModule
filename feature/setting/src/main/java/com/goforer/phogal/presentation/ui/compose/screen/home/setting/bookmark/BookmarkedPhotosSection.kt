@@ -14,11 +14,11 @@ import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -29,7 +29,10 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.paging.LoadState
 import androidx.paging.compose.LazyPagingItems
+import com.goforer.designsystem.component.paging.PagingLoadStateEffect
 import com.goforer.designsystem.component.paging.rememberLazyListState
+import com.goforer.designsystem.component.paging.renderPagingLoadState
+import com.goforer.designsystem.component.paging.contentItems
 import com.goforer.phogal.data.model.remote.response.gallery.photo.photoinfo.Picture
 import com.goforer.phogal.presentation.stateholder.uistate.UIConstants.SCROLL_OFFSET_SIGNAL
 import com.goforer.phogal.presentation.stateholder.uistate.UIConstants.UP_BUTTON_THRESHOLD
@@ -38,14 +41,12 @@ import com.goforer.phogal.presentation.stateholder.uistate.home.setting.bookmark
 import com.goforer.phogal.data.model.remote.response.gallery.common.user.User
 import com.goforer.phogal.presentation.stateholder.business.home.setting.follow.FollowViewModel
 import com.goforer.phogal.presentation.stateholder.uistate.home.common.photo.rememberPictureItemUiState
-import com.goforer.designsystem.component.paging.contentItems
-import com.goforer.designsystem.component.paging.renderPagingLoadState
 import com.goforer.phogal.presentation.ui.compose.screen.home.common.photo.LoadingPicture
 import com.goforer.phogal.presentation.ui.compose.screen.home.common.photo.ShowUpButton
 import com.goforer.designsystem.theme.Blue15
 import com.goforer.designsystem.theme.Blue95
+import kotlinx.coroutines.launch
 import timber.log.Timber
-
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -57,14 +58,30 @@ fun BookmarkedPhotosSection(
     followViewModel: FollowViewModel = hiltViewModel(),
     onShowUserInfo: (User) -> Unit,
     onItemClicked: (item: Picture, index: Int) -> Unit,
+    onLoadResult: (isSuccessful: Boolean, message: String) -> Unit,
     onViewPhotos: (name: String, firstName: String, lastName: String, username: String) -> Unit
 ) {
     val lazyListState = photos.rememberLazyListState()
-    val isRefreshing by remember(photos.loadState.refresh, photos.itemCount) {
+    val scope = rememberCoroutineScope()
+    var manualRefreshing by remember { mutableStateOf(false) }
+    // Uncomment the code below to improve the Following feature using Room.
+    /*
+    val isRefreshing by remember(photos.loadState.refresh, manualRefreshing, sectionUiState.loadingDone) {
         derivedStateOf {
-            photos.loadState.refresh is LoadState.Loading && photos.itemCount > 0
+            manualRefreshing || (sectionUiState.loadingDone && photos.itemCount > 0 && photos.loadState.refresh is LoadState.Loading)
         }
     }
+    
+     */
+
+    PagingLoadStateEffect(
+        pagingItems = photos,
+        onLoadingStarted = { sectionUiState.setLoadingStarted() },
+        onLoadingDone = { sectionUiState.setLoadingDone() },
+        onLoadResult = onLoadResult,
+        onRefreshTransition = { manualRefreshing = it },
+        logTag = "BookmarkedPhotosSection"
+    )
 
     // derivedStateOf: only triggers recomposition when the boolean actually flips,
     // not on every scroll tick.
@@ -77,8 +94,11 @@ fun BookmarkedPhotosSection(
 
     PullToRefreshBox(
         modifier = modifier.clip(RoundedCornerShape(2.dp)),
-        isRefreshing = isRefreshing,
-        onRefresh = photos::refresh
+        isRefreshing = false, //isRefreshing :Uncomment the code below to improve the Following feature using Room.
+        onRefresh = {
+            manualRefreshing = true
+            photos.refresh()
+        }
     ) {
         Box(
             modifier = modifier
@@ -124,38 +144,12 @@ fun BookmarkedPhotosSection(
                         bottom = paddingValues.calculateBottomPadding() - 18.dp
                     ),
                 visible = isScrolledPastThreshold,
-                onClick = { sectionUiState.setUpButtonClicked() }
-            )
-        }
-
-        LaunchedEffect(lazyListState, sectionUiState.clicked) {
-            if (sectionUiState.clicked) {
-                lazyListState.animateScrollToItem (0)
-                sectionUiState.setUpButtonVisibilityChanged(false)
-            }
-
-            sectionUiState.setScrollConsumed()
-        }
-
-        LaunchedEffect(photos) {
-            sectionUiState.setLoadingStarted()
-        }
-
-        var hasStartedLoading by remember(photos) { mutableStateOf(false) }
-
-        LaunchedEffect(photos.loadState.refresh) {
-            when (photos.loadState.refresh) {
-                is LoadState.Loading -> {
-                    hasStartedLoading = true
-                    sectionUiState.setLoadingStarted()
-                }
-                is LoadState.NotLoading -> {
-                    if (photos.itemCount > 0 || (hasStartedLoading && photos.loadState.append.endOfPaginationReached)) {
-                        sectionUiState.setLoadingDone()
+                onClick = {
+                    scope.launch {
+                        lazyListState.animateScrollToItem (0)
                     }
                 }
-                else -> Unit
-            }
+            )
         }
     }
 }
@@ -177,15 +171,6 @@ private fun LazyListScope.renderLoadState(
     renderPagingLoadState(
         items = photos,
         loadingDone = sectionUiState.loadingDone,
-        onLoading = {
-            sectionUiState.setLoadingStarted()
-        },
-        onSuccess = {
-            sectionUiState.setLoadingDone()
-        },
-        onError = { _ ->
-            sectionUiState.setLoadingDone()
-        },
         content = {
             contentItems(
                 items = photos,
@@ -195,6 +180,7 @@ private fun LazyListScope.renderLoadState(
                         Timber.d("Loaded all photos")
                 },
                 content = { padding, index, photo ->
+                    Timber.d("Photo Index is : $index")
                     PictureItem(
                         modifier = Modifier
                             .padding(top = padding)
@@ -230,4 +216,3 @@ private fun LazyListScope.renderLoadState(
         }
     )
 }
-

@@ -1,5 +1,6 @@
 package com.goforer.designsystem.component
 
+import android.content.res.Configuration
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -12,12 +13,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.goforer.phogal.core.ui.R
 import com.goforer.designsystem.theme.ColorSystemGray7
+import com.goforer.designsystem.theme.PhogalTheme
+import com.goforer.phogal.core.ui.R
 
 @Composable
-fun EmptyContent(
+fun EmptyStatePlaceholder(
     modifier: Modifier = Modifier,
     text: String = stringResource(id = R.string.no_picture)
 ) {
@@ -30,5 +33,19 @@ fun EmptyContent(
             fontFamily = FontFamily.SansSerif,
             fontWeight = FontWeight.Medium
         )
+    }
+}
+
+@Preview(name = "Light Mode")
+@Preview(
+    uiMode = Configuration.UI_MODE_NIGHT_YES,
+    showBackground = true,
+    name = "Dark Mode",
+    showSystemUi = true
+)
+@Composable
+fun EmptyStatePlaceholderPreview() {
+    PhogalTheme {
+        EmptyStatePlaceholder()
     }
 }

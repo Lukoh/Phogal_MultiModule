@@ -25,16 +25,16 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import com.goforer.base.utils.connect.ConnectionUtils
 import com.goforer.designsystem.component.CardSnackBar
 import com.goforer.designsystem.component.CustomCenterAlignedTopAppBar
 import com.goforer.designsystem.component.ScaffoldContent
-import com.goforer.base.utils.connect.ConnectionUtils
+import com.goforer.designsystem.theme.ColorBgSecondary
 import com.goforer.phogal.core.ui.R
 import com.goforer.phogal.data.model.remote.response.gallery.common.user.User
 import com.goforer.phogal.presentation.stateholder.uistate.home.popularphotos.PopularPhotosContentUiState
-import com.goforer.phogal.presentation.ui.compose.screen.home.common.user.UserInfoBottomSheet
 import com.goforer.phogal.presentation.ui.compose.screen.home.OfflineScreen
-import com.goforer.designsystem.theme.ColorBgSecondary
+import com.goforer.phogal.presentation.ui.compose.screen.home.common.user.UserInfoBottomSheet
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -42,7 +42,7 @@ import kotlinx.coroutines.launch
 fun PopularPhotosScreen(
     modifier: Modifier = Modifier,
     contentUiState: PopularPhotosContentUiState,
-    onItemClicked: (id: String) -> Unit,
+    onItemClicked: (id: String, index: Int) -> Unit,
     onViewPhotos: (name: String, firstName: String, lastName: String, username: String) -> Unit,
     onOpenWebView: (firstName: String, url: String) -> Unit,
     onStart: () -> Unit = {
@@ -50,7 +50,7 @@ fun PopularPhotosScreen(
     },
     onStop: () -> Unit = {
         //To Do:: Implement the code what you want to do....
-    }
+    },
 ) {
     if (!ConnectionUtils.isNetworkAvailable(contentUiState.baseUiState.context)) {
         OfflineScreen(modifier = Modifier)
@@ -58,7 +58,7 @@ fun PopularPhotosScreen(
         val currentOnStart by rememberUpdatedState(onStart)
         val currentOnStop by rememberUpdatedState(onStop)
         val snackbarHostState = remember { SnackbarHostState() }
-        val backHandlingEnabled by remember { mutableStateOf(true) }
+        val backHandlingEnabled by remember { mutableStateOf(value = true) }
         // Stable lambdas. The capture set is the bare minimum needed for the
         // operation, which keeps Compose from invalidating these on every parent
         // recomposition.
@@ -127,12 +127,17 @@ fun PopularPhotosScreen(
                         onShowUserInfo = { selectedUserForInfo = it },
                         onItemClicked = onItemClicked,
                         onViewPhotos = onViewPhotos,
-                        onSuccess = {
-                            contentUiState.setVisibleActions(it)
+                        onLoadResult = { isSuccessful, message ->
+                            contentUiState.setVisibleActions(isSuccessful)
+                            if (!isSuccessful) {
+                                contentUiState.baseUiState.scope.launch {
+                                    snackbarHostState.showSnackbar(message)
+                                }
+                            }
                         },
                         onLoadedPhotos = {
                             contentUiState.setLoadedPhotos(it)
-                        }
+                        },
                     )
                 }
 
@@ -148,7 +153,7 @@ fun PopularPhotosScreen(
                                 val portfolioUrl = user.portfolioUrl
                                 if (portfolioUrl.isNullOrEmpty()) {
                                     contentUiState.baseUiState.scope.launch {
-                                        snackbarHostState.showSnackbar("${user.firstName} ${text}")
+                                        snackbarHostState.showSnackbar("${user.firstName} $text")
                                     }
                                 } else {
                                     onOpenWebView(user.firstName, portfolioUrl)

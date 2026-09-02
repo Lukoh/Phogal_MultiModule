@@ -3,6 +3,7 @@ package com.goforer.phogal.presentation.ui.compose.screen.home.setting.bookmark
 import android.annotation.SuppressLint
 import android.content.res.Configuration
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
@@ -61,12 +62,12 @@ fun BookmarkedPhotosScreen(
     },
     onStop: () -> Unit = {
         //To Do:: Implement the code what you want to do....
-    }
+    },
 ) {
     val currentOnStart by rememberUpdatedState(onStart)
     val currentOnStop by rememberUpdatedState(onStop)
     val snackbarHostState = remember { SnackbarHostState() }
-    val backHandlingEnabled by remember { mutableStateOf(true) }
+    val backHandlingEnabled by remember { mutableStateOf(value = true) }
 
     BackHandler(backHandlingEnabled) {
         onBackPressed()
@@ -99,6 +100,7 @@ fun BookmarkedPhotosScreen(
         @Composable {
             SnackbarHost(
                 snackbarHostState,
+                modifier = Modifier.navigationBarsPadding(),
                 snackbar = { snackbarData: SnackbarData ->
                     CardSnackBar(modifier = Modifier, snackbarData)
                 }
@@ -147,6 +149,14 @@ fun BookmarkedPhotosScreen(
                         enabledLoadPhotos = contentUiState.enabledLoadPhotos,
                         onShowUserInfo = { selectedUserForInfo = it },
                         onItemClicked = onItemClicked,
+                        onLoadResult = { isSuccessful, message ->
+                            contentUiState.setEnabledLoadPhotos(isSuccessful)
+                            if (!isSuccessful) {
+                                contentUiState.baseUiState.scope.launch {
+                                    snackbarHostState.showSnackbar(message)
+                                }
+                            }
+                        },
                         onViewPhotos = onViewPhotos
                     )
             }
@@ -163,7 +173,7 @@ fun BookmarkedPhotosScreen(
                             val portfolioUrl = user.portfolioUrl
                             if (portfolioUrl.isNullOrEmpty()) {
                                 contentUiState.baseUiState.scope.launch {
-                                    snackbarHostState.showSnackbar("${user.firstName} ${text}")
+                                    snackbarHostState.showSnackbar("${user.firstName} $text")
                                 }
                             } else {
                                 onOpenWebView(user.firstName, portfolioUrl)

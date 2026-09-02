@@ -169,7 +169,7 @@ private fun EntryProviderScope<NavKey>.popularTabEntries(navState: NavigationSta
 
         PopularPhotosScreen(
             contentUiState = contentUiState,
-            onItemClicked = { id ->
+            onItemClicked = { id, _ ->
                 navState.push(Routes.PictureRoute(id = id, showViewPhotosButton = true))
             },
             onViewPhotos = { name, first, last, user ->

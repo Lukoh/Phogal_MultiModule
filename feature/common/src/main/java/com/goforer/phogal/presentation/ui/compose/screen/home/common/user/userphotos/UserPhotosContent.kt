@@ -36,7 +36,7 @@ fun UserPhotosContent(
     photos: LazyPagingItems<Photo>,
     onShowUserInfo: (User) -> Unit,
     onItemClicked: (String) -> Unit,
-    onSuccess: (Boolean) -> Unit
+    onLoadResult: (isSuccessful: Boolean, message: String) -> Unit
 ) {
     if (contentUiState.name.isNotBlank()) {
         UserPhotosSection(
@@ -47,7 +47,7 @@ fun UserPhotosContent(
             onShowUserInfo = onShowUserInfo,
             onItemClicked = { photo, _ -> onItemClicked(photo.id) },
             onViewPhotos = { _, _, _, _ -> },
-            onSuccess = onSuccess
+            onLoadResult = onLoadResult
         )
     } else {
         InitScreen(

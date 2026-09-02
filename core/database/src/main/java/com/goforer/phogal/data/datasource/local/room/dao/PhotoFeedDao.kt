@@ -55,4 +55,7 @@ interface PhotoFeedDao {
 
     @Query("DELETE FROM photo_feed")
     suspend fun clearAll()
+
+    @Query("DELETE FROM photo_feed WHERE feed_key LIKE :prefix || '%' AND cached_at < :timestamp")
+    suspend fun deleteOldFeedsByPrefix(prefix: String, timestamp: Long)
 }
