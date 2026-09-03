@@ -33,6 +33,7 @@ fun <T : Any> PagingLoadStateEffect(
     onLoadingDone: () -> Unit,
     onLoadResult: (isSuccessful: Boolean, message: String) -> Unit,
     onRefreshTransition: (isRefreshing: Boolean) -> Unit = {},
+    onPaginationReached: () -> Unit = {},
     logTag: String = "PagingLoadStateEffect"
 ) {
     var hasStartedLoading by remember(pagingItems) { mutableStateOf(false) }
@@ -63,6 +64,7 @@ fun <T : Any> PagingLoadStateEffect(
 
         if (append is LoadState.NotLoading && append.endOfPaginationReached) {
             Timber.tag(logTag).d("Pagination reached to the end of page")
+            onPaginationReached()
         }
     }
 

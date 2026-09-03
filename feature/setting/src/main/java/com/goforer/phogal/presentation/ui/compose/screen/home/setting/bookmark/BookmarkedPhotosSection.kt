@@ -80,6 +80,7 @@ fun BookmarkedPhotosSection(
         onLoadingDone = { sectionUiState.setLoadingDone() },
         onLoadResult = onLoadResult,
         onRefreshTransition = { manualRefreshing = it },
+        onPaginationReached = { Timber.d("Loaded all photos") },
         logTag = "BookmarkedPhotosSection"
     )
 
@@ -175,10 +176,6 @@ private fun LazyListScope.renderLoadState(
             contentItems(
                 items = photos,
                 key = { index, photo -> "${photo.id}_$index" },
-                onLoadedPhotos = { isLoadedPhotos ->
-                    if (isLoadedPhotos)
-                        Timber.d("Loaded all photos")
-                },
                 content = { padding, index, photo ->
                     Timber.d("Photo Index is : $index")
                     PictureItem(

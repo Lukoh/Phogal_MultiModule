@@ -215,7 +215,7 @@ fun ErrorDialogPreview(modifier: Modifier = Modifier) {
                         shape = RoundedCornerShape(0.dp)
                     ) {
                         Text(
-                            text = stringResource(id = R.string.confirm),
+                            text = stringResource(id = R.string.retry),
                             style = MaterialTheme.typography.labelLarge.copy(
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.primary,

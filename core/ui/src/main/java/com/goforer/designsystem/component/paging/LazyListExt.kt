@@ -103,7 +103,6 @@ fun LazyListState.rememberCurrentScrollOffset(): State<Int> {
 fun <T : Any> LazyListScope.contentItems(
     items: LazyPagingItems<T>,
     key: ((index: Int, item: T) -> Any)? = null,
-    onLoadedPhotos: (isLoadedPhotos: Boolean) -> Unit,
     content: @Composable LazyItemScope.(padding: Dp, index: Int, item: T) -> Unit
 ) {
     items(
@@ -120,10 +119,6 @@ fun <T : Any> LazyListScope.contentItems(
             2.dp
         else
             0.5.dp
-
-        if (index == items.itemCount - 1) {
-            onLoadedPhotos(true)
-        }
 
         content(padding, index, item)
 

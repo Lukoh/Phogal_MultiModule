@@ -80,6 +80,7 @@ fun FollowingUsersSection(
         onLoadingDone = { sectionUiState.setLoadingDone() },
         onLoadResult = onLoadResult,
         onRefreshTransition = { manualRefreshing = it },
+        onPaginationReached = { Timber.d("Loaded all photos") },
         logTag = "FollowingUsersSection"
     )
 
@@ -171,10 +172,6 @@ private fun LazyListScope.renderLoadState(
             contentItems(
                 items = users,
                 key = { index, user -> "${user.id}_$index" },
-                onLoadedPhotos = { isLoadedPhotos ->
-                    if (isLoadedPhotos)
-                        Timber.d("Loaded all photos")
-                },
                 content = { padding, index, user ->
                     FollowingUsersItem(
                         modifier = Modifier

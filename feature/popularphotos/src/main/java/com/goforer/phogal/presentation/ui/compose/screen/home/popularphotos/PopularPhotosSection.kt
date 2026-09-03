@@ -80,6 +80,7 @@ fun PopularPhotosSection(
         onLoadingDone = { sectionUiState.setLoadingDone() },
         onLoadResult = onLoadResult,
         onRefreshTransition = { manualRefreshing = it },
+        onPaginationReached = { onLoadedPhotos(true) },
         logTag = "PopularPhotosSection"
     )
 
@@ -129,8 +130,7 @@ fun PopularPhotosSection(
                 followViewModel = followViewModel,
                 onShowUserInfo = onShowUserInfo,
                 onItemClicked = onItemClicked,
-                onViewPhotos = onViewPhotos,
-                onLoadedPhotos = onLoadedPhotos
+                onViewPhotos = onViewPhotos
             )
         }
 
@@ -165,8 +165,7 @@ private fun LazyListScope.renderLoadState(
     followViewModel: FollowViewModel,
     onShowUserInfo: (User) -> Unit,
     onItemClicked: (item: Photo, index: Int) -> Unit,
-    onViewPhotos: (name: String, firstName: String, lastName: String, username: String) -> Unit,
-    onLoadedPhotos: (isLoadedPhotos: Boolean) -> Unit
+    onViewPhotos: (name: String, firstName: String, lastName: String, username: String) -> Unit
 ) {
     renderPagingLoadState(
         items = photos,
@@ -175,7 +174,6 @@ private fun LazyListScope.renderLoadState(
             contentItems(
                 items = photos,
                 key = { index, photo -> "${photo.id}_$index" },
-                onLoadedPhotos = onLoadedPhotos,
                 content = { padding, index, photo ->
                     PhotoItem(
                         modifier = Modifier

@@ -3,6 +3,7 @@
     <string name="confirm">Confirm</string>
     <string name="cancel">Cancel</string>
     <string name="close">Close</string>
+    <string name="retry">Retry</string>
     <string name="bottom_navigation_photo">Photo</string>
     <string name="bottom_navigation_gallery">Gallery</string>
     <string name="bottom_navigation_popular_photos">Popular</string>

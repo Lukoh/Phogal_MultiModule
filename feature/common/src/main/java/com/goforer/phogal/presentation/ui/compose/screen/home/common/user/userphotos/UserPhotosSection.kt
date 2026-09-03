@@ -81,6 +81,7 @@ fun UserPhotosSection(
         onLoadingDone = { sectionUiState.setLoadingDone() },
         onLoadResult = { isSuccessful, message -> onLoadResult(isSuccessful, message) },
         onRefreshTransition = { manualRefreshing = it },
+        onPaginationReached = { Timber.d("Loaded all photos") },
         logTag = "UserPhotosSection"
     )
 
@@ -178,10 +179,6 @@ private fun LazyListScope.renderLoadState(
             contentItems(
                 items = photos,
                 key = { index, photo -> "${photo.id}_$index" },
-                onLoadedPhotos = { isLoadedPhotos ->
-                    if (isLoadedPhotos)
-                        Timber.d("Loaded all photos")
-                },
                 content = { padding, index, photo ->
                     PhotoItem(
                         modifier = Modifier
