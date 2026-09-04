@@ -44,6 +44,7 @@ import com.goforer.phogal.presentation.stateholder.uistate.home.common.photo.rem
 import com.goforer.phogal.presentation.stateholder.uistate.home.common.user.photos.UserPhotosSectionUiState
 import com.goforer.phogal.presentation.stateholder.uistate.home.common.user.photos.rememberUserPhotosSectionUiState
 import com.goforer.designsystem.component.paging.contentItems
+import com.goforer.designsystem.component.paging.rememberIsScrolledPastThreshold
 import com.goforer.designsystem.component.paging.renderPagingLoadState
 import com.goforer.phogal.presentation.ui.compose.screen.home.common.photo.LoadingPicture
 import com.goforer.phogal.presentation.ui.compose.screen.home.common.photo.PhotoItem
@@ -87,12 +88,7 @@ fun UserPhotosSection(
 
     // derivedStateOf: only triggers recomposition when the boolean actually flips,
     // not on every scroll tick.
-    val isScrolledPastThreshold by remember(lazyListState) {
-        derivedStateOf {
-            !lazyListState.isScrollInProgress && lazyListState.firstVisibleItemIndex > UP_BUTTON_THRESHOLD &&
-                    lazyListState.firstVisibleItemScrollOffset > SCROLL_OFFSET_SIGNAL
-        }
-    }
+    val isScrolledPastThreshold = lazyListState.rememberIsScrolledPastThreshold()
 
     // Material 3 PullToRefreshBox (replaces deprecated material.pullrefresh.*).
     PullToRefreshBox(
@@ -105,55 +101,51 @@ fun UserPhotosSection(
         }
     ) {
         val layoutDirection = LocalLayoutDirection.current
+        val isDark = isSystemInDarkTheme()
+        val skyBlueBackground = if (isDark)
+            Blue15
+        else
+            Blue95
 
-        Box(
-            modifier = modifier.clip(RoundedCornerShape(0.2.dp))
+        LazyColumn(
+            modifier = Modifier
+                .clip(RoundedCornerShape(0.2.dp))
+                .fillMaxWidth()
+                .fillMaxHeight()
+                .background(skyBlueBackground),
+            state = lazyListState,
+            contentPadding = PaddingValues(
+                start = paddingValues.calculateLeftPadding(layoutDirection),
+                top = 0.dp,
+                end = paddingValues.calculateRightPadding(layoutDirection) ,
+                bottom = paddingValues.calculateBottomPadding() + 58.dp
+            )
         ) {
-            val isDark = isSystemInDarkTheme()
-            val skyBlueBackground = if (isDark)
-                Blue15
-            else
-                Blue95
-
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .fillMaxHeight()
-                    .background(skyBlueBackground),
-                state = lazyListState,
-                contentPadding = PaddingValues(
-                    start = paddingValues.calculateLeftPadding(layoutDirection),
-                    top = 0.dp,
-                    end = paddingValues.calculateRightPadding(layoutDirection) ,
-                    bottom = paddingValues.calculateBottomPadding() + 58.dp
-                )
-            ) {
-                renderLoadState(
-                    photos = photos,
-                    sectionUiState = sectionUiState,
-                    bookmarkViewModel = bookmarkViewModel,
-                    followViewModel = followViewModel,
-                    onShowUserInfo = onShowUserInfo,
-                    onItemClicked = onItemClicked,
-                    onViewPhotos = onViewPhotos
-                )
-            }
-
-            ShowUpButton(
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(
-                        end = 4.dp,
-                        bottom = paddingValues.calculateBottomPadding() - 18.dp
-                    ),
-                visible = isScrolledPastThreshold,
-                onClick = {
-                    sectionUiState.scope.launch {
-                        lazyListState.animateScrollToItem (0)
-                    }
-                }
+            renderLoadState(
+                photos = photos,
+                sectionUiState = sectionUiState,
+                bookmarkViewModel = bookmarkViewModel,
+                followViewModel = followViewModel,
+                onShowUserInfo = onShowUserInfo,
+                onItemClicked = onItemClicked,
+                onViewPhotos = onViewPhotos
             )
         }
+
+        ShowUpButton(
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(
+                    end = 4.dp,
+                    bottom = paddingValues.calculateBottomPadding() - 18.dp
+                ),
+            visible = isScrolledPastThreshold,
+            onClick = {
+                sectionUiState.scope.launch {
+                    lazyListState.animateScrollToItem (0)
+                }
+            }
+        )
     }
 }
 

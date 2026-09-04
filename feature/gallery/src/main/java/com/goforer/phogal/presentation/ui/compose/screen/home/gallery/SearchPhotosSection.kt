@@ -34,7 +34,9 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.paging.LoadState
 import androidx.paging.compose.LazyPagingItems
 import com.goforer.designsystem.component.paging.PagingLoadStateEffect
+import com.goforer.designsystem.component.paging.ScrollSignalEffect
 import com.goforer.designsystem.component.paging.contentItems
+import com.goforer.designsystem.component.paging.rememberIsScrolledPastThreshold
 import com.goforer.designsystem.component.paging.rememberLazyListState
 import com.goforer.designsystem.component.paging.renderPagingLoadState
 import com.goforer.designsystem.theme.Blue15
@@ -93,20 +95,11 @@ fun SearchPhotosSection(
 
     // derivedStateOf: only triggers recomposition when the boolean actually flips,
     // not on every scroll tick.
-    val isScrolledPastThreshold by remember(lazyListState) {
-        derivedStateOf {
-            !lazyListState.isScrollInProgress && lazyListState.firstVisibleItemIndex > UP_BUTTON_THRESHOLD &&
-                    lazyListState.firstVisibleItemScrollOffset > SCROLL_OFFSET_SIGNAL
-        }
-    }
+    val isScrolledPastThreshold = lazyListState.rememberIsScrolledPastThreshold()
 
     // Propagate scroll signal to parent — only when isScrollInProgress changes,
     // not on every pixel of scrolling.
-    LaunchedEffect(lazyListState) {
-        snapshotFlowScrollState(lazyListState).collect { scrolling ->
-            onScroll(scrolling)
-        }
-    }
+    lazyListState.ScrollSignalEffect(onScroll)
 
     // Nav3-stable Material 3 PullToRefreshBox replaces the deprecated
     // androidx.compose.material.pullrefresh.* APIs. The container handles the

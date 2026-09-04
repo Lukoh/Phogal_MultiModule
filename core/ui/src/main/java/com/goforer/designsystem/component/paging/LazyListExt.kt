@@ -16,12 +16,14 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.itemContentType
 import com.goforer.designsystem.component.paging.PagingConstants.PAGE_SIZE_HINT
+import kotlinx.coroutines.flow.distinctUntilChanged
 
 @Composable
 fun LazyListState.isScrollingUp(): Boolean {
@@ -94,6 +96,47 @@ fun LazyListState.rememberCurrentScrollOffset(): State<Int> {
     }
 
     return currentScrollOffset
+}
+
+/**
+ * A dedicated effect that monitors the scroll state of [LazyListState] and
+ * notifies [onScroll] only when the scrolling status (idle vs. busy) changes.
+ *
+ * It uses [snapshotFlow] to monitor the scroll state and [distinctUntilChanged]
+ * to ensure that the [onScroll] callback is only invoked when the scroll state
+ * actually flips between scrolling and idle.
+ *
+ * @param onScroll A callback that receives the current scrolling status.
+ */
+@Composable
+fun LazyListState.ScrollSignalEffect(onScroll: (isScrolling: Boolean) -> Unit) {
+    LaunchedEffect(this) {
+        snapshotFlow { isScrollInProgress }
+            .distinctUntilChanged()
+            .collect { scrolling ->
+                onScroll(scrolling)
+            }
+    }
+}
+
+/**
+ * Returns a [Boolean] state indicating whether the list has been scrolled past a specific threshold.
+ *
+ * It uses [derivedStateOf] to minimize recompositions, triggering them only when the
+ * threshold condition actually changes (e.g., crossing the threshold or stop/start of scrolling),
+ * rather than on every pixel of scroll.
+ *
+ * The condition is met when the list is not actively scrolling ([isScrollInProgress] is false)
+ * and the scroll position exceeds the defined threshold constants.
+ */
+@Composable
+fun LazyListState.rememberIsScrolledPastThreshold(): Boolean {
+    return remember(this) {
+        derivedStateOf {
+            !isScrollInProgress && firstVisibleItemIndex > PagingConstants.UP_BUTTON_THRESHOLD &&
+                    firstVisibleItemScrollOffset > PagingConstants.SCROLL_OFFSET_SIGNAL
+        }
+    }.value
 }
 
 /**

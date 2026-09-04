@@ -33,6 +33,7 @@ import androidx.paging.LoadState
 import androidx.paging.compose.LazyPagingItems
 import com.goforer.designsystem.component.paging.PagingLoadStateEffect
 import com.goforer.designsystem.component.paging.contentItems
+import com.goforer.designsystem.component.paging.rememberIsScrolledPastThreshold
 import com.goforer.designsystem.component.paging.rememberLazyListState
 import com.goforer.designsystem.component.paging.renderPagingLoadState
 import com.goforer.designsystem.theme.Blue15
@@ -86,12 +87,7 @@ fun PopularPhotosSection(
 
     // derivedStateOf: only triggers recomposition when the boolean actually flips,
     // not on every scroll tick.
-    val isScrolledPastThreshold by remember(lazyListState) {
-        derivedStateOf {
-            !lazyListState.isScrollInProgress && lazyListState.firstVisibleItemIndex > UP_BUTTON_THRESHOLD &&
-                    lazyListState.firstVisibleItemScrollOffset > SCROLL_OFFSET_SIGNAL
-        }
-    }
+    val isScrolledPastThreshold = lazyListState.rememberIsScrolledPastThreshold()
 
     val layoutDirection = LocalLayoutDirection.current
 
