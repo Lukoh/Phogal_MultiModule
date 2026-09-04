@@ -88,7 +88,6 @@ fun PopularPhotosSection(
     // derivedStateOf: only triggers recomposition when the boolean actually flips,
     // not on every scroll tick.
     val isScrolledPastThreshold = lazyListState.rememberIsScrolledPastThreshold()
-
     val layoutDirection = LocalLayoutDirection.current
 
     // Material 3 PullToRefreshBox — default indicator is rendered automatically.
