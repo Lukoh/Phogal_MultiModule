@@ -2,13 +2,17 @@
 
 package com.goforer.phogal.presentation.ui.compose.screen.home.common.user.userphotos
 
+import android.content.res.Configuration
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -28,12 +32,23 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.paging.LoadState
+import androidx.paging.PagingData
 import androidx.paging.compose.LazyPagingItems
+import androidx.paging.compose.collectAsLazyPagingItems
 import com.goforer.designsystem.component.paging.PagingLoadStateEffect
+import com.goforer.designsystem.component.paging.contentItems
+import com.goforer.designsystem.component.paging.rememberIsScrolledPastThreshold
 import com.goforer.designsystem.component.paging.rememberLazyListState
+import com.goforer.designsystem.component.paging.renderPagingLoadState
+import com.goforer.designsystem.theme.Blue15
+import com.goforer.designsystem.theme.Blue95
+import com.goforer.designsystem.theme.PhogalTheme
+import com.goforer.phogal.data.model.remote.response.gallery.common.ProfileImage
+import com.goforer.phogal.data.model.remote.response.gallery.common.Urls
 import com.goforer.phogal.data.model.remote.response.gallery.common.photo.Photo
 import com.goforer.phogal.data.model.remote.response.gallery.common.user.User
 import com.goforer.phogal.presentation.stateholder.business.home.setting.bookmark.BookmarkViewModel
@@ -43,18 +58,13 @@ import com.goforer.phogal.presentation.stateholder.uistate.UIConstants.UP_BUTTON
 import com.goforer.phogal.presentation.stateholder.uistate.home.common.photo.rememberPhotoItemUiState
 import com.goforer.phogal.presentation.stateholder.uistate.home.common.user.photos.UserPhotosSectionUiState
 import com.goforer.phogal.presentation.stateholder.uistate.home.common.user.photos.rememberUserPhotosSectionUiState
-import com.goforer.designsystem.component.paging.contentItems
-import com.goforer.designsystem.component.paging.rememberIsScrolledPastThreshold
-import com.goforer.designsystem.component.paging.renderPagingLoadState
 import com.goforer.phogal.presentation.ui.compose.screen.home.common.photo.LoadingPicture
 import com.goforer.phogal.presentation.ui.compose.screen.home.common.photo.PhotoItem
 import com.goforer.phogal.presentation.ui.compose.screen.home.common.photo.ShowUpButton
-import com.goforer.designsystem.theme.Blue15
-import com.goforer.designsystem.theme.Blue95
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun UserPhotosSection(
     modifier: Modifier = Modifier,
@@ -67,6 +77,36 @@ fun UserPhotosSection(
     onItemClicked: (item: Photo, index: Int) -> Unit,
     onViewPhotos: (name: String, firstName: String, lastName: String, username: String) -> Unit,
     onLoadResult: (isSuccessful: Boolean, message: String) -> Unit
+) {
+    UserPhotosSectionContent(
+        modifier = modifier,
+        paddingValues = paddingValues,
+        photos = photos,
+        sectionUiState = sectionUiState,
+        isPhotoBookmarked = { bookmarkViewModel.isPhotoBookmarked(it) },
+        followViewModel = followViewModel,
+        onShowUserInfo = onShowUserInfo,
+        onItemClicked = onItemClicked,
+        onViewPhotos = onViewPhotos,
+        onLoadResult = onLoadResult,
+        onRefresh = photos::refresh
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
+@Composable
+fun UserPhotosSectionContent(
+    modifier: Modifier = Modifier,
+    paddingValues: PaddingValues,
+    photos: LazyPagingItems<Photo>,
+    sectionUiState: UserPhotosSectionUiState = rememberUserPhotosSectionUiState(),
+    isPhotoBookmarked: (String) -> Boolean,
+    followViewModel: FollowViewModel?,
+    onShowUserInfo: (User) -> Unit,
+    onItemClicked: (item: Photo, index: Int) -> Unit,
+    onViewPhotos: (name: String, firstName: String, lastName: String, username: String) -> Unit,
+    onLoadResult: (isSuccessful: Boolean, message: String) -> Unit,
+    onRefresh: () -> Unit
 ) {
     val lazyListState = photos.rememberLazyListState()
     var manualRefreshing by remember { mutableStateOf(false) }
@@ -97,55 +137,60 @@ fun UserPhotosSection(
         isRefreshing = isRefreshing,
         onRefresh = {
             manualRefreshing = true
-            photos.refresh()
+            onRefresh()
         }
     ) {
         val layoutDirection = LocalLayoutDirection.current
-        val isDark = isSystemInDarkTheme()
-        val skyBlueBackground = if (isDark)
-            Blue15
-        else
-            Blue95
 
-        LazyColumn(
+        Box(
             modifier = Modifier
-                .clip(RoundedCornerShape(0.2.dp))
-                .fillMaxWidth()
-                .fillMaxHeight()
-                .background(skyBlueBackground),
-            state = lazyListState,
-            contentPadding = PaddingValues(
-                start = paddingValues.calculateLeftPadding(layoutDirection),
-                top = 0.dp,
-                end = paddingValues.calculateRightPadding(layoutDirection) ,
-                bottom = paddingValues.calculateBottomPadding() + 58.dp
-            )
+                .fillMaxSize()
         ) {
-            renderLoadState(
-                photos = photos,
-                sectionUiState = sectionUiState,
-                bookmarkViewModel = bookmarkViewModel,
-                followViewModel = followViewModel,
-                onShowUserInfo = onShowUserInfo,
-                onItemClicked = onItemClicked,
-                onViewPhotos = onViewPhotos
+            val isDark = isSystemInDarkTheme()
+            val skyBlueBackground = if (isDark)
+                Blue15
+            else
+                Blue95
+
+            LazyColumn(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(0.2.dp))
+                    .fillMaxSize()
+                    .background(skyBlueBackground),
+                state = lazyListState,
+                contentPadding = PaddingValues(
+                    start = paddingValues.calculateStartPadding(layoutDirection).coerceAtLeast(0.dp),
+                    top = paddingValues.calculateTopPadding().coerceAtLeast(0.dp),
+                    end = paddingValues.calculateEndPadding(layoutDirection).coerceAtLeast(0.dp),
+                    bottom = (paddingValues.calculateBottomPadding() + 58.dp).coerceAtLeast(0.dp)
+                )
+            ) {
+                renderLoadState(
+                    photos = photos,
+                    sectionUiState = sectionUiState,
+                    isPhotoBookmarked = isPhotoBookmarked,
+                    followViewModel = followViewModel,
+                    onShowUserInfo = onShowUserInfo,
+                    onItemClicked = onItemClicked,
+                    onViewPhotos = onViewPhotos
+                )
+            }
+
+            ShowUpButton(
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(
+                        end = 4.dp,
+                        bottom = (paddingValues.calculateBottomPadding() - 18.dp).coerceAtLeast(0.dp)
+                    ),
+                visible = isScrolledPastThreshold,
+                onClick = {
+                    sectionUiState.scope.launch {
+                        lazyListState.animateScrollToItem (0)
+                    }
+                }
             )
         }
-
-        ShowUpButton(
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(
-                    end = 4.dp,
-                    bottom = paddingValues.calculateBottomPadding() - 18.dp
-                ),
-            visible = isScrolledPastThreshold,
-            onClick = {
-                sectionUiState.scope.launch {
-                    lazyListState.animateScrollToItem (0)
-                }
-            }
-        )
     }
 }
 
@@ -158,8 +203,8 @@ fun UserPhotosSection(
 private fun LazyListScope.renderLoadState(
     photos: LazyPagingItems<Photo>,
     sectionUiState: UserPhotosSectionUiState,
-    bookmarkViewModel: BookmarkViewModel,
-    followViewModel: FollowViewModel,
+    isPhotoBookmarked: (String) -> Boolean,
+    followViewModel: FollowViewModel?,
     onShowUserInfo: (User) -> Unit,
     onItemClicked: (item: Photo, index: Int) -> Unit,
     onViewPhotos: (name: String, firstName: String, lastName: String, username: String) -> Unit
@@ -181,7 +226,7 @@ private fun LazyListScope.renderLoadState(
                             photo = rememberSaveable { mutableStateOf(photo) },
                             visibleViewButton = rememberSaveable { mutableStateOf(true) },
                             bookmarked = rememberSaveable {
-                                mutableStateOf(bookmarkViewModel.isPhotoBookmarked(photo.id))
+                                mutableStateOf(isPhotoBookmarked(photo.id))
                             }
                         ),
                         followViewModel = followViewModel,
@@ -211,4 +256,42 @@ private fun LazyListScope.renderLoadState(
             item { LoadingPicture() }
         }
     )
+}
+
+@Preview(name = "Light Mode", showBackground = true)
+@Preview(
+    uiMode = Configuration.UI_MODE_NIGHT_YES,
+    showBackground = true,
+    name = "Dark Mode"
+)
+@Composable
+fun UserPhotosSectionPreview() {
+    val mockUser = User.empty().copy(
+        name = "John Doe",
+        username = "johndoe",
+        profileImage = ProfileImage.empty().copy(medium = "")
+    )
+    val mockPhoto = Photo.empty().copy(
+        id = "1",
+        user = mockUser,
+        urls = Urls.empty().copy(regular = ""),
+        width = 1080,
+        height = 720
+    )
+    val pagingData = PagingData.from(listOf(mockPhoto, mockPhoto))
+    val photos = flowOf(pagingData).collectAsLazyPagingItems()
+
+    PhogalTheme {
+        UserPhotosSectionContent(
+            paddingValues = PaddingValues(all = 0.dp),
+            photos = photos,
+            isPhotoBookmarked = { false },
+            followViewModel = null,
+            onShowUserInfo = {},
+            onItemClicked = { _, _ -> },
+            onViewPhotos = { _, _, _, _ -> },
+            onLoadResult = { _, _ -> },
+            onRefresh = {}
+        )
+    }
 }
