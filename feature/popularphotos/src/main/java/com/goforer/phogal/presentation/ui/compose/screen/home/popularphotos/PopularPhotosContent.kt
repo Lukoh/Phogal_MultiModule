@@ -13,6 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.paging.compose.LazyPagingItems
+import com.goforer.phogal.presentation.stateholder.uistate.PagingResult
 import com.goforer.phogal.data.model.remote.response.gallery.common.photo.Photo
 import com.goforer.phogal.data.model.remote.response.gallery.common.user.User
 import com.goforer.designsystem.theme.PhogalTheme
@@ -23,16 +24,21 @@ fun PopularPhotosContent(
     modifier: Modifier = Modifier,
     paddingValues: PaddingValues,
     photos: LazyPagingItems<Photo>,
+    isUserFollowed: (User) -> Boolean,
+    onToggleFollow: (User) -> Unit,
     onShowUserInfo: (User) -> Unit,
     onItemClicked: (id: String, index: Int) -> Unit,
     onViewPhotos: (name: String, firstName: String, lastName: String, username: String) -> Unit,
-    onLoadResult: (isSuccessful: Boolean, message: String) -> Unit,
+    onLoadResult: (PagingResult) -> Unit,
     onLoadedPhotos: (isLoadedPhotos: Boolean) -> Unit
 ) {
     PopularPhotosSection(
         modifier = modifier,
         paddingValues = paddingValues,
         photos = photos,
+        isPhotoBookmarked = { false },
+        isUserFollowed = isUserFollowed,
+        onToggleFollow = onToggleFollow,
         onShowUserInfo = onShowUserInfo,
         onItemClicked = { photo: Photo, index: Int -> onItemClicked(photo.id, index) },
         onViewPhotos = onViewPhotos,

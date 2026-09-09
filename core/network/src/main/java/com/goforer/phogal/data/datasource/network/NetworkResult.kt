@@ -1,5 +1,7 @@
 package com.goforer.phogal.data.datasource.network
 
+import com.goforer.phogal.data.model.BackendException
+
 /**
  * Type-safe result wrapper for network responses.
  *
@@ -24,11 +26,6 @@ sealed interface NetworkResult<out T> {
 
     data class Exception(val throwable: Throwable) : NetworkResult<Nothing>
 }
-
-/**
- * Exception thrown when a backend error occurs (HTTP 4xx/5xx).
- */
-class BackendException(val code: Int, override val message: String) : Exception(message)
 
 /** Convenience: is this a successful state? */
 val NetworkResult<*>.isSuccess: Boolean

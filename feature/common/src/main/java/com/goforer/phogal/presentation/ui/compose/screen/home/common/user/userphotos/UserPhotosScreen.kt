@@ -3,6 +3,9 @@ package com.goforer.phogal.presentation.ui.compose.screen.home.common.user.userp
 import android.annotation.SuppressLint
 import android.content.res.Configuration
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -28,12 +31,14 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -42,6 +47,8 @@ import com.goforer.designsystem.component.CardSnackBar
 import com.goforer.designsystem.component.CustomCenterAlignedTopAppBar
 import com.goforer.designsystem.component.ScaffoldContent
 import com.goforer.phogal.core.ui.R
+import com.goforer.phogal.presentation.stateholder.uistate.PagingResult
+import com.goforer.phogal.presentation.stateholder.uistate.ErrorEntity
 import com.goforer.phogal.data.model.remote.response.gallery.common.user.User
 import com.goforer.phogal.presentation.ui.compose.screen.home.common.user.UserInfoBottomSheet
 import com.goforer.phogal.presentation.stateholder.uistate.home.common.user.photos.UserPhotosContentUiState
@@ -54,6 +61,8 @@ import kotlinx.coroutines.launch
 fun UserPhotosScreen(
     modifier: Modifier = Modifier,
     contentUiState: UserPhotosContentUiState,
+    isUserFollowed: (User) -> Boolean,
+    onToggleFollow: (User) -> Unit,
     onItemClicked: (id: String) -> Unit,
     onBackPressed: () -> Unit,
     onStart: () -> Unit = {
@@ -63,6 +72,12 @@ fun UserPhotosScreen(
         //To Do:: Implement the code what you want to do....
     }
 ) {
+    if (contentUiState.name.isNotBlank()) {
+        LaunchedEffect(contentUiState.name) {
+            contentUiState.userPhotosViewModel.loadFor(contentUiState.name)
+        }
+    }
+
     val currentOnStart by rememberUpdatedState(onStart)
     val currentOnStop by rememberUpdatedState(onStop)
     val snackbarHostState = remember { SnackbarHostState() }
@@ -154,18 +169,33 @@ fun UserPhotosScreen(
             )
         }, content = { paddingValues ->
             var selectedUserForInfo by rememberSaveable { mutableStateOf<User?>(null) }
+            val layoutDirection = LocalLayoutDirection.current
 
             ScaffoldContent(topInterval = paddingValues.calculateTopPadding()) {
                 UserPhotosContent(
                     modifier = modifier,
-                    paddingValues = paddingValues,
+                    paddingValues = PaddingValues(
+                        start = paddingValues.calculateStartPadding(layoutDirection),
+                        top = 0.dp,
+                        end = paddingValues.calculateEndPadding(layoutDirection),
+                        bottom = paddingValues.calculateBottomPadding()
+                    ),
                     contentUiState = contentUiState,
                     photos = contentUiState.photos,
+                    isUserFollowed = isUserFollowed,
+                    onToggleFollow = onToggleFollow,
                     onShowUserInfo = { selectedUserForInfo = it },
                     onItemClicked = onItemClicked,
-                    onLoadResult = { isSuccessful, message ->
+                    onLoadResult = { result ->
+                        val isSuccessful = result is PagingResult.Success
+                        val message = when (result) {
+                            is PagingResult.Success -> result.message
+                            is PagingResult.Error -> result.error.message
+                            else -> ""
+                        }
+
                         contentUiState.setVisibleAction(isSuccessful)
-                        if (!isSuccessful) {
+                        if (result is PagingResult.Error) {
                             contentUiState.baseUiState.scope.launch {
                                 snackbarHostState.showSnackbar(message)
                             }

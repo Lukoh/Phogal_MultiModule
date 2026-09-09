@@ -17,7 +17,6 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontFamily
@@ -26,9 +25,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.goforer.phogal.presentation.stateholder.business.home.setting.notification.NotificationSettingViewModel
 import com.goforer.phogal.presentation.stateholder.business.home.setting.notification.NotificationSettingViewModel.NotificationChannel
 import com.goforer.designsystem.theme.Black
 import com.goforer.designsystem.theme.ColorBgSecondary
@@ -42,12 +38,11 @@ import com.goforer.designsystem.theme.Red80
 fun NotificationSettingContent(
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(4.dp),
-    viewModel: NotificationSettingViewModel = hiltViewModel()
+    followingEnabled: Boolean,
+    latestEnabled: Boolean,
+    communityEnabled: Boolean,
+    onEnabledChanged: (NotificationChannel, Boolean) -> Unit
 ) {
-    val followingEnabled by viewModel.followingEnabled.collectAsStateWithLifecycle()
-    val latestEnabled by viewModel.latestEnabled.collectAsStateWithLifecycle()
-    val communityEnabled by viewModel.communityEnabled.collectAsStateWithLifecycle()
-
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -58,7 +53,7 @@ fun NotificationSettingContent(
         NotificationToggleItem(
             name = "Following Notification",
             isToggled = followingEnabled,
-            onToggled = { viewModel.setEnabled(NotificationChannel.Following, it) }
+            onToggled = { onEnabledChanged(NotificationChannel.Following, it) }
         )
 
         HorizontalDivider(modifier = Modifier.height(0.5.dp))
@@ -66,7 +61,7 @@ fun NotificationSettingContent(
         NotificationToggleItem(
             name = "Latest Notification",
             isToggled = latestEnabled,
-            onToggled = { viewModel.setEnabled(NotificationChannel.Latest, it) }
+            onToggled = { onEnabledChanged(NotificationChannel.Latest, it) }
         )
 
         HorizontalDivider(modifier = Modifier.height(0.5.dp))
@@ -74,7 +69,7 @@ fun NotificationSettingContent(
         NotificationToggleItem(
             name = "Community Notification",
             isToggled = communityEnabled,
-            onToggled = { viewModel.setEnabled(NotificationChannel.Community, it) }
+            onToggled = { onEnabledChanged(NotificationChannel.Community, it) }
         )
 
         HorizontalDivider(modifier = Modifier.height(0.5.dp))

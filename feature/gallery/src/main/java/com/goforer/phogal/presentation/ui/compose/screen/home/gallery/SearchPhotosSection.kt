@@ -9,18 +9,15 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
-import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -29,14 +26,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.paging.LoadState
 import androidx.paging.PagingData
 import androidx.paging.compose.LazyPagingItems
@@ -54,17 +49,13 @@ import com.goforer.phogal.data.model.remote.response.gallery.common.ProfileImage
 import com.goforer.phogal.data.model.remote.response.gallery.common.Urls
 import com.goforer.phogal.data.model.remote.response.gallery.common.photo.Photo
 import com.goforer.phogal.data.model.remote.response.gallery.common.user.User
-import com.goforer.phogal.presentation.stateholder.business.home.setting.bookmark.BookmarkViewModel
-import com.goforer.phogal.presentation.stateholder.business.home.setting.follow.FollowViewModel
-import com.goforer.phogal.presentation.stateholder.uistate.UIConstants.SCROLL_OFFSET_SIGNAL
-import com.goforer.phogal.presentation.stateholder.uistate.UIConstants.UP_BUTTON_THRESHOLD
+import com.goforer.phogal.presentation.stateholder.uistate.PagingResult
 import com.goforer.phogal.presentation.stateholder.uistate.home.common.photo.rememberPhotoItemUiState
 import com.goforer.phogal.presentation.stateholder.uistate.home.gallery.SearchPhotosSectionUiState
 import com.goforer.phogal.presentation.stateholder.uistate.home.gallery.rememberSearchPhotosSectionUiState
 import com.goforer.phogal.presentation.ui.compose.screen.home.common.photo.LoadingPicture
 import com.goforer.phogal.presentation.ui.compose.screen.home.common.photo.PhotoItem
 import com.goforer.phogal.presentation.ui.compose.screen.home.common.photo.ShowUpButton
-import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import timber.log.Timber
@@ -78,12 +69,13 @@ fun SearchPhotosSection(
         rememberCoroutineScope(),
         rememberSaveable { mutableStateOf(false) }
     ),
-    bookmarkViewModel: BookmarkViewModel = hiltViewModel(),
-    followViewModel: FollowViewModel = hiltViewModel(),
+    isPhotoBookmarked: (String) -> Boolean,
+    isUserFollowed: (User) -> Boolean,
+    onToggleFollow: (User) -> Unit,
     onShowUserInfo: (User) -> Unit,
     onItemClicked: (item: Photo, index: Int) -> Unit,
     onViewPhotos: (name: String, firstName: String, lastName: String, username: String) -> Unit,
-    onLoadResult: (isSuccessful: Boolean, message: String) -> Unit,
+    onLoadResult: (PagingResult) -> Unit,
     onScroll: (isScrolling: Boolean) -> Unit
 ) {
     SearchPhotosSectionContent(
@@ -91,8 +83,9 @@ fun SearchPhotosSection(
         paddingValues = paddingValues,
         photos = photos,
         sectionUiState = sectionUiState,
-        isPhotoBookmarked = { bookmarkViewModel.isPhotoBookmarked(it) },
-        followViewModel = followViewModel,
+        isPhotoBookmarked = isPhotoBookmarked,
+        isUserFollowed = isUserFollowed,
+        onToggleFollow = onToggleFollow,
         onShowUserInfo = onShowUserInfo,
         onItemClicked = onItemClicked,
         onViewPhotos = onViewPhotos,
@@ -113,11 +106,12 @@ fun SearchPhotosSectionContent(
         rememberSaveable { mutableStateOf(false) }
     ),
     isPhotoBookmarked: (String) -> Boolean,
-    followViewModel: FollowViewModel?,
+    isUserFollowed: (User) -> Boolean,
+    onToggleFollow: (User) -> Unit,
     onShowUserInfo: (User) -> Unit,
     onItemClicked: (item: Photo, index: Int) -> Unit,
     onViewPhotos: (name: String, firstName: String, lastName: String, username: String) -> Unit,
-    onLoadResult: (isSuccessful: Boolean, message: String) -> Unit,
+    onLoadResult: (PagingResult) -> Unit,
     onScroll: (isScrolling: Boolean) -> Unit,
     onRefresh: () -> Unit
 ) {
@@ -133,7 +127,7 @@ fun SearchPhotosSectionContent(
         pagingItems = photos,
         onLoadingStarted = { sectionUiState.setLoadingStarted() },
         onLoadingDone = { sectionUiState.setLoadingDone() },
-        onLoadResult = { isSuccessful, message -> onLoadResult(isSuccessful, message) },
+        onLoadResult = onLoadResult,
         onRefreshTransition = { manualRefreshing = it },
         onPaginationReached = { Timber.d("Loaded all photos") },
         logTag = "SearchPhotosSection"
@@ -186,7 +180,8 @@ fun SearchPhotosSectionContent(
                     photos = photos,
                     sectionUiState = sectionUiState,
                     isPhotoBookmarked = isPhotoBookmarked,
-                    followViewModel = followViewModel,
+                    isUserFollowed = isUserFollowed,
+                    onToggleFollow = onToggleFollow,
                     onShowUserInfo = onShowUserInfo,
                     onItemClicked = onItemClicked,
                     onViewPhotos = onViewPhotos
@@ -223,7 +218,8 @@ private fun LazyListScope.renderLoadState(
     photos: LazyPagingItems<Photo>,
     sectionUiState: SearchPhotosSectionUiState,
     isPhotoBookmarked: (String) -> Boolean,
-    followViewModel: FollowViewModel?,
+    isUserFollowed: (User) -> Boolean,
+    onToggleFollow: (User) -> Unit,
     onShowUserInfo: (User) -> Unit,
     onItemClicked: (item: Photo, index: Int) -> Unit,
     onViewPhotos: (name: String, firstName: String, lastName: String, username: String) -> Unit
@@ -248,7 +244,8 @@ private fun LazyListScope.renderLoadState(
                                 mutableStateOf(isPhotoBookmarked(photo.id))
                             }
                         ),
-                        followViewModel = followViewModel,
+                        isFollowed = isUserFollowed(photo.user),
+                        onFollowClick = onToggleFollow,
                         onShowUserInfo = onShowUserInfo,
                         onItemClicked = onItemClicked,
                         onViewPhotos = onViewPhotos
@@ -305,11 +302,12 @@ fun SearchPhotosSectionPreview() {
             paddingValues = PaddingValues(all = 0.dp),
             photos = photos,
             isPhotoBookmarked = { false },
-            followViewModel = null,
+            isUserFollowed = { false },
+            onToggleFollow = {},
             onShowUserInfo = {},
             onItemClicked = { _, _ -> },
             onViewPhotos = { _, _, _, _ -> },
-            onLoadResult = { _, _ -> },
+            onLoadResult = { },
             onScroll = {},
             onRefresh = {}
         )

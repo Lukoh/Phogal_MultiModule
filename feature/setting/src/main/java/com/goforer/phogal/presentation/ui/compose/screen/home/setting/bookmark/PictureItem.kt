@@ -38,7 +38,6 @@ import coil.size.Size
 import com.goforer.designsystem.component.loadImagePainter
 import com.goforer.designsystem.component.snsShimmer
 import com.goforer.phogal.data.model.remote.response.gallery.photo.photoinfo.Picture
-import com.goforer.phogal.presentation.stateholder.business.home.setting.follow.FollowViewModel
 import com.goforer.phogal.presentation.stateholder.uistate.home.common.photo.PictureItemUiState
 import com.goforer.phogal.presentation.stateholder.uistate.home.common.photo.rememberPictureItemUiState
 import com.goforer.phogal.presentation.stateholder.uistate.home.common.user.rememberUserContainerUiState
@@ -60,7 +59,8 @@ import com.goforer.designsystem.theme.PhogalTheme
 fun PictureItem(
     modifier: Modifier = Modifier,
     pictureItemUiState: PictureItemUiState = rememberPictureItemUiState(),
-    followViewModel: FollowViewModel?,
+    isFollowed: Boolean,
+    onFollowClick: (User) -> Unit,
     onShowUserInfo: (User) -> Unit,
     onItemClicked: (item: Picture, index: Int) -> Unit,
     onViewPhotos: (name: String, firstName: String, lastName: String, username: String) -> Unit
@@ -148,7 +148,8 @@ fun PictureItem(
                     visibleViewButton = rememberSaveable { mutableStateOf(pictureItemUiState.visibleViewButton) },
                     fromItem = rememberSaveable { mutableStateOf(true) }
                 ),
-                followViewModel = followViewModel,
+                isFollowed = isFollowed,
+                onFollowClick = onFollowClick,
                 onShowUserInfo = onShowUserInfo,
                 onViewPhotos = onViewPhotos
             )
@@ -179,7 +180,8 @@ fun PictureItemPreview() {
             Column {
                 PictureItem(
                     pictureItemUiState = mockUiState,
-                    followViewModel = null,
+                    isFollowed = false,
+                    onFollowClick = {},
                     onShowUserInfo = {},
                     onItemClicked = { _, _ ->  },
                     onViewPhotos = { _, _, _, _ -> }

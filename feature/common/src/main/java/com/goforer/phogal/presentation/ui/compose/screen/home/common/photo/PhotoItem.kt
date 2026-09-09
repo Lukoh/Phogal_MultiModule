@@ -28,7 +28,6 @@ import com.goforer.phogal.data.model.remote.response.gallery.common.photo.Photo
 import com.goforer.phogal.data.model.remote.response.gallery.common.photo.PhotoLinks
 import com.goforer.phogal.data.model.remote.response.gallery.common.user.User
 import com.goforer.phogal.data.model.remote.response.gallery.common.user.UserLinks
-import com.goforer.phogal.presentation.stateholder.business.home.setting.follow.FollowViewModel
 import com.goforer.phogal.presentation.stateholder.uistate.home.common.photo.PhotoItemUiState
 import com.goforer.phogal.presentation.stateholder.uistate.home.common.photo.rememberPhotoItemUiState
 import com.goforer.phogal.presentation.stateholder.uistate.home.common.user.rememberUserContainerUiState
@@ -43,7 +42,8 @@ import com.goforer.designsystem.theme.DarkGreen60
 fun PhotoItem(
     modifier: Modifier = Modifier,
     state: PhotoItemUiState = rememberPhotoItemUiState(),
-    followViewModel: FollowViewModel?,
+    isFollowed: Boolean,
+    onFollowClick: (User) -> Unit,
     onShowUserInfo: (User) -> Unit,
     onItemClicked: (item: Photo, index: Int) -> Unit,
     onViewPhotos: (name: String, firstName: String, lastName: String, username: String) -> Unit
@@ -124,7 +124,8 @@ fun PhotoItem(
             UserContainer(
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
                 state = userState,
-                followViewModel = followViewModel,
+                isFollowed = isFollowed,
+                onFollowClick = onFollowClick,
                 onShowUserInfo = onShowUserInfo,
                 onViewPhotos = onViewPhotos
             )
@@ -138,7 +139,8 @@ fun PhotoItemPreview() {
     PhotoItem(
         modifier = Modifier.fillMaxWidth(),
         state = createMockPhotoItemUiState(isBookmarked = false),
-        followViewModel = null,
+        isFollowed = false,
+        onFollowClick = {},
         onShowUserInfo = {},
         onItemClicked = { _, _ ->  },
         onViewPhotos = { _, _, _, _ -> }
@@ -150,7 +152,8 @@ fun PhotoItemPreview() {
 fun PhotoItemBookmarkPreview() {
     PhotoItem(
         state = createMockPhotoItemUiState(isBookmarked = true),
-        followViewModel = null,
+        isFollowed = false,
+        onFollowClick = {},
         onShowUserInfo = {},
         onItemClicked = { _, _ -> },
         onViewPhotos = { _, _, _, _ -> }

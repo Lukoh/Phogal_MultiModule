@@ -8,7 +8,7 @@ import androidx.room.withTransaction
 import com.goforer.phogal.data.datasource.local.room.PhogalDatabase
 import com.goforer.phogal.data.datasource.local.room.entity.PhotoFeedEntity
 import com.goforer.phogal.data.datasource.local.room.entity.RemoteKeyEntity
-import com.goforer.phogal.data.datasource.network.BackendException
+import com.goforer.phogal.data.model.BackendException
 import com.goforer.phogal.data.datasource.network.NetworkResult
 import com.goforer.phogal.data.model.remote.response.gallery.common.photo.Photo
 import timber.log.Timber

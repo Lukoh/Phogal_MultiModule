@@ -77,7 +77,8 @@ import kotlinx.coroutines.launch
 fun UserContainer(
     modifier: Modifier = Modifier,
     state: UserContainerUiState = rememberUserContainerUiState(),
-    followViewModel: FollowViewModel?,
+    isFollowed: Boolean,
+    onFollowClick: (User) -> Unit,
     onShowUserInfo: (User) -> Unit,
     onViewPhotos: (name: String, firstName: String, lastName: String, username: String) -> Unit,
 ) {
@@ -89,8 +90,8 @@ fun UserContainer(
         modifier = modifier,
         state = state,
         user = user,
-        isFollowed = followViewModel?.isUserFollowed(user) ?: false,
-        onFollowClick = { followViewModel?.setUserFollow(user) },
+        isFollowed = isFollowed,
+        onFollowClick = onFollowClick,
         onShowUserInfo = onShowUserInfo,
         onViewPhotos = onViewPhotos
     )

@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -19,7 +18,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
@@ -35,7 +33,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.paging.LoadState
 import androidx.paging.PagingData
 import androidx.paging.compose.LazyPagingItems
@@ -52,8 +49,7 @@ import com.goforer.phogal.data.model.remote.response.gallery.common.ProfileImage
 import com.goforer.phogal.data.model.remote.response.gallery.common.Urls
 import com.goforer.phogal.data.model.remote.response.gallery.common.photo.Photo
 import com.goforer.phogal.data.model.remote.response.gallery.common.user.User
-import com.goforer.phogal.presentation.stateholder.business.home.setting.bookmark.BookmarkViewModel
-import com.goforer.phogal.presentation.stateholder.business.home.setting.follow.FollowViewModel
+import com.goforer.phogal.presentation.stateholder.uistate.PagingResult
 import com.goforer.phogal.presentation.stateholder.uistate.home.common.photo.rememberPhotoItemUiState
 import com.goforer.phogal.presentation.stateholder.uistate.home.popularphotos.PopularPhotosSectionUiState
 import com.goforer.phogal.presentation.stateholder.uistate.home.popularphotos.rememberPopularPhotosSectionUiState
@@ -62,7 +58,6 @@ import com.goforer.phogal.presentation.ui.compose.screen.home.common.photo.Photo
 import com.goforer.phogal.presentation.ui.compose.screen.home.common.photo.ShowUpButton
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
-import timber.log.Timber
 
 @Composable
 fun PopularPhotosSection(
@@ -70,12 +65,13 @@ fun PopularPhotosSection(
     paddingValues: PaddingValues,
     photos: LazyPagingItems<Photo>,
     sectionUiState: PopularPhotosSectionUiState = rememberPopularPhotosSectionUiState(),
-    bookmarkViewModel: BookmarkViewModel = hiltViewModel(),
-    followViewModel: FollowViewModel = hiltViewModel(),
+    isPhotoBookmarked: (String) -> Boolean,
+    isUserFollowed: (User) -> Boolean,
+    onToggleFollow: (User) -> Unit,
     onShowUserInfo: (User) -> Unit,
     onItemClicked: (item: Photo, index: Int) -> Unit,
     onViewPhotos: (name: String, firstName: String, lastName: String, username: String) -> Unit,
-    onLoadResult: (isSuccessful: Boolean, message: String) -> Unit,
+    onLoadResult: (PagingResult) -> Unit,
     onLoadedPhotos: (isLoadedPhotos: Boolean) -> Unit
 ) {
     PopularPhotosSectionContent(
@@ -83,8 +79,9 @@ fun PopularPhotosSection(
         paddingValues = paddingValues,
         photos = photos,
         sectionUiState = sectionUiState,
-        isPhotoBookmarked = { bookmarkViewModel.isPhotoBookmarked(it) },
-        followViewModel = followViewModel,
+        isPhotoBookmarked = isPhotoBookmarked,
+        isUserFollowed = isUserFollowed,
+        onToggleFollow = onToggleFollow,
         onShowUserInfo = onShowUserInfo,
         onItemClicked = onItemClicked,
         onViewPhotos = onViewPhotos,
@@ -102,11 +99,12 @@ fun PopularPhotosSectionContent(
     photos: LazyPagingItems<Photo>,
     sectionUiState: PopularPhotosSectionUiState = rememberPopularPhotosSectionUiState(),
     isPhotoBookmarked: (String) -> Boolean,
-    followViewModel: FollowViewModel?,
+    isUserFollowed: (User) -> Boolean,
+    onToggleFollow: (User) -> Unit,
     onShowUserInfo: (User) -> Unit,
     onItemClicked: (item: Photo, index: Int) -> Unit,
     onViewPhotos: (name: String, firstName: String, lastName: String, username: String) -> Unit,
-    onLoadResult: (isSuccessful: Boolean, message: String) -> Unit,
+    onLoadResult: (PagingResult) -> Unit,
     onLoadedPhotos: (isLoadedPhotos: Boolean) -> Unit,
     onRefresh: () -> Unit
 ) {
@@ -154,6 +152,7 @@ fun PopularPhotosSectionContent(
         ) {
             LazyColumn(
                 modifier = Modifier
+                    .clip(RoundedCornerShape(0.2.dp))
                     .fillMaxSize()
                     .background(skyBlueBackground),
                 state = lazyListState,
@@ -161,14 +160,15 @@ fun PopularPhotosSectionContent(
                     start = paddingValues.calculateStartPadding(layoutDirection).coerceAtLeast(0.dp),
                     top = paddingValues.calculateTopPadding().coerceAtLeast(0.dp),
                     end = paddingValues.calculateEndPadding(layoutDirection).coerceAtLeast(0.dp),
-                    bottom = (paddingValues.calculateBottomPadding() + 64.dp).coerceAtLeast(0.dp)
+                    bottom = (paddingValues.calculateBottomPadding() + 58.dp).coerceAtLeast(0.dp)
                 )
             ) {
                 renderLoadState(
                     photos = photos,
                     sectionUiState = sectionUiState,
                     isPhotoBookmarked = isPhotoBookmarked,
-                    followViewModel = followViewModel,
+                    isUserFollowed = isUserFollowed,
+                    onToggleFollow = onToggleFollow,
                     onShowUserInfo = onShowUserInfo,
                     onItemClicked = onItemClicked,
                     onViewPhotos = onViewPhotos
@@ -203,7 +203,8 @@ private fun LazyListScope.renderLoadState(
     photos: LazyPagingItems<Photo>,
     sectionUiState: PopularPhotosSectionUiState,
     isPhotoBookmarked: (String) -> Boolean,
-    followViewModel: FollowViewModel?,
+    isUserFollowed: (User) -> Boolean,
+    onToggleFollow: (User) -> Unit,
     onShowUserInfo: (User) -> Unit,
     onItemClicked: (item: Photo, index: Int) -> Unit,
     onViewPhotos: (name: String, firstName: String, lastName: String, username: String) -> Unit
@@ -228,7 +229,8 @@ private fun LazyListScope.renderLoadState(
                                 mutableStateOf(isPhotoBookmarked(photo.id))
                             }
                         ),
-                        followViewModel = followViewModel,
+                        isFollowed = isUserFollowed(photo.user),
+                        onFollowClick = onToggleFollow,
                         onShowUserInfo = onShowUserInfo,
                         onItemClicked = onItemClicked,
                         onViewPhotos = onViewPhotos
@@ -285,11 +287,12 @@ fun PopularPhotosSectionPreview() {
             paddingValues = PaddingValues(all = 0.dp),
             photos = photos,
             isPhotoBookmarked = { false },
-            followViewModel = null,
+            isUserFollowed = { false },
+            onToggleFollow = {},
             onShowUserInfo = {},
             onItemClicked = { _, _ -> },
             onViewPhotos = { _, _, _, _ -> },
-            onLoadResult = { _, _ -> },
+            onLoadResult = { },
             onLoadedPhotos = {},
             onRefresh = {}
         )

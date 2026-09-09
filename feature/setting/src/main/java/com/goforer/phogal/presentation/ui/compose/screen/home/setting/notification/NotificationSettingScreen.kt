@@ -25,10 +25,13 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.goforer.designsystem.component.CardSnackBar
 import com.goforer.phogal.core.ui.R
+import com.goforer.phogal.presentation.stateholder.business.home.setting.notification.NotificationSettingViewModel
 import com.goforer.phogal.presentation.stateholder.uistate.BaseUiState
 import com.goforer.phogal.presentation.stateholder.uistate.rememberBaseUiState
 import com.goforer.designsystem.theme.ColorBgSecondary
@@ -44,8 +47,13 @@ fun NotificationSettingScreen(
     },
     onStop: () -> Unit = {
         //To Do:: Implement the code what you want to do....
-    }
+    },
+    viewModel: NotificationSettingViewModel = hiltViewModel()
 ) {
+    val followingEnabled by viewModel.followingEnabled.collectAsStateWithLifecycle()
+    val latestEnabled by viewModel.latestEnabled.collectAsStateWithLifecycle()
+    val communityEnabled by viewModel.communityEnabled.collectAsStateWithLifecycle()
+
     val currentOnStart by rememberUpdatedState(onStart)
     val currentOnStop by rememberUpdatedState(onStop)
     val snackbarHostState = remember { SnackbarHostState() }
@@ -110,7 +118,13 @@ fun NotificationSettingScreen(
         }, content = { paddingValues ->
             NotificationSettingContent(
                 modifier = modifier,
-                contentPadding = paddingValues
+                contentPadding = paddingValues,
+                followingEnabled = followingEnabled,
+                latestEnabled = latestEnabled,
+                communityEnabled = communityEnabled,
+                onEnabledChanged = { channel, enabled ->
+                    viewModel.setEnabled(channel, enabled)
+                }
             )
         }
     )

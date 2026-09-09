@@ -39,6 +39,7 @@ import com.goforer.designsystem.theme.Blue15
 import com.goforer.designsystem.theme.Blue95
 import com.goforer.phogal.core.ui.R
 import com.goforer.phogal.data.model.remote.response.gallery.common.user.User
+import com.goforer.phogal.presentation.stateholder.uistate.PagingResult
 import com.goforer.phogal.presentation.stateholder.uistate.UIConstants.SCROLL_OFFSET_SIGNAL
 import com.goforer.phogal.presentation.stateholder.uistate.UIConstants.UP_BUTTON_THRESHOLD
 import com.goforer.phogal.presentation.stateholder.uistate.home.setting.following.FollowingUserSectionUiState
@@ -56,7 +57,7 @@ fun FollowingUsersSection(
     paddingValues: PaddingValues,
     sectionUiState: FollowingUserSectionUiState = rememberFollowingUserSectionUiState(),
     users: LazyPagingItems<User>,
-    onLoadResult: (isSuccessful: Boolean, message: String) -> Unit,
+    onLoadResult: (PagingResult) -> Unit,
     onViewPhotos: (name: String, firstName: String, lastName: String, username: String) -> Unit,
     onOpenWebView: (firstName: String, url: String?) -> Unit,
     onFollow: (userUiState: User) -> Unit

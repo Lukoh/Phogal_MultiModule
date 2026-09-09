@@ -12,6 +12,8 @@ import androidx.paging.LoadState
 import androidx.paging.compose.LazyPagingItems
 import com.goforer.designsystem.component.EmptyStatePlaceholder
 import com.goforer.designsystem.component.ErrorStateHost
+import com.goforer.phogal.presentation.stateholder.uistate.PagingResult
+import com.goforer.phogal.presentation.stateholder.uistate.toErrorEntity
 import timber.log.Timber
 
 /**
@@ -22,7 +24,7 @@ import timber.log.Timber
  * @param pagingItems The [LazyPagingItems] to monitor.
  * @param onLoadingStarted Callback triggered when loading starts (refresh or append).
  * @param onLoadingDone Callback triggered when initial loading is complete.
- * @param onLoadResult Callback triggered with the result of the load operation.
+ * @param onLoadResult Callback triggered with the [PagingResult] of the load operation.
  * @param onRefreshTransition Callback triggered when the refresh state changes (useful for resetting manual refresh flags).
  * @param logTag Tag for logging pagination events.
  */
@@ -31,7 +33,7 @@ fun <T : Any> PagingLoadStateEffect(
     pagingItems: LazyPagingItems<T>,
     onLoadingStarted: () -> Unit,
     onLoadingDone: () -> Unit,
-    onLoadResult: (isSuccessful: Boolean, message: String) -> Unit,
+    onLoadResult: (PagingResult) -> Unit,
     onRefreshTransition: (isRefreshing: Boolean) -> Unit = {},
     onPaginationReached: () -> Unit = {},
     logTag: String = "PagingLoadStateEffect"
@@ -44,21 +46,21 @@ fun <T : Any> PagingLoadStateEffect(
 
         when {
             refresh is LoadState.Error -> {
-                onLoadResult(false, refresh.error.message ?: "")
+                onLoadResult(PagingResult.Error(refresh.error.toErrorEntity()))
             }
 
             append is LoadState.Error -> {
-                onLoadResult(false, append.error.message ?: "")
+                onLoadResult(PagingResult.Error(append.error.toErrorEntity()))
             }
 
             refresh is LoadState.Loading || append is LoadState.Loading -> {
                 hasStartedLoading = true
                 onLoadingStarted()
-                onLoadResult(true, "")
+                onLoadResult(PagingResult.Loading)
             }
 
             refresh is LoadState.NotLoading -> {
-                onLoadResult(true, "")
+                onLoadResult(PagingResult.Success(""))
             }
         }
 

@@ -6,7 +6,9 @@ import com.goforer.phogal.data.datasource.network.NetworkResult
 import com.goforer.phogal.data.model.remote.response.gallery.photo.photoinfo.Picture
 import com.goforer.phogal.data.repository.common.photo.info.PictureRepository
 import com.goforer.phogal.data.repository.common.photo.like.PictureLikeRepository
+import com.goforer.phogal.presentation.stateholder.uistate.ErrorEntity
 import com.goforer.phogal.presentation.stateholder.uistate.UiState
+import com.goforer.phogal.presentation.stateholder.uistate.toErrorEntity
 import com.goforer.phogal.presentation.stateholder.uistate.toUiStateStrict
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -128,13 +130,14 @@ class PictureViewModel @Inject constructor(
                     _events.tryEmit(PictureUiEvent.LikeToggled(liked = !wasLiked))
                 }
                 is NetworkResult.Error -> {
-                    _likeActionState.value = UiState.Error(code = result.code, message = result.message)
+                    val error = ErrorEntity.Network(result.code, result.message)
+                    _likeActionState.value = UiState.Error(error)
                     _events.tryEmit(PictureUiEvent.LikeFailed(result.message))
                 }
                 is NetworkResult.Exception -> {
-                    val msg = result.throwable.message ?: "Network failure"
-                    _likeActionState.value = UiState.Error(code = 0, message = msg)
-                    _events.tryEmit(PictureUiEvent.LikeFailed(msg))
+                    val error = result.throwable.toErrorEntity()
+                    _likeActionState.value = UiState.Error(error)
+                    _events.tryEmit(PictureUiEvent.LikeFailed(error.message))
                 }
             }
         }

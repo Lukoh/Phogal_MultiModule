@@ -30,6 +30,7 @@ import androidx.paging.compose.LazyPagingItems
 import com.goforer.designsystem.animation.GenericCubicAnimationShape
 import com.goforer.designsystem.component.Chips
 import com.goforer.phogal.core.ui.R
+import com.goforer.phogal.presentation.stateholder.uistate.PagingResult
 import com.goforer.phogal.data.model.remote.response.gallery.common.photo.Photo
 import com.goforer.phogal.data.model.remote.response.gallery.common.user.User
 import com.goforer.phogal.presentation.stateholder.uistate.home.gallery.SearchPhotosContentUiState
@@ -54,10 +55,12 @@ fun SearchPhotosContent(
     paddingValues: PaddingValues,
     onSearch: (String) -> Unit,
     onChipClicked: (String) -> Unit,
+    isUserFollowed: (User) -> Boolean,
+    onToggleFollow: (User) -> Unit,
     onShowUserInfo: (User) -> Unit,
     onItemClicked: (id: String) -> Unit,
     onViewPhotos: (name: String, firstName: String, lastName: String, username: String) -> Unit,
-    onLoadResult: (isSuccessful: Boolean, message: String) -> Unit
+    onLoadResult: (PagingResult) -> Unit
 ) {
     Column(
         modifier = modifier.clickable {
@@ -83,6 +86,8 @@ fun SearchPhotosContent(
             paddingValues = paddingValues,
             query = contentUiState.galleryUiState.currentQuery,
             photos = contentUiState.galleryUiState.photos,
+            isUserFollowed = isUserFollowed,
+            onToggleFollow = onToggleFollow,
             onShowUserInfo = onShowUserInfo,
             onItemClicked = { photo, _ -> onItemClicked(photo.id) },
             onViewPhotos = onViewPhotos,
@@ -156,10 +161,12 @@ private fun ColumnScope.PhotosOrInitScreen(
     paddingValues: PaddingValues,
     query: String,
     photos: LazyPagingItems<Photo>,
+    isUserFollowed: (User) -> Boolean,
+    onToggleFollow: (User) -> Unit,
     onShowUserInfo: (User) -> Unit,
     onItemClicked: (Photo, Int) -> Unit,
     onViewPhotos: (name: String, firstName: String, lastName: String, username: String) -> Unit,
-    onLoadResult: (isSuccessful: Boolean, message: String) -> Unit,
+    onLoadResult: (PagingResult) -> Unit,
     onScroll: (Boolean) -> Unit
 ) {
     if (query.isNotBlank()) {
@@ -170,6 +177,9 @@ private fun ColumnScope.PhotosOrInitScreen(
             paddingValues = paddingValues,
             photos = photos,
             sectionUiState = rememberSearchPhotosSectionUiState(rememberCoroutineScope(), rememberSaveable { mutableStateOf(false) }),
+            isPhotoBookmarked = { false },
+            isUserFollowed = isUserFollowed,
+            onToggleFollow = onToggleFollow,
             onShowUserInfo = onShowUserInfo,
             onItemClicked = onItemClicked,
             onViewPhotos = onViewPhotos,

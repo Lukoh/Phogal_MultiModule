@@ -33,6 +33,7 @@ import com.goforer.designsystem.component.CustomCenterAlignedTopAppBar
 import com.goforer.designsystem.component.ScaffoldContent
 import com.goforer.base.extension.isNull
 import com.goforer.phogal.core.ui.R
+import com.goforer.phogal.presentation.stateholder.uistate.PagingResult
 import com.goforer.phogal.presentation.stateholder.uistate.home.setting.following.FollowingUserContentUiState
 import com.goforer.designsystem.theme.ColorBgSecondary
 import kotlinx.coroutines.launch
@@ -148,12 +149,20 @@ fun FollowingUsersScreen(
                     paddingValues = paddingValues,
                     users = contentUiState.users,
                     enabledLoadPhotos = contentUiState.enabledLoadPhotos,
-                    onLoadResult = { isSuccessful, message ->
-                        contentUiState.setEnabledLoadPhotos(isSuccessful)
-                        if (!isSuccessful) {
-                            contentUiState.baseUiState.scope.launch {
-                                snackbarHostState.showSnackbar(message)
+                    onLoadResult = { result ->
+                        when (result) {
+                            is PagingResult.Success -> {
+                                contentUiState.setEnabledLoadPhotos(true)
                             }
+
+                            is PagingResult.Error -> {
+                                contentUiState.setEnabledLoadPhotos(false)
+                                contentUiState.baseUiState.scope.launch {
+                                    snackbarHostState.showSnackbar(result.error.message)
+                                }
+                            }
+
+                            else -> {}
                         }
                     },
                     onViewPhotos = onViewPhotos,

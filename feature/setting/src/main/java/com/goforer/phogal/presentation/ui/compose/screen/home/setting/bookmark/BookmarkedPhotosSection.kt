@@ -26,7 +26,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.paging.LoadState
 import androidx.paging.compose.LazyPagingItems
 import com.goforer.designsystem.component.paging.PagingLoadStateEffect
@@ -34,12 +34,12 @@ import com.goforer.designsystem.component.paging.rememberLazyListState
 import com.goforer.designsystem.component.paging.renderPagingLoadState
 import com.goforer.designsystem.component.paging.contentItems
 import com.goforer.phogal.data.model.remote.response.gallery.photo.photoinfo.Picture
+import com.goforer.phogal.presentation.stateholder.uistate.PagingResult
 import com.goforer.phogal.presentation.stateholder.uistate.UIConstants.SCROLL_OFFSET_SIGNAL
 import com.goforer.phogal.presentation.stateholder.uistate.UIConstants.UP_BUTTON_THRESHOLD
 import com.goforer.phogal.presentation.stateholder.uistate.home.setting.bookmark.BookmarkSectionUiState
 import com.goforer.phogal.presentation.stateholder.uistate.home.setting.bookmark.rememberBookmarkSectionUiState
 import com.goforer.phogal.data.model.remote.response.gallery.common.user.User
-import com.goforer.phogal.presentation.stateholder.business.home.setting.follow.FollowViewModel
 import com.goforer.phogal.presentation.stateholder.uistate.home.common.photo.rememberPictureItemUiState
 import com.goforer.phogal.presentation.ui.compose.screen.home.common.photo.LoadingPicture
 import com.goforer.phogal.presentation.ui.compose.screen.home.common.photo.ShowUpButton
@@ -55,24 +55,16 @@ fun BookmarkedPhotosSection(
     paddingValues: PaddingValues,
     sectionUiState: BookmarkSectionUiState = rememberBookmarkSectionUiState(),
     photos: LazyPagingItems<Picture>,
-    followViewModel: FollowViewModel = hiltViewModel(),
+    isUserFollowed: (User) -> Boolean,
+    onToggleFollow: (User) -> Unit,
     onShowUserInfo: (User) -> Unit,
     onItemClicked: (item: Picture, index: Int) -> Unit,
-    onLoadResult: (isSuccessful: Boolean, message: String) -> Unit,
+    onLoadResult: (PagingResult) -> Unit,
     onViewPhotos: (name: String, firstName: String, lastName: String, username: String) -> Unit
 ) {
     val lazyListState = photos.rememberLazyListState()
     val scope = rememberCoroutineScope()
     var manualRefreshing by remember { mutableStateOf(false) }
-    // Uncomment the code below to improve the Following feature using Room.
-    /*
-    val isRefreshing by remember(photos.loadState.refresh, manualRefreshing, sectionUiState.loadingDone) {
-        derivedStateOf {
-            manualRefreshing || (sectionUiState.loadingDone && photos.itemCount > 0 && photos.loadState.refresh is LoadState.Loading)
-        }
-    }
-    
-     */
 
     PagingLoadStateEffect(
         pagingItems = photos,
@@ -130,7 +122,8 @@ fun BookmarkedPhotosSection(
                 renderLoadState(
                     photos = photos,
                     sectionUiState = sectionUiState,
-                    followViewModel = followViewModel,
+                    isUserFollowed = isUserFollowed,
+                    onToggleFollow = onToggleFollow,
                     onShowUserInfo = onShowUserInfo,
                     onItemClicked = onItemClicked,
                     onViewPhotos = onViewPhotos
@@ -164,7 +157,8 @@ fun BookmarkedPhotosSection(
 private fun LazyListScope.renderLoadState(
     photos: LazyPagingItems<Picture>,
     sectionUiState: BookmarkSectionUiState,
-    followViewModel: FollowViewModel,
+    isUserFollowed: (User) -> Boolean,
+    onToggleFollow: (User) -> Unit,
     onShowUserInfo: (User) -> Unit,
     onItemClicked: (item: Picture, index: Int) -> Unit,
     onViewPhotos: (name: String, firstName: String, lastName: String, username: String) -> Unit
@@ -185,7 +179,8 @@ private fun LazyListScope.renderLoadState(
                         pictureItemUiState = rememberPictureItemUiState(
                             picture = rememberSaveable { mutableStateOf(photo) }
                         ),
-                        followViewModel = followViewModel,
+                        isFollowed = isUserFollowed(photo.user),
+                        onFollowClick = onToggleFollow,
                         onShowUserInfo = onShowUserInfo,
                         onItemClicked = onItemClicked,
                         onViewPhotos = onViewPhotos

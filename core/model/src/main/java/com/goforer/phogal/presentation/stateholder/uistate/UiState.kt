@@ -32,13 +32,10 @@ sealed interface UiState<out T> {
     data class Success<T>(val data: T) : UiState<T>
 
     /**
-     * A request failed. [code] is the HTTP status code when known (0 when the failure
-     * happened before a response — e.g. an [java.io.IOException]).
+     * A request failed. [error] is a structured [ErrorEntity] identifying the source
+     * and details of the failure.
      */
-    data class Error(
-        val code: Int,
-        val message: String
-    ) : UiState<Nothing>
+    data class Error(val error: ErrorEntity) : UiState<Nothing>
 }
 
 object UIConstants {

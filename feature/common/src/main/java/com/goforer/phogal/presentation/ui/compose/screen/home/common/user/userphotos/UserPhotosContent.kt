@@ -19,6 +19,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.paging.compose.LazyPagingItems
 import com.goforer.phogal.core.ui.R
+import com.goforer.phogal.presentation.stateholder.uistate.PagingResult
 import com.goforer.phogal.data.model.remote.response.gallery.common.photo.Photo
 import com.goforer.phogal.data.model.remote.response.gallery.common.user.User
 import com.goforer.phogal.presentation.stateholder.uistate.home.common.user.photos.UserPhotosContentUiState
@@ -34,9 +35,11 @@ fun UserPhotosContent(
     paddingValues: PaddingValues = PaddingValues(4.dp),
     contentUiState: UserPhotosContentUiState,
     photos: LazyPagingItems<Photo>,
+    isUserFollowed: (User) -> Boolean,
+    onToggleFollow: (User) -> Unit,
     onShowUserInfo: (User) -> Unit,
     onItemClicked: (String) -> Unit,
-    onLoadResult: (isSuccessful: Boolean, message: String) -> Unit
+    onLoadResult: (PagingResult) -> Unit
 ) {
     if (contentUiState.name.isNotBlank()) {
         UserPhotosSection(
@@ -44,6 +47,9 @@ fun UserPhotosContent(
             paddingValues = paddingValues,
             photos = photos,
             sectionUiState = rememberUserPhotosSectionUiState(),
+            isPhotoBookmarked = { false },
+            isUserFollowed = isUserFollowed,
+            onToggleFollow = onToggleFollow,
             onShowUserInfo = onShowUserInfo,
             onItemClicked = { photo, _ -> onItemClicked(photo.id) },
             onViewPhotos = { _, _, _, _ -> },

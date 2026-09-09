@@ -53,5 +53,6 @@ dependencies {
     implementation(libs.androidx.paging.runtime.ktx)
     implementation(libs.androidx.paging.compose)
     implementation(libs.timber)
+    implementation(project(":core:model"))
     coreLibraryDesugaring(libs.desugar.jdk.libs)
 }

@@ -13,11 +13,8 @@ import com.goforer.phogal.data.datasource.network.NetworkResult
 fun <T> NetworkResult<T>.toUiState(): UiState<T?> = when (this) {
     is NetworkResult.Success -> UiState.Success(data)
     is NetworkResult.Empty      -> UiState.Success(null)
-    is NetworkResult.Error   -> UiState.Error(code = code, message = message)
-    is NetworkResult.Exception -> UiState.Error(
-        code = 0,
-        message = throwable.message ?: "Network failure"
-    )
+    is NetworkResult.Error   -> UiState.Error(ErrorEntity.Network(code, message))
+    is NetworkResult.Exception -> UiState.Error(throwable.toErrorEntity())
 }
 
 /**
@@ -26,10 +23,7 @@ fun <T> NetworkResult<T>.toUiState(): UiState<T?> = when (this) {
  */
 fun <T : Any> NetworkResult<T>.toUiStateStrict(): UiState<T> = when (this) {
     is NetworkResult.Success -> UiState.Success(data)
-    is NetworkResult.Empty      -> UiState.Error(code = 204, message = "Empty response body")
-    is NetworkResult.Error   -> UiState.Error(code = code, message = message)
-    is NetworkResult.Exception -> UiState.Error(
-        code = 0,
-        message = throwable.message ?: "Network failure"
-    )
+    is NetworkResult.Empty      -> UiState.Error(ErrorEntity.Network(204, "Empty response body"))
+    is NetworkResult.Error   -> UiState.Error(ErrorEntity.Network(code, message))
+    is NetworkResult.Exception -> UiState.Error(throwable.toErrorEntity())
 }

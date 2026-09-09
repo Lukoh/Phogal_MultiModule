@@ -50,9 +50,11 @@ import com.goforer.designsystem.component.CustomCenterAlignedTopAppBar
 import com.goforer.designsystem.component.ScaffoldContent
 import com.goforer.designsystem.component.dialog.ErrorDialog
 import com.goforer.phogal.core.ui.R
+import com.goforer.base.utils.download.PhotoAlreadyExistsException
 import com.goforer.phogal.data.model.remote.response.gallery.photo.photoinfo.Picture
 import com.goforer.phogal.data.model.remote.response.gallery.common.user.User
 import com.goforer.phogal.presentation.stateholder.business.home.common.photo.info.PictureViewModel
+import com.goforer.phogal.presentation.stateholder.uistate.ErrorEntity
 import com.goforer.phogal.presentation.stateholder.uistate.UiState
 import com.goforer.phogal.presentation.stateholder.uistate.home.common.photo.PhotoContentUiState
 import com.goforer.phogal.presentation.ui.compose.screen.home.common.user.UserInfoBottomSheet
@@ -64,6 +66,8 @@ import kotlinx.coroutines.launch
 fun PictureViewerScreen(
     modifier: Modifier = Modifier,
     contentUiState: PhotoContentUiState,
+    isUserFollowed: (User) -> Boolean,
+    onToggleFollow: (User) -> Unit,
     onViewPhotos: (name: String, firstName: String, lastName: String, username: String) -> Unit,
     onBackPressed: () -> Unit,
     onOpenWebView: (firstName: String, url: String) -> Unit,
@@ -221,16 +225,60 @@ fun PictureViewerScreen(
             var selectedUserForInfo by rememberSaveable { mutableStateOf<User?>(null) }
 
             ScaffoldContent(0.dp) {
+                val isFollowed = currentPicture?.let { isUserFollowed(it.user) } ?: false
+
                 PictureViewerContent(
                     modifier = modifier,
                     contentPadding = paddingValues,
-                    contentUiState = contentUiState,
+                    pictureState = contentUiState.pictureState,
+                    trackDownloadState = contentUiState.trackDownloadState,
+                    showPopup = contentUiState.showPopup,
+                    dialogState = contentUiState.dialogState,
+                    visibleViewButton = contentUiState.visibleViewButton,
+                    isFollowed = isFollowed,
+                    onFollowClick = onToggleFollow,
                     onShowUserInfo = { selectedUserForInfo = it },
                     onViewPhotos = onViewPhotos,
                     onShownPhoto = onShownPhoto,
-                ) { isSuccessful: Boolean ->
-                    if (!isSuccessful) contentUiState.setVisibleActions(visibleActions = false)
-                }
+                    onSuccess = { isSuccessful ->
+                        if (!isSuccessful) contentUiState.setVisibleActions(visibleActions = false)
+                    },
+                    onDownloadTriggered = { url ->
+                        contentUiState.baseUiState.scope.launch {
+                            contentUiState.photoDownloadViewModel.getDownloadPhotoUrl(url)
+                            contentUiState.setShowPopup(true)
+                        }
+                    },
+                    onDownloadPhoto = { url ->
+                        contentUiState.baseUiState.scope.launch {
+                            contentUiState.photoDownloadViewModel.downloadPhoto(url, contentUiState.id)
+                                .onSuccess {
+                                    contentUiState.setDialogState(DownloadDialogState.Success)
+                                    contentUiState.setShowPopup(false)
+                                }
+                                .onFailure { error ->
+                                    contentUiState.setDialogState(
+                                        if (error is PhotoAlreadyExistsException) {
+                                            DownloadDialogState.Duplicate
+                                        } else {
+                                            DownloadDialogState.Error(
+                                                error.message ?: contentUiState.baseUiState.context.getString(R.string.error_unknown)
+                                            )
+                                        }
+                                    )
+                                    contentUiState.setShowPopup(false)
+                                }
+                        }
+                    },
+                    onRetry = {
+                        contentUiState.pictureViewModel.loadPicture(contentUiState.id)
+                    },
+                    onDismissPopup = { contentUiState.setShowPopup(false) },
+                    onDismissDialog = {
+                        contentUiState.setDialogState(DownloadDialogState.Idle)
+                        contentUiState.setShowPopup(false)
+                    }
+                )
             }
 
             selectedUserForInfo?.let { user ->
@@ -284,13 +332,15 @@ private fun LikeActionHandle(pictureViewModel: PictureViewModel) {
         exit = scaleOut(transformOrigin = TransformOrigin(0f, 0f)) +
                 fadeOut() + shrinkOut(shrinkTowards = Alignment.TopStart),
     ) {
+        val error = errorState.error
+
         ErrorDialog(
-            title = if (errorState.code !in 200..299) {
+            title = if (error is ErrorEntity.Network) {
                 stringResource(id = R.string.error_dialog_network_title)
             } else {
                 stringResource(id = R.string.error_dialog_title)
             },
-            text = errorState.message
+            text = error.message
         ) {
             showErrorDialog.value = false
             pictureViewModel.consumeLikeAction()

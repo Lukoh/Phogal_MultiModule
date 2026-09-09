@@ -42,6 +42,7 @@ import com.goforer.designsystem.component.ScaffoldContent
 import com.goforer.phogal.core.ui.R
 import com.goforer.phogal.data.model.remote.response.gallery.photo.photoinfo.Picture
 import com.goforer.phogal.data.model.remote.response.gallery.common.user.User
+import com.goforer.phogal.presentation.stateholder.uistate.PagingResult
 import com.goforer.phogal.presentation.stateholder.uistate.home.setting.bookmark.BookmarkContentUiState
 import com.goforer.phogal.presentation.ui.compose.screen.home.common.user.UserInfoBottomSheet
 import com.goforer.designsystem.theme.ColorBgSecondary
@@ -63,6 +64,8 @@ fun BookmarkedPhotosScreen(
     onStop: () -> Unit = {
         //To Do:: Implement the code what you want to do....
     },
+    isUserFollowed: (User) -> Boolean,
+    onToggleFollow: (User) -> Unit
 ) {
     val currentOnStart by rememberUpdatedState(onStart)
     val currentOnStop by rememberUpdatedState(onStop)
@@ -147,14 +150,24 @@ fun BookmarkedPhotosScreen(
                         paddingValues = paddingValues,
                         bookmarkedPictures = contentUiState.bookmarkedPictures,
                         enabledLoadPhotos = contentUiState.enabledLoadPhotos,
+                        isUserFollowed = isUserFollowed,
+                        onToggleFollow = onToggleFollow,
                         onShowUserInfo = { selectedUserForInfo = it },
                         onItemClicked = onItemClicked,
-                        onLoadResult = { isSuccessful, message ->
-                            contentUiState.setEnabledLoadPhotos(isSuccessful)
-                            if (!isSuccessful) {
-                                contentUiState.baseUiState.scope.launch {
-                                    snackbarHostState.showSnackbar(message)
+                        onLoadResult = { result ->
+                            when (result) {
+                                is PagingResult.Success -> {
+                                    contentUiState.setEnabledLoadPhotos(true)
                                 }
+
+                                is PagingResult.Error -> {
+                                    contentUiState.setEnabledLoadPhotos(false)
+                                    contentUiState.baseUiState.scope.launch {
+                                        snackbarHostState.showSnackbar(result.error.message)
+                                    }
+                                }
+
+                                else -> {}
                             }
                         },
                         onViewPhotos = onViewPhotos

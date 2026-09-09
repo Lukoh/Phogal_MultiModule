@@ -14,6 +14,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.material3.adaptive.navigation3.ListDetailSceneStrategy
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
@@ -21,11 +22,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation3.runtime.EntryProviderScope
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.scene.DialogSceneStrategy
 import com.goforer.base.customtab.openCustomTab
 import com.goforer.phogal.core.ui.R
+import com.goforer.phogal.data.model.remote.response.gallery.common.user.User
 import com.goforer.phogal.presentation.stateholder.business.home.common.photo.info.PictureViewModel
 import com.goforer.phogal.presentation.stateholder.business.home.common.user.UserPhotosViewModel
 import com.goforer.phogal.presentation.stateholder.business.home.download.PhotoDownloadViewModel
@@ -75,10 +78,18 @@ private fun EntryProviderScope<NavKey>.galleryTabEntries(navState: NavigationSta
         )
     ) {
         val galleryViewModel: GalleryViewModel = hiltViewModel()
+        val followViewModel: FollowViewModel = hiltViewModel()
+        val followingUsers by followViewModel.users.collectAsStateWithLifecycle()
         val contentUiState = rememberSearchPhotosContentUiState(galleryViewModel)
 
         SearchPhotosScreen(
             contentUiState = contentUiState,
+            isUserFollowed = { user ->
+                followingUsers.any { it.id == user.id }
+            },
+            onToggleFollow = { user ->
+                followViewModel.setUserFollow(user)
+            },
             onItemClicked = { id ->
                 navState.push(Routes.PictureRoute(id = id, showViewPhotosButton = true))
             },
@@ -97,6 +108,9 @@ private fun EntryProviderScope<NavKey>.galleryTabEntries(navState: NavigationSta
         val pictureViewModel: PictureViewModel = hiltViewModel()
         val bookmarkViewModel: BookmarkViewModel = hiltViewModel()
         val photoDownloadViewModel: PhotoDownloadViewModel = hiltViewModel()
+        val followViewModel: FollowViewModel = hiltViewModel()
+        val followingUsers by followViewModel.users.collectAsStateWithLifecycle()
+
         val contentUiState = rememberPhotoContentUiState(
             pictureViewModel = pictureViewModel,
             bookmarkViewModel = bookmarkViewModel,
@@ -109,6 +123,12 @@ private fun EntryProviderScope<NavKey>.galleryTabEntries(navState: NavigationSta
 
         PictureViewerScreen(
             contentUiState = contentUiState,
+            isUserFollowed = { user ->
+                followingUsers.any { it.id == user.id }
+            },
+            onToggleFollow = { user ->
+                followViewModel.setUserFollow(user)
+            },
             onViewPhotos = { name, first, last, user ->
                 navState.push(Routes.UserPhotosRoute(name, first, last, user))
             },
@@ -121,6 +141,8 @@ private fun EntryProviderScope<NavKey>.galleryTabEntries(navState: NavigationSta
 
     entry<Routes.UserPhotosRoute> { key ->
         val userPhotosViewModel: UserPhotosViewModel = hiltViewModel()
+        val followViewModel: FollowViewModel = hiltViewModel()
+        val followingUsers by followViewModel.users.collectAsStateWithLifecycle()
         val contentUiState = rememberUserPhotosContentUiState(
             baseUiState = rememberBaseUiState(),
             userPhotosViewModel = userPhotosViewModel,
@@ -130,6 +152,12 @@ private fun EntryProviderScope<NavKey>.galleryTabEntries(navState: NavigationSta
 
         UserPhotosScreen(
             contentUiState = contentUiState,
+            isUserFollowed = { user ->
+                followingUsers.any { it.id == user.id }
+            },
+            onToggleFollow = { user ->
+                followViewModel.setUserFollow(user)
+            },
             onItemClicked = { id ->
                 navState.push(Routes.PictureRoute(id = id, showViewPhotosButton = false))
             },
@@ -165,10 +193,18 @@ private fun EntryProviderScope<NavKey>.popularTabEntries(navState: NavigationSta
         )
     ) {
         val popularPhotosViewModel: PopularPhotosViewModel = hiltViewModel()
+        val followViewModel: FollowViewModel = hiltViewModel()
+        val followingUsers by followViewModel.users.collectAsStateWithLifecycle()
         val contentUiState = rememberPopularPhotosContentUiState(popularPhotosViewModel)
 
         PopularPhotosScreen(
             contentUiState = contentUiState,
+            isUserFollowed = { user ->
+                followingUsers.any { it.id == user.id }
+            },
+            onToggleFollow = { user ->
+                followViewModel.setUserFollow(user)
+            },
             onItemClicked = { id, _ ->
                 navState.push(Routes.PictureRoute(id = id, showViewPhotosButton = true))
             },
@@ -224,6 +260,8 @@ private fun EntryProviderScope<NavKey>.settingTabEntries(navState: NavigationSta
         )
     ) {
         val bookmarkViewModel: BookmarkViewModel = hiltViewModel()
+        val followViewModel: FollowViewModel = hiltViewModel()
+        val followingUsers by followViewModel.users.collectAsStateWithLifecycle()
         val contentUiState = rememberBookmarkContentUiState(
             bookmarkViewModel = bookmarkViewModel,
             enabledLoadPhotos = rememberSaveable { mutableStateOf(true) }
@@ -235,6 +273,12 @@ private fun EntryProviderScope<NavKey>.settingTabEntries(navState: NavigationSta
                 navState.push(Routes.PictureRoute(id = picture.id, showViewPhotosButton = false))
             },
             onBackPressed = { navState.pop() },
+            isUserFollowed = { user: User ->
+                followingUsers.any { it.id == user.id }
+            },
+            onToggleFollow = { user: User ->
+                followViewModel.setUserFollow(user)
+            },
             onViewPhotos = { name, first, last, user ->
                 navState.push(Routes.UserPhotosRoute(name, first, last, user))
             },

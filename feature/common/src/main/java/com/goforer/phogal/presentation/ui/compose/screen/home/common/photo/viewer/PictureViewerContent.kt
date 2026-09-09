@@ -1,5 +1,6 @@
 package com.goforer.phogal.presentation.ui.compose.screen.home.common.photo.viewer
 
+import android.content.res.Configuration
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateFloatAsState
@@ -75,6 +76,7 @@ import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImagePainter
@@ -83,15 +85,16 @@ import com.goforer.designsystem.component.DownloadIndicator
 import com.goforer.designsystem.component.dialog.AlertDialog
 import com.goforer.designsystem.component.dialog.AutoDismissDialog
 import com.goforer.designsystem.component.loadImagePainter
-import com.goforer.base.utils.download.PhotoAlreadyExistsException
 import com.goforer.designsystem.component.ErrorStatePlaceholder
 import com.goforer.phogal.core.ui.R
 import com.goforer.phogal.data.model.remote.response.gallery.photo.download.TrackDownload
 import com.goforer.phogal.data.model.remote.response.gallery.photo.photoinfo.Exif
 import com.goforer.phogal.data.model.remote.response.gallery.photo.photoinfo.Picture
 import com.goforer.phogal.data.model.remote.response.gallery.common.user.User
+import com.goforer.phogal.data.model.remote.response.gallery.common.user.UserLinks
+import com.goforer.phogal.data.model.remote.response.gallery.common.Links
+import com.goforer.phogal.presentation.stateholder.uistate.ErrorEntity
 import com.goforer.phogal.presentation.stateholder.uistate.UiState
-import com.goforer.phogal.presentation.stateholder.uistate.home.common.photo.PhotoContentUiState
 import com.goforer.phogal.presentation.stateholder.uistate.home.common.user.rememberUserContainerUiState
 import com.goforer.phogal.presentation.ui.compose.screen.home.common.user.UserContainer
 import com.goforer.designsystem.theme.Blue75
@@ -101,8 +104,11 @@ import com.goforer.designsystem.theme.ColorSystemGray5
 import com.goforer.designsystem.component.snsShimmer
 import com.goforer.phogal.presentation.ui.compose.screen.home.common.photo.LoadingPicture
 import com.goforer.designsystem.theme.DarkGreen60
+import com.goforer.designsystem.theme.PhogalTheme
+import com.goforer.phogal.data.model.remote.response.gallery.common.ProfileImage
+import com.goforer.phogal.data.model.remote.response.gallery.common.Social
+import com.goforer.phogal.data.model.remote.response.gallery.common.Urls
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import kotlin.time.Duration.Companion.milliseconds
 
 @Immutable
@@ -117,11 +123,22 @@ sealed interface DownloadDialogState {
 fun PictureViewerContent(
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues,
-    contentUiState: PhotoContentUiState,
+    pictureState: UiState<Picture>,
+    trackDownloadState: UiState<TrackDownload>,
+    showPopup: Boolean,
+    dialogState: DownloadDialogState,
+    visibleViewButton: Boolean,
+    isFollowed: Boolean,
+    onFollowClick: (User) -> Unit,
     onShowUserInfo: (User) -> Unit,
     onViewPhotos: (name: String, firstName: String, lastName: String, username: String) -> Unit,
-    onShownPhoto: (pictureUiState: Picture) -> Unit,
+    onShownPhoto: (picture: Picture) -> Unit,
     onSuccess: (isSuccessful: Boolean) -> Unit,
+    onDownloadTriggered: (url: String) -> Unit,
+    onDownloadPhoto: (url: String) -> Unit,
+    onRetry: () -> Unit,
+    onDismissPopup: () -> Unit,
+    onDismissDialog: () -> Unit
 ) {
     Box(
         modifier = modifier.fillMaxSize()
@@ -129,66 +146,35 @@ fun PictureViewerContent(
         PictureBody(
             modifier = Modifier.fillMaxSize(),
             contentPadding = contentPadding,
-            pictureState = contentUiState.pictureState,
-            visibleViewButton = contentUiState.visibleViewButton,
+            pictureState = pictureState,
+            visibleViewButton = visibleViewButton,
+            isFollowed = isFollowed,
+            onFollowClick = onFollowClick,
             onShowUserInfo = onShowUserInfo,
             onViewPhotos = onViewPhotos,
             onShownPhoto = onShownPhoto,
             onSuccess = onSuccess,
-            onClick = { url ->
-                contentUiState.baseUiState.scope.launch {
-                    contentUiState.photoDownloadViewModel.getDownloadPhotoUrl(url)
-                    contentUiState.setShowPopup(true)
-                }
-            },
-            onRetry = {
-                contentUiState.pictureViewModel.loadPicture(contentUiState.id)
-            }
+            onClick = onDownloadTriggered,
+            onRetry = onRetry
         )
 
-        if (contentUiState.showPopup) {
+        if (showPopup) {
             DownloadIndicator(modifier, stringResource(R.string.picture_download_indicator))
         }
 
         DownloadPhoto(
-            trackDownloadState = contentUiState.trackDownloadState,
-            showPopup = contentUiState.showPopup,
-            onRetry = { contentUiState.pictureViewModel.loadPicture(contentUiState.id) },
-            onDismissPopup = { contentUiState.setShowPopup(false)},
-            onDownload = { url ->
-                contentUiState.baseUiState.scope.launch {
-                    contentUiState.photoDownloadViewModel.downloadPhoto(url, contentUiState.id)
-                        .onSuccess {
-                            contentUiState.setDialogState(DownloadDialogState.Success)
-                            contentUiState.setShowPopup(false)
-                        }
-                        .onFailure { error ->
-                            contentUiState.setDialogState(
-                                if (error is PhotoAlreadyExistsException) {
-                                    DownloadDialogState.Duplicate
-                                } else {
-                                    DownloadDialogState.Error(
-                                        error.message ?: contentUiState.baseUiState.context.getString(R.string.error_unknown)
-                                    )
-                                }
-                            )
-                            contentUiState.setShowPopup(false)
-                        }
-                }
-            }
+            trackDownloadState = trackDownloadState,
+            showPopup = showPopup,
+            onRetry = onRetry,
+            onDismissPopup = onDismissPopup,
+            onDownload = onDownloadPhoto
         )
     }
 
     ShowDialog(
-        dialogState = contentUiState.dialogState,
-        onDismiss = {
-            contentUiState.setDialogState(DownloadDialogState.Idle)
-            contentUiState.setShowPopup(false)
-        },
-        onDismissRequest = {
-            contentUiState.setDialogState(DownloadDialogState.Idle)
-            contentUiState.setShowPopup(false)
-        },
+        dialogState = dialogState,
+        onDismiss = onDismissDialog,
+        onDismissRequest = onDismissDialog
     )
 }
 
@@ -198,6 +184,8 @@ fun PictureBody(
     contentPadding: PaddingValues,
     pictureState: UiState<Picture>,
     visibleViewButton: Boolean,
+    isFollowed: Boolean,
+    onFollowClick: (User) -> Unit,
     onShowUserInfo: (User) -> Unit,
     onViewPhotos: (name: String, firstName: String, lastName: String, username: String) -> Unit,
     onShownPhoto: (pictureUiState: Picture) -> Unit,
@@ -216,6 +204,8 @@ fun PictureBody(
                 contentPadding = contentPadding,
                 picture = picture,
                 visibleViewButton = visibleViewButton,
+                isFollowed = isFollowed,
+                onFollowClick = onFollowClick,
                 onShowUserInfo = onShowUserInfo,
                 onViewPhotos = onViewPhotos,
                 onShownPhoto = onShownPhoto,
@@ -248,13 +238,15 @@ fun PictureBody(
                     exit = scaleOut(transformOrigin = TransformOrigin(0f, 0f)) +
                             fadeOut() + shrinkOut(shrinkTowards = Alignment.TopStart)
                 ) {
+                    val error = pictureState.error
+
                     ErrorStatePlaceholder(
                         modifier = Modifier,
-                        title = if (pictureState.code !in 200..299)
+                        title = if (error is ErrorEntity.Network)
                             stringResource(id = R.string.error_dialog_network_title)
                         else
                             stringResource(id = R.string.error_dialog_title),
-                        message = "${stringResource(id = R.string.error_get_picture)}${"\n\n"}${pictureState.message}",
+                        message = "${stringResource(id = R.string.error_get_picture)}${"\n\n"}${error.message}",
                         onRetry = onRetry
                     )
                 }
@@ -300,14 +292,16 @@ fun DownloadPhoto(
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                     elevation = CardDefaults.cardElevation(defaultElevation = 16.dp)
                 ) {
+                    val error = trackDownloadState.error
+
                     ErrorStatePlaceholder(
                         modifier = Modifier.padding(16.dp),
                         isFullMaxSize = false,
-                        title = if (trackDownloadState.code !in 200..299)
+                        title = if (error is ErrorEntity.Network)
                             stringResource(id = R.string.error_dialog_network_title)
                         else
                             stringResource(id = R.string.error_dialog_title),
-                        message = "${stringResource(id = R.string.error_get_picture)}\n\n${trackDownloadState.message}",
+                        message = "${stringResource(id = R.string.error_get_picture)}\n\n${error.message}",
                         onRetry = onRetry
                     )
                 }
@@ -322,6 +316,8 @@ fun PictureBodyContent(
     contentPadding: PaddingValues,
     picture: Picture,
     visibleViewButton: Boolean,
+    isFollowed: Boolean,
+    onFollowClick: (User) -> Unit,
     onShowUserInfo: (User) -> Unit,
     onViewPhotos: (name: String, firstName: String, lastName: String, username: String) -> Unit,
     onShownPhoto: (picture: Picture) -> Unit,
@@ -344,6 +340,8 @@ fun PictureBodyContent(
                 modifier = Modifier,
                 picture = picture,
                 visibleViewPhotosButton = visibleViewButton,
+                isFollowed = isFollowed,
+                onFollowClick = onFollowClick,
                 onShowUserInfo = onShowUserInfo,
                 onViewPhotos = onViewPhotos,
                 onShownPhoto = onShownPhoto,
@@ -394,6 +392,8 @@ fun BodyContent(
     modifier: Modifier = Modifier,
     picture: Picture,
     visibleViewPhotosButton: Boolean,
+    isFollowed: Boolean,
+    onFollowClick: (User) -> Unit,
     onShowUserInfo: (User) -> Unit,
     onViewPhotos: (name: String, firstName: String, lastName: String, username: String) -> Unit,
     onShownPhoto: (picture: Picture) -> Unit,
@@ -443,7 +443,8 @@ fun BodyContent(
                         visibleViewButton = rememberSaveable { mutableStateOf(visibleViewPhotosButton) },
                         fromItem = rememberSaveable { mutableStateOf(false) }
                     ),
-                    followViewModel = null,
+                    isFollowed = isFollowed,
+                    onFollowClick = onFollowClick,
                     onShowUserInfo = onShowUserInfo,
                     onViewPhotos = onViewPhotos
                 )
@@ -665,5 +666,78 @@ fun ExifCard(exif: Exif) {
                 )
             }
         }
+    }
+}
+
+@Preview(name = "Light Mode")
+@Preview(
+    uiMode = Configuration.UI_MODE_NIGHT_YES,
+    showBackground = true,
+    name = "Dark Mode",
+    showSystemUi = true
+)
+@Composable
+fun PictureViewerContentPreview() {
+    PhogalTheme {
+        PictureViewerContent(
+            contentPadding = PaddingValues(0.dp),
+            pictureState = UiState.Success(
+                Picture(
+                    id = "1",
+                    createdAt = "2024-03-20",
+                    updatedAt = "2024-03-20",
+                    width = 1920,
+                    height = 1080,
+                    color = "#000000",
+                    blurHash = "",
+                    downloads = 500,
+                    publicDomain = true,
+                    description = "Preview Description",
+                    exif = Exif(
+                        make = "Canon",
+                        model = "EOS R5",
+                        name = "Canon EOS R5",
+                        exposureTime = "1/100",
+                        aperture = "2.8",
+                        focalLength = "50",
+                        iso = 100
+                    ),
+                    location = null,
+                    tags = null,
+                    currentUserCollections = null,
+                    urls = Urls(
+                        raw = "",
+                        full = "",
+                        regular = "",
+                        small = "",
+                        thumb = ""
+                    ),
+                    links = Links(
+                        self = "",
+                        html = "",
+                        download = "",
+                        downloadLocation = ""
+                    ),
+                    user = User.empty(),
+                    likedByUser = false,
+                    bookmarked = false
+                )
+            ),
+            trackDownloadState = UiState.Idle,
+            showPopup = false,
+            dialogState = DownloadDialogState.Idle,
+            visibleViewButton = true,
+            isFollowed = false,
+            onFollowClick = {},
+            onShowUserInfo = {},
+            onViewPhotos = { _, _, _, _ -> },
+            onShownPhoto = {},
+            onSuccess = {},
+            onDownloadTriggered = {},
+            onDownloadPhoto = {},
+            onRetry = {},
+            onDismissPopup = {},
+            onDismissDialog = {}
+        )
     }
 }
