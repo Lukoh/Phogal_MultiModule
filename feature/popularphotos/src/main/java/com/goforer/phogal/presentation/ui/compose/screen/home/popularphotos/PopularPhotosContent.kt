@@ -13,9 +13,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.paging.compose.LazyPagingItems
-import com.goforer.phogal.presentation.stateholder.uistate.PagingResult
 import com.goforer.phogal.data.model.remote.response.gallery.common.photo.Photo
-import com.goforer.phogal.data.model.remote.response.gallery.common.user.User
+import com.goforer.phogal.presentation.stateholder.uistate.home.popularphotos.PopularPhotosActions
 import com.goforer.designsystem.theme.PhogalTheme
 
 @OptIn(ExperimentalComposeUiApi::class)
@@ -24,26 +23,14 @@ fun PopularPhotosContent(
     modifier: Modifier = Modifier,
     paddingValues: PaddingValues,
     photos: LazyPagingItems<Photo>,
-    isUserFollowed: (User) -> Boolean,
-    onToggleFollow: (User) -> Unit,
-    onShowUserInfo: (User) -> Unit,
-    onItemClicked: (id: String, index: Int) -> Unit,
-    onViewPhotos: (name: String, firstName: String, lastName: String, username: String) -> Unit,
-    onLoadResult: (PagingResult) -> Unit,
-    onLoadedPhotos: (isLoadedPhotos: Boolean) -> Unit
+    actions: PopularPhotosActions
 ) {
     PopularPhotosSection(
         modifier = modifier,
         paddingValues = paddingValues,
         photos = photos,
-        isPhotoBookmarked = { false },
-        isUserFollowed = isUserFollowed,
-        onToggleFollow = onToggleFollow,
-        onShowUserInfo = onShowUserInfo,
-        onItemClicked = { photo: Photo, index: Int -> onItemClicked(photo.id, index) },
-        onViewPhotos = onViewPhotos,
-        onLoadResult = onLoadResult,
-        onLoadedPhotos = onLoadedPhotos
+        actions = actions,
+        isPhotoBookmarked = { false }
     )
 }
 

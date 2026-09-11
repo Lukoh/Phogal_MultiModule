@@ -7,18 +7,12 @@ import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarData
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
@@ -34,11 +28,12 @@ import com.goforer.base.utils.connect.ConnectionUtils
 import com.goforer.designsystem.component.CardSnackBar
 import com.goforer.designsystem.component.CustomCenterAlignedTopAppBar
 import com.goforer.designsystem.component.ScaffoldContent
+import com.goforer.designsystem.component.dialog.ErrorDialog
 import com.goforer.designsystem.theme.ColorBgSecondary
 import com.goforer.phogal.core.ui.R
-import com.goforer.phogal.presentation.stateholder.uistate.PagingResult
-import com.goforer.phogal.data.model.remote.response.gallery.common.user.User
 import com.goforer.phogal.presentation.stateholder.uistate.home.popularphotos.PopularPhotosContentUiState
+import com.goforer.phogal.presentation.stateholder.uistate.home.popularphotos.PopularPhotosScreenActions
+import com.goforer.phogal.presentation.stateholder.uistate.home.popularphotos.rememberPopularPhotosInternalActions
 import com.goforer.phogal.presentation.ui.compose.screen.home.OfflineScreen
 import com.goforer.phogal.presentation.ui.compose.screen.home.common.user.UserInfoBottomSheet
 import kotlinx.coroutines.launch
@@ -48,66 +43,46 @@ import kotlinx.coroutines.launch
 fun PopularPhotosScreen(
     modifier: Modifier = Modifier,
     contentUiState: PopularPhotosContentUiState,
-    isUserFollowed: (User) -> Boolean,
-    onToggleFollow: (User) -> Unit,
-    onItemClicked: (id: String, index: Int) -> Unit,
-    onViewPhotos: (name: String, firstName: String, lastName: String, username: String) -> Unit,
-    onOpenWebView: (firstName: String, url: String) -> Unit,
-    onStart: () -> Unit = {
-        //To Do:: Implement the code what you want to do....
-    },
-    onStop: () -> Unit = {
-        //To Do:: Implement the code what you want to do....
-    },
+    actions: PopularPhotosScreenActions
 ) {
     if (!ConnectionUtils.isNetworkAvailable(contentUiState.baseUiState.context)) {
         OfflineScreen(modifier = Modifier)
     } else {
-        val currentOnStart by rememberUpdatedState(onStart)
-        val currentOnStop by rememberUpdatedState(onStop)
         val snackbarHostState = remember { SnackbarHostState() }
-        val backHandlingEnabled by remember { mutableStateOf(value = true) }
-        // Stable lambdas. The capture set is the bare minimum needed for the
-        // operation, which keeps Compose from invalidating these on every parent
-        // recomposition.
-        val snackbarHost = remember(snackbarHostState) {
-            @Composable {
-                SnackbarHost(
-                    snackbarHostState,
-                    snackbar = { snackbarData: SnackbarData ->
-                        CardSnackBar(modifier = Modifier, snackbarData)
-                    }
-                )
-            }
-        }
 
-        BackHandler(backHandlingEnabled) {
+        val internalActions = rememberPopularPhotosInternalActions(
+            contentUiState = contentUiState,
+            screenActions = actions
+        )
+
+        BackHandler(enabled = true) {
             (contentUiState.baseUiState.context as Activity).finish()
         }
 
         DisposableEffect(contentUiState.baseUiState.lifecycle) {
-            // Create an observer that triggers our remembered callbacks
-            // for doing anything
             val observer = LifecycleEventObserver { _, event ->
                 if (event == Lifecycle.Event.ON_START) {
-                    currentOnStart()
+                    actions.onStart()
                 } else if (event == Lifecycle.Event.ON_STOP) {
-                    currentOnStop()
+                    actions.onStop()
                 }
             }
-
-            // Add the observer to the lifecycle
             contentUiState.baseUiState.lifecycle.addObserver(observer)
-
-            // When the effect leaves the Composition, remove the observer
             onDispose {
                 contentUiState.baseUiState.lifecycle.removeObserver(observer)
             }
         }
 
+        val layoutDirection = LocalLayoutDirection.current
+
         Scaffold(
             contentColor = ColorBgSecondary,
-            snackbarHost = snackbarHost,
+            snackbarHost = {
+                SnackbarHost(
+                    snackbarHostState,
+                    snackbar = { CardSnackBar(modifier = Modifier, it) }
+                )
+            },
             topBar = {
                 CustomCenterAlignedTopAppBar(
                     title = {
@@ -125,9 +100,6 @@ fun PopularPhotosScreen(
                     actions = {}
                 )
             }, content = { paddingValues ->
-                var selectedUserForInfo by rememberSaveable { mutableStateOf<User?>(null) }
-                val layoutDirection = LocalLayoutDirection.current
-
                 ScaffoldContent(topInterval = paddingValues.calculateTopPadding()) {
                     PopularPhotosContent(
                         modifier = modifier,
@@ -138,48 +110,32 @@ fun PopularPhotosScreen(
                             bottom = paddingValues.calculateBottomPadding()
                         ),
                         photos = contentUiState.photos,
-                        isUserFollowed = isUserFollowed,
-                        onToggleFollow = onToggleFollow,
-                        onShowUserInfo = { selectedUserForInfo = it },
-                        onItemClicked = onItemClicked,
-                        onViewPhotos = onViewPhotos,
-                        onLoadResult = { result ->
-                            val isSuccessful = result is PagingResult.Success
-                            val message = when (result) {
-                                is PagingResult.Success -> result.message
-                                is PagingResult.Error -> result.error.message ?: ""
-                                else -> ""
-                            }
-
-                            contentUiState.setVisibleActions(isSuccessful)
-                            if (result is PagingResult.Error) {
-                                contentUiState.baseUiState.scope.launch {
-                                    snackbarHostState.showSnackbar(message)
-                                }
-                            }
-                        },
-                        onLoadedPhotos = {
-                            contentUiState.setLoadedPhotos(it)
-                        },
+                        actions = internalActions.actions
                     )
                 }
 
-                selectedUserForInfo?.let { user ->
-                    val text = stringResource(id = R.string.user_info_has_no_portfolio)
+                contentUiState.error?.let { error ->
+                    ErrorDialog(
+                        title = stringResource(id = R.string.error_dialog_title),
+                        text = error.message,
+                        onDismiss = { contentUiState.setError(null) }
+                    )
+                }
 
+                contentUiState.selectedUser?.let { user ->
                     UserInfoBottomSheet(
                         user = user,
                         showUserInfoBottomSheet = true,
                         onDismissedRequest = { isPortfolioClicked ->
-                            selectedUserForInfo = null
+                            contentUiState.selectedUser = null
                             if (isPortfolioClicked) {
-                                val portfolioUrl = user.portfolioUrl
-                                if (portfolioUrl.isNullOrEmpty()) {
+                                user.portfolioUrl?.let {
+                                    actions.onOpenWebView(user.firstName, it)
+                                } ?: run {
                                     contentUiState.baseUiState.scope.launch {
+                                        val text = contentUiState.baseUiState.context.getString(R.string.user_info_has_no_portfolio)
                                         snackbarHostState.showSnackbar("${user.firstName} $text")
                                     }
-                                } else {
-                                    onOpenWebView(user.firstName, portfolioUrl)
                                 }
                             }
                         }

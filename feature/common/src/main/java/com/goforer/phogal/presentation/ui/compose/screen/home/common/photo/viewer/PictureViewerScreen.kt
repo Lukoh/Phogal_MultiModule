@@ -16,7 +16,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarData
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -24,10 +23,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -49,16 +46,15 @@ import com.goforer.designsystem.component.CardSnackBar
 import com.goforer.designsystem.component.CustomCenterAlignedTopAppBar
 import com.goforer.designsystem.component.ScaffoldContent
 import com.goforer.designsystem.component.dialog.ErrorDialog
+import com.goforer.designsystem.theme.Red60
 import com.goforer.phogal.core.ui.R
-import com.goforer.base.utils.download.PhotoAlreadyExistsException
-import com.goforer.phogal.data.model.remote.response.gallery.photo.photoinfo.Picture
-import com.goforer.phogal.data.model.remote.response.gallery.common.user.User
 import com.goforer.phogal.presentation.stateholder.business.home.common.photo.info.PictureViewModel
 import com.goforer.phogal.presentation.stateholder.uistate.ErrorEntity
 import com.goforer.phogal.presentation.stateholder.uistate.UiState
 import com.goforer.phogal.presentation.stateholder.uistate.home.common.photo.PhotoContentUiState
+import com.goforer.phogal.presentation.stateholder.uistate.home.common.photo.PictureViewerScreenActions
+import com.goforer.phogal.presentation.stateholder.uistate.home.common.photo.rememberPictureViewerInternalActions
 import com.goforer.phogal.presentation.ui.compose.screen.home.common.user.UserInfoBottomSheet
-import com.goforer.designsystem.theme.Red60
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -66,26 +62,22 @@ import kotlinx.coroutines.launch
 fun PictureViewerScreen(
     modifier: Modifier = Modifier,
     contentUiState: PhotoContentUiState,
-    isUserFollowed: (User) -> Boolean,
-    onToggleFollow: (User) -> Unit,
-    onViewPhotos: (name: String, firstName: String, lastName: String, username: String) -> Unit,
-    onBackPressed: () -> Unit,
-    onOpenWebView: (firstName: String, url: String) -> Unit,
-    onStart: () -> Unit = {},
-    onStop: () -> Unit = {},
+    actions: PictureViewerScreenActions
 ) {
-    val currentOnStart by rememberUpdatedState(onStart)
-    val currentOnStop by rememberUpdatedState(onStop)
     val snackbarHostState = remember { SnackbarHostState() }
-    val backHandlingEnabled by remember { mutableStateOf(value = true) }
 
-    BackHandler(backHandlingEnabled) { onBackPressed() }
+    val internalActions = rememberPictureViewerInternalActions(
+        contentUiState = contentUiState,
+        screenActions = actions,
+        snackbarHostState = snackbarHostState
+    )
 
+    BackHandler(enabled = true) { internalActions.onBackPressed() }
     DisposableEffect(contentUiState.baseUiState.lifecycle) {
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
-                Lifecycle.Event.ON_START -> currentOnStart()
-                Lifecycle.Event.ON_STOP  -> currentOnStop()
+                Lifecycle.Event.ON_START -> actions.onStart()
+                Lifecycle.Event.ON_STOP  -> actions.onStop()
                 else -> Unit
             }
         }
@@ -94,7 +86,6 @@ fun PictureViewerScreen(
     }
 
     // Kick off the load whenever the id changes
-    // legacy `enabledLoadState` one-shot gate).
     LaunchedEffect(contentUiState.id) {
         contentUiState.pictureViewModel.loadPicture(contentUiState.id)
     }
@@ -102,44 +93,19 @@ fun PictureViewerScreen(
     // Top-bar icons read from the authoritative pictureUiState.
     val currentPicture = (contentUiState.pictureState as? UiState.Success)?.data
     val isLikedByUser = currentPicture?.likedByUser == true
-    // Stable lambdas. The capture set is the bare minimum needed for the
-    // operation, which keeps Compose from invalidating these on every parent
-    // recomposition.
-
-
-    // Stable lambdas. The capture set is the bare minimum needed for the
-    // operation, which keeps Compose from invalidating these on every parent
-    // recomposition.
-    val onShownPhoto: (Picture) -> Unit = remember(contentUiState.bookmarkViewModel, contentUiState) {
-        { picture: Picture ->
-            contentUiState.setVisibleActions(true)
-            contentUiState.baseUiState.scope.launch {
-                contentUiState.setEnabledBookmark(contentUiState.bookmarkViewModel.isPhotoBookmarked(picture))
-            }
-        }
-    }
-
-    // Stable lambdas. The capture set is the bare minimum needed for the
-    // operation, which keeps Compose from invalidating these on every parent
-    // recomposition.
-    val snackbarHost = remember(snackbarHostState) {
-        @Composable {
-            SnackbarHost(
-                snackbarHostState,
-                modifier = Modifier.navigationBarsPadding(),
-                snackbar = { snackbarData: SnackbarData ->
-                    CardSnackBar(modifier = Modifier, snackbarData)
-                }
-            )
-        }
-    }
 
     // Observe like/unlike transient result so we can surface an error dialog.
     LikeActionHandle(pictureViewModel = contentUiState.pictureViewModel)
 
     Scaffold(
         contentColor = Color.White,
-        snackbarHost = snackbarHost,
+        snackbarHost = {
+            SnackbarHost(
+                snackbarHostState,
+                modifier = Modifier.navigationBarsPadding(),
+                snackbar = { CardSnackBar(modifier = Modifier, it) }
+            )
+        },
         topBar = {
             CustomCenterAlignedTopAppBar(
                 title = {
@@ -154,7 +120,7 @@ fun PictureViewerScreen(
                     )
                 },
                 navigationIcon = {
-                    IconButton(onClick = onBackPressed) {
+                    IconButton(onClick = internalActions.onBackPressed) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Picture"
@@ -163,20 +129,11 @@ fun PictureViewerScreen(
                 },
                 actions = {
                     if (contentUiState.visibleActions && (currentPicture != null)) {
-                        // Stable lambdas. The capture set is the bare minimum needed for the
-                        // operation, which keeps Compose from invalidating these on every parent
-                        // recomposition.
-                        val onLikedClick = remember(contentUiState.pictureViewModel) {
-                            {
-                                contentUiState.pictureViewModel.toggleLike()
-                            }
-                        }
-
                         IconButton(
                             colors = IconButtonDefaults.iconButtonColors(
                                 contentColor = if (isLikedByUser) Red60 else Color.Black
                             ),
-                            onClick = onLikedClick
+                            onClick = internalActions.onLikedClick
                         ) {
                             Icon(
                                 imageVector = if (isLikedByUser) {
@@ -188,16 +145,6 @@ fun PictureViewerScreen(
                             )
                         }
 
-                        // Stable lambdas. The capture set is the bare minimum needed for the
-                        // operation, which keeps Compose from invalidating these on every parent
-                        // recomposition.
-                        val onEnabledClick = remember(contentUiState.bookmarkViewModel, contentUiState) {
-                            {
-                                contentUiState.bookmarkViewModel.setBookmarkPicture(currentPicture)
-                                contentUiState.setEnabledBookmark(!contentUiState.enabledBookmark)
-                            }
-                        }
-
                         IconButton(
                             colors = IconButtonDefaults.iconButtonColors(
                                 contentColor = if (contentUiState.enabledBookmark) {
@@ -206,7 +153,9 @@ fun PictureViewerScreen(
                                     Color.Black
                                 }
                             ),
-                            onClick = onEnabledClick
+                            onClick = {
+                                internalActions.onBookmarkClick(currentPicture)
+                            }
                         ) {
                             Icon(
                                 imageVector = if (contentUiState.enabledBookmark) {
@@ -222,10 +171,8 @@ fun PictureViewerScreen(
             )
         },
         content = { paddingValues ->
-            var selectedUserForInfo by rememberSaveable { mutableStateOf<User?>(null) }
-
             ScaffoldContent(0.dp) {
-                val isFollowed = currentPicture?.let { isUserFollowed(it.user) } ?: false
+                val isFollowed = currentPicture?.let { actions.isUserFollowed(it.user) } ?: false
 
                 PictureViewerContent(
                     modifier = modifier,
@@ -236,67 +183,24 @@ fun PictureViewerScreen(
                     dialogState = contentUiState.dialogState,
                     visibleViewButton = contentUiState.visibleViewButton,
                     isFollowed = isFollowed,
-                    onFollowClick = onToggleFollow,
-                    onShowUserInfo = { selectedUserForInfo = it },
-                    onViewPhotos = onViewPhotos,
-                    onShownPhoto = onShownPhoto,
-                    onSuccess = { isSuccessful ->
-                        if (!isSuccessful) contentUiState.setVisibleActions(visibleActions = false)
-                    },
-                    onDownloadTriggered = { url ->
-                        contentUiState.baseUiState.scope.launch {
-                            contentUiState.photoDownloadViewModel.getDownloadPhotoUrl(url)
-                            contentUiState.setShowPopup(true)
-                        }
-                    },
-                    onDownloadPhoto = { url ->
-                        contentUiState.baseUiState.scope.launch {
-                            contentUiState.photoDownloadViewModel.downloadPhoto(url, contentUiState.id)
-                                .onSuccess {
-                                    contentUiState.setDialogState(DownloadDialogState.Success)
-                                    contentUiState.setShowPopup(false)
-                                }
-                                .onFailure { error ->
-                                    contentUiState.setDialogState(
-                                        if (error is PhotoAlreadyExistsException) {
-                                            DownloadDialogState.Duplicate
-                                        } else {
-                                            DownloadDialogState.Error(
-                                                error.message ?: contentUiState.baseUiState.context.getString(R.string.error_unknown)
-                                            )
-                                        }
-                                    )
-                                    contentUiState.setShowPopup(false)
-                                }
-                        }
-                    },
-                    onRetry = {
-                        contentUiState.pictureViewModel.loadPicture(contentUiState.id)
-                    },
-                    onDismissPopup = { contentUiState.setShowPopup(false) },
-                    onDismissDialog = {
-                        contentUiState.setDialogState(DownloadDialogState.Idle)
-                        contentUiState.setShowPopup(false)
-                    }
+                    actions = internalActions.viewerActions
                 )
             }
 
-            selectedUserForInfo?.let { user ->
-                val text = stringResource(id = R.string.user_info_has_no_portfolio)
-
+            contentUiState.selectedUser?.let { user ->
                 UserInfoBottomSheet(
                     user = user,
                     showUserInfoBottomSheet = true,
                     onDismissedRequest = { isPortfolioClicked ->
-                        selectedUserForInfo = null
+                        contentUiState.selectedUser = null
                         if (isPortfolioClicked) {
-                            val portfolioUrl = user.portfolioUrl
-                            if (portfolioUrl.isNullOrEmpty()) {
+                            user.portfolioUrl?.let {
+                                actions.onOpenWebView(user.firstName, it)
+                            } ?: run {
                                 contentUiState.baseUiState.scope.launch {
+                                    val text = contentUiState.baseUiState.context.getString(R.string.user_info_has_no_portfolio)
                                     snackbarHostState.showSnackbar("${user.firstName} $text")
                                 }
-                            } else {
-                                onOpenWebView(user.firstName, portfolioUrl)
                             }
                         }
                     }
@@ -308,9 +212,7 @@ fun PictureViewerScreen(
 
 /**
  * Observes the transient [PictureViewModel.likeActionState]
- * and shows an error dialog on failure. Replaces the legacy `LikeResponseHandle` +
- * `UnlikeResponseHandle` pair — one handler is enough because the VM now exposes a
- * single state for both the POST and the DELETE path.
+ * and shows an error dialog on failure.
  */
 @Composable
 private fun LikeActionHandle(pictureViewModel: PictureViewModel) {

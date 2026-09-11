@@ -95,6 +95,8 @@ import com.goforer.phogal.data.model.remote.response.gallery.common.user.UserLin
 import com.goforer.phogal.data.model.remote.response.gallery.common.Links
 import com.goforer.phogal.presentation.stateholder.uistate.ErrorEntity
 import com.goforer.phogal.presentation.stateholder.uistate.UiState
+import com.goforer.phogal.presentation.stateholder.uistate.home.common.photo.PictureViewerActions
+import com.goforer.phogal.presentation.stateholder.uistate.home.common.photo.UserContainerActions
 import com.goforer.phogal.presentation.stateholder.uistate.home.common.user.rememberUserContainerUiState
 import com.goforer.phogal.presentation.ui.compose.screen.home.common.user.UserContainer
 import com.goforer.designsystem.theme.Blue75
@@ -129,16 +131,7 @@ fun PictureViewerContent(
     dialogState: DownloadDialogState,
     visibleViewButton: Boolean,
     isFollowed: Boolean,
-    onFollowClick: (User) -> Unit,
-    onShowUserInfo: (User) -> Unit,
-    onViewPhotos: (name: String, firstName: String, lastName: String, username: String) -> Unit,
-    onShownPhoto: (picture: Picture) -> Unit,
-    onSuccess: (isSuccessful: Boolean) -> Unit,
-    onDownloadTriggered: (url: String) -> Unit,
-    onDownloadPhoto: (url: String) -> Unit,
-    onRetry: () -> Unit,
-    onDismissPopup: () -> Unit,
-    onDismissDialog: () -> Unit
+    actions: PictureViewerActions
 ) {
     Box(
         modifier = modifier.fillMaxSize()
@@ -149,13 +142,7 @@ fun PictureViewerContent(
             pictureState = pictureState,
             visibleViewButton = visibleViewButton,
             isFollowed = isFollowed,
-            onFollowClick = onFollowClick,
-            onShowUserInfo = onShowUserInfo,
-            onViewPhotos = onViewPhotos,
-            onShownPhoto = onShownPhoto,
-            onSuccess = onSuccess,
-            onClick = onDownloadTriggered,
-            onRetry = onRetry
+            actions = actions
         )
 
         if (showPopup) {
@@ -165,16 +152,16 @@ fun PictureViewerContent(
         DownloadPhoto(
             trackDownloadState = trackDownloadState,
             showPopup = showPopup,
-            onRetry = onRetry,
-            onDismissPopup = onDismissPopup,
-            onDownload = onDownloadPhoto
+            onRetry = actions.onRetry,
+            onDismissPopup = actions.onDismissPopup,
+            onDownload = actions.onDownloadPhoto
         )
     }
 
     ShowDialog(
         dialogState = dialogState,
-        onDismiss = onDismissDialog,
-        onDismissRequest = onDismissDialog
+        onDismiss = actions.onDismissDialog,
+        onDismissRequest = actions.onDismissDialog
     )
 }
 
@@ -185,31 +172,21 @@ fun PictureBody(
     pictureState: UiState<Picture>,
     visibleViewButton: Boolean,
     isFollowed: Boolean,
-    onFollowClick: (User) -> Unit,
-    onShowUserInfo: (User) -> Unit,
-    onViewPhotos: (name: String, firstName: String, lastName: String, username: String) -> Unit,
-    onShownPhoto: (pictureUiState: Picture) -> Unit,
-    onSuccess: (isSuccessful: Boolean) -> Unit,
-    onClick: (id: String) -> Unit,
-    onRetry: () -> Unit
+    actions: PictureViewerActions
 ) {
     when (pictureState) {
         is UiState.Success -> {
             val picture = pictureState.data
 
-            onSuccess(true)
-            LaunchedEffect(picture.id) { onShownPhoto(picture) }
+            actions.onSuccess(true)
+            LaunchedEffect(picture.id) { actions.onShownPhoto(picture) }
             PictureBodyContent(
                 modifier = modifier,
                 contentPadding = contentPadding,
                 picture = picture,
                 visibleViewButton = visibleViewButton,
                 isFollowed = isFollowed,
-                onFollowClick = onFollowClick,
-                onShowUserInfo = onShowUserInfo,
-                onViewPhotos = onViewPhotos,
-                onShownPhoto = onShownPhoto,
-                onClick = onClick,
+                actions = actions
             )
         }
         UiState.Loading, UiState.Idle -> {
@@ -229,7 +206,7 @@ fun PictureBody(
             }
         }
         is UiState.Error -> {
-            onSuccess(false)
+            actions.onSuccess(false)
             Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 AnimatedVisibility(
                     visible = true,
@@ -247,7 +224,7 @@ fun PictureBody(
                         else
                             stringResource(id = R.string.error_dialog_title),
                         message = "${stringResource(id = R.string.error_get_picture)}${"\n\n"}${error.message}",
-                        onRetry = onRetry
+                        onRetry = actions.onRetry
                     )
                 }
             }
@@ -317,11 +294,7 @@ fun PictureBodyContent(
     picture: Picture,
     visibleViewButton: Boolean,
     isFollowed: Boolean,
-    onFollowClick: (User) -> Unit,
-    onShowUserInfo: (User) -> Unit,
-    onViewPhotos: (name: String, firstName: String, lastName: String, username: String) -> Unit,
-    onShownPhoto: (picture: Picture) -> Unit,
-    onClick: (id: String) -> Unit
+    actions: PictureViewerActions
 ) {
     Box(
         modifier = modifier
@@ -341,11 +314,7 @@ fun PictureBodyContent(
                 picture = picture,
                 visibleViewPhotosButton = visibleViewButton,
                 isFollowed = isFollowed,
-                onFollowClick = onFollowClick,
-                onShowUserInfo = onShowUserInfo,
-                onViewPhotos = onViewPhotos,
-                onShownPhoto = onShownPhoto,
-                onClick = onClick
+                actions = actions
             )
             Spacer(modifier = Modifier.height(30.dp))
         }
@@ -393,11 +362,7 @@ fun BodyContent(
     picture: Picture,
     visibleViewPhotosButton: Boolean,
     isFollowed: Boolean,
-    onFollowClick: (User) -> Unit,
-    onShowUserInfo: (User) -> Unit,
-    onViewPhotos: (name: String, firstName: String, lastName: String, username: String) -> Unit,
-    onShownPhoto: (picture: Picture) -> Unit,
-    onClick: (id: String) -> Unit
+    actions: PictureViewerActions
 ) {
     var visibleCameraInfo by remember { mutableStateOf(false) }
 
@@ -444,9 +409,7 @@ fun BodyContent(
                         fromItem = rememberSaveable { mutableStateOf(false) }
                     ),
                     isFollowed = isFollowed,
-                    onFollowClick = onFollowClick,
-                    onShowUserInfo = onShowUserInfo,
-                    onViewPhotos = onViewPhotos
+                    actions = actions.userContainerActions
                 )
 
                 Box(
@@ -462,7 +425,7 @@ fun BodyContent(
                     ) {
                         ImageContent(
                             painter = painter,
-                            onClick = { onClick(picture.id) }
+                            onClick = { actions.onDownloadTriggered(picture.id) }
                         )
                     }
                 }
@@ -542,7 +505,7 @@ fun BodyContent(
                 }
 
                 LaunchedEffect(picture.id) {
-                    onShownPhoto(picture)
+                    actions.onShownPhoto(picture)
                 }
             }
         }
@@ -728,16 +691,20 @@ fun PictureViewerContentPreview() {
             dialogState = DownloadDialogState.Idle,
             visibleViewButton = true,
             isFollowed = false,
-            onFollowClick = {},
-            onShowUserInfo = {},
-            onViewPhotos = { _, _, _, _ -> },
-            onShownPhoto = {},
-            onSuccess = {},
-            onDownloadTriggered = {},
-            onDownloadPhoto = {},
-            onRetry = {},
-            onDismissPopup = {},
-            onDismissDialog = {}
+            actions = PictureViewerActions(
+                userContainerActions = UserContainerActions(
+                    onFollowClick = {},
+                    onShowUserInfo = {},
+                    onViewPhotos = { _, _, _, _ -> }
+                ),
+                onShownPhoto = {},
+                onSuccess = {},
+                onDownloadTriggered = {},
+                onDownloadPhoto = {},
+                onRetry = {},
+                onDismissPopup = {},
+                onDismissDialog = {}
+            )
         )
     }
 }

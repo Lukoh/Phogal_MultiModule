@@ -28,9 +28,11 @@ import com.goforer.phogal.data.model.remote.response.gallery.common.photo.Photo
 import com.goforer.phogal.data.model.remote.response.gallery.common.photo.PhotoLinks
 import com.goforer.phogal.data.model.remote.response.gallery.common.user.User
 import com.goforer.phogal.data.model.remote.response.gallery.common.user.UserLinks
+import com.goforer.phogal.presentation.stateholder.uistate.home.common.photo.PhotoItemActions
 import com.goforer.phogal.presentation.stateholder.uistate.home.common.photo.PhotoItemUiState
 import com.goforer.phogal.presentation.stateholder.uistate.home.common.photo.rememberPhotoItemUiState
 import com.goforer.phogal.presentation.stateholder.uistate.home.common.user.rememberUserContainerUiState
+import com.goforer.phogal.presentation.stateholder.uistate.home.common.photo.UserContainerActions
 import com.goforer.phogal.presentation.ui.compose.screen.home.common.user.UserContainer
 import com.goforer.designsystem.theme.Blue75
 import com.goforer.designsystem.theme.ColorSnowWhite
@@ -43,10 +45,7 @@ fun PhotoItem(
     modifier: Modifier = Modifier,
     state: PhotoItemUiState = rememberPhotoItemUiState(),
     isFollowed: Boolean,
-    onFollowClick: (User) -> Unit,
-    onShowUserInfo: (User) -> Unit,
-    onItemClicked: (item: Photo, index: Int) -> Unit,
-    onViewPhotos: (name: String, firstName: String, lastName: String, username: String) -> Unit
+    actions: PhotoItemActions
 ) {
     ElevatedCard(
         modifier = modifier
@@ -54,7 +53,7 @@ fun PhotoItem(
             .padding(horizontal = 16.dp, vertical = 8.dp)
             .clickable {
                 state.setClicked(true)
-                onItemClicked(state.photo, state.index)
+                actions.onItemClicked(state.photo, state.index)
             },
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.elevatedCardColors(
@@ -125,9 +124,13 @@ fun PhotoItem(
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
                 state = userState,
                 isFollowed = isFollowed,
-                onFollowClick = onFollowClick,
-                onShowUserInfo = onShowUserInfo,
-                onViewPhotos = onViewPhotos
+                actions = remember(actions) {
+                    UserContainerActions(
+                        onFollowClick = actions.onFollowClick,
+                        onShowUserInfo = actions.onShowUserInfo,
+                        onViewPhotos = actions.onViewPhotos
+                    )
+                }
             )
         }
     }
@@ -140,10 +143,12 @@ fun PhotoItemPreview() {
         modifier = Modifier.fillMaxWidth(),
         state = createMockPhotoItemUiState(isBookmarked = false),
         isFollowed = false,
-        onFollowClick = {},
-        onShowUserInfo = {},
-        onItemClicked = { _, _ ->  },
-        onViewPhotos = { _, _, _, _ -> }
+        actions = PhotoItemActions(
+            onFollowClick = {},
+            onShowUserInfo = {},
+            onItemClicked = { _, _ ->  },
+            onViewPhotos = { _, _, _, _ -> }
+        )
     )
 }
 
@@ -153,10 +158,12 @@ fun PhotoItemBookmarkPreview() {
     PhotoItem(
         state = createMockPhotoItemUiState(isBookmarked = true),
         isFollowed = false,
-        onFollowClick = {},
-        onShowUserInfo = {},
-        onItemClicked = { _, _ -> },
-        onViewPhotos = { _, _, _, _ -> }
+        actions = PhotoItemActions(
+            onFollowClick = {},
+            onShowUserInfo = {},
+            onItemClicked = { _, _ -> },
+            onViewPhotos = { _, _, _, _ -> }
+        )
     )
 }
 

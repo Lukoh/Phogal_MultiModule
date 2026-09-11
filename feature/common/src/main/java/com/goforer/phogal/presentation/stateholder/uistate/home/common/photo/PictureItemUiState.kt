@@ -8,6 +8,15 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import com.goforer.phogal.data.model.remote.response.gallery.photo.photoinfo.Picture
+import com.goforer.phogal.data.model.remote.response.gallery.common.user.User
+
+@Stable
+data class PictureItemActions(
+    val onFollowClick: (User) -> Unit,
+    val onShowUserInfo: (User) -> Unit,
+    val onItemClicked: (item: Picture, index: Int) -> Unit,
+    val onViewPhotos: (name: String, firstName: String, lastName: String, username: String) -> Unit
+)
 
 @Stable
 class PictureItemUiState(

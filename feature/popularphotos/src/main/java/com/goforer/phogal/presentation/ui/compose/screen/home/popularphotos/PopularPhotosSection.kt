@@ -49,8 +49,9 @@ import com.goforer.phogal.data.model.remote.response.gallery.common.ProfileImage
 import com.goforer.phogal.data.model.remote.response.gallery.common.Urls
 import com.goforer.phogal.data.model.remote.response.gallery.common.photo.Photo
 import com.goforer.phogal.data.model.remote.response.gallery.common.user.User
-import com.goforer.phogal.presentation.stateholder.uistate.PagingResult
+import com.goforer.phogal.presentation.stateholder.uistate.home.common.photo.PhotoItemActions
 import com.goforer.phogal.presentation.stateholder.uistate.home.common.photo.rememberPhotoItemUiState
+import com.goforer.phogal.presentation.stateholder.uistate.home.popularphotos.PopularPhotosActions
 import com.goforer.phogal.presentation.stateholder.uistate.home.popularphotos.PopularPhotosSectionUiState
 import com.goforer.phogal.presentation.stateholder.uistate.home.popularphotos.rememberPopularPhotosSectionUiState
 import com.goforer.phogal.presentation.ui.compose.screen.home.common.photo.LoadingPicture
@@ -65,28 +66,16 @@ fun PopularPhotosSection(
     paddingValues: PaddingValues,
     photos: LazyPagingItems<Photo>,
     sectionUiState: PopularPhotosSectionUiState = rememberPopularPhotosSectionUiState(),
-    isPhotoBookmarked: (String) -> Boolean,
-    isUserFollowed: (User) -> Boolean,
-    onToggleFollow: (User) -> Unit,
-    onShowUserInfo: (User) -> Unit,
-    onItemClicked: (item: Photo, index: Int) -> Unit,
-    onViewPhotos: (name: String, firstName: String, lastName: String, username: String) -> Unit,
-    onLoadResult: (PagingResult) -> Unit,
-    onLoadedPhotos: (isLoadedPhotos: Boolean) -> Unit
+    actions: PopularPhotosActions,
+    isPhotoBookmarked: (String) -> Boolean
 ) {
     PopularPhotosSectionContent(
         modifier = modifier,
         paddingValues = paddingValues,
         photos = photos,
         sectionUiState = sectionUiState,
+        actions = actions,
         isPhotoBookmarked = isPhotoBookmarked,
-        isUserFollowed = isUserFollowed,
-        onToggleFollow = onToggleFollow,
-        onShowUserInfo = onShowUserInfo,
-        onItemClicked = onItemClicked,
-        onViewPhotos = onViewPhotos,
-        onLoadResult = onLoadResult,
-        onLoadedPhotos = onLoadedPhotos,
         onRefresh = photos::refresh
     )
 }
@@ -98,14 +87,8 @@ fun PopularPhotosSectionContent(
     paddingValues: PaddingValues,
     photos: LazyPagingItems<Photo>,
     sectionUiState: PopularPhotosSectionUiState = rememberPopularPhotosSectionUiState(),
+    actions: PopularPhotosActions,
     isPhotoBookmarked: (String) -> Boolean,
-    isUserFollowed: (User) -> Boolean,
-    onToggleFollow: (User) -> Unit,
-    onShowUserInfo: (User) -> Unit,
-    onItemClicked: (item: Photo, index: Int) -> Unit,
-    onViewPhotos: (name: String, firstName: String, lastName: String, username: String) -> Unit,
-    onLoadResult: (PagingResult) -> Unit,
-    onLoadedPhotos: (isLoadedPhotos: Boolean) -> Unit,
     onRefresh: () -> Unit
 ) {
     val lazyListState = photos.rememberLazyListState()
@@ -120,9 +103,9 @@ fun PopularPhotosSectionContent(
         pagingItems = photos,
         onLoadingStarted = { sectionUiState.setLoadingStarted() },
         onLoadingDone = { sectionUiState.setLoadingDone() },
-        onLoadResult = onLoadResult,
+        onLoadResult = actions.onLoadResult,
         onRefreshTransition = { manualRefreshing = it },
-        onPaginationReached = { onLoadedPhotos(true) },
+        onPaginationReached = { actions.onLoadedPhotos(true) },
         logTag = "PopularPhotosSection"
     )
 
@@ -166,12 +149,8 @@ fun PopularPhotosSectionContent(
                 renderLoadState(
                     photos = photos,
                     sectionUiState = sectionUiState,
-                    isPhotoBookmarked = isPhotoBookmarked,
-                    isUserFollowed = isUserFollowed,
-                    onToggleFollow = onToggleFollow,
-                    onShowUserInfo = onShowUserInfo,
-                    onItemClicked = onItemClicked,
-                    onViewPhotos = onViewPhotos
+                    actions = actions,
+                    isPhotoBookmarked = isPhotoBookmarked
                 )
             }
 
@@ -202,12 +181,8 @@ fun PopularPhotosSectionContent(
 private fun LazyListScope.renderLoadState(
     photos: LazyPagingItems<Photo>,
     sectionUiState: PopularPhotosSectionUiState,
-    isPhotoBookmarked: (String) -> Boolean,
-    isUserFollowed: (User) -> Boolean,
-    onToggleFollow: (User) -> Unit,
-    onShowUserInfo: (User) -> Unit,
-    onItemClicked: (item: Photo, index: Int) -> Unit,
-    onViewPhotos: (name: String, firstName: String, lastName: String, username: String) -> Unit
+    actions: PopularPhotosActions,
+    isPhotoBookmarked: (String) -> Boolean
 ) {
     renderPagingLoadState(
         items = photos,
@@ -229,11 +204,15 @@ private fun LazyListScope.renderLoadState(
                                 mutableStateOf(isPhotoBookmarked(photo.id))
                             }
                         ),
-                        isFollowed = isUserFollowed(photo.user),
-                        onFollowClick = onToggleFollow,
-                        onShowUserInfo = onShowUserInfo,
-                        onItemClicked = onItemClicked,
-                        onViewPhotos = onViewPhotos
+                        isFollowed = actions.isUserFollowed(photo.user),
+                        actions = remember(actions) {
+                            PhotoItemActions(
+                                onFollowClick = actions.onToggleFollow,
+                                onShowUserInfo = actions.onShowUserInfo,
+                                onItemClicked = { p, i -> actions.onItemClicked(p.id, i) },
+                                onViewPhotos = actions.onViewPhotos
+                            )
+                        }
                     )
                 }
             )
@@ -286,14 +265,16 @@ fun PopularPhotosSectionPreview() {
         PopularPhotosSectionContent(
             paddingValues = PaddingValues(all = 0.dp),
             photos = photos,
+            actions = PopularPhotosActions(
+                isUserFollowed = { false },
+                onToggleFollow = {},
+                onShowUserInfo = {},
+                onItemClicked = { _, _ -> },
+                onViewPhotos = { _, _, _, _ -> },
+                onLoadResult = { },
+                onLoadedPhotos = {}
+            ),
             isPhotoBookmarked = { false },
-            isUserFollowed = { false },
-            onToggleFollow = {},
-            onShowUserInfo = {},
-            onItemClicked = { _, _ -> },
-            onViewPhotos = { _, _, _, _ -> },
-            onLoadResult = { },
-            onLoadedPhotos = {},
             onRefresh = {}
         )
     }

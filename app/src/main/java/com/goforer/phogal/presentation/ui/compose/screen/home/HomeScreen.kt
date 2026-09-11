@@ -4,43 +4,46 @@ import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.ContentTransform
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionLayout
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.material3.adaptive.navigation3.rememberListDetailSceneStrategy
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Stable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
@@ -49,14 +52,12 @@ import androidx.navigation3.scene.DialogSceneStrategy
 import androidx.navigation3.scene.Scene
 import androidx.navigation3.scene.SinglePaneSceneStrategy
 import androidx.navigation3.ui.NavDisplay
+import com.goforer.designsystem.theme.ColorBgSecondary
 import com.goforer.phogal.presentation.ui.navigation.BottomNavRoute
 import com.goforer.phogal.presentation.ui.navigation.nav3.LocalSharedTransitionScope
 import com.goforer.phogal.presentation.ui.navigation.nav3.NavigationState
 import com.goforer.phogal.presentation.ui.navigation.nav3.phogalEntries
 import com.goforer.phogal.presentation.ui.navigation.nav3.rememberNavigationState
-import com.goforer.designsystem.theme.Blue80
-import com.goforer.designsystem.theme.ColorBgSecondary
-import com.goforer.designsystem.theme.ColorBottomBar
 
 @OptIn(ExperimentalSharedTransitionApi::class, ExperimentalMaterial3AdaptiveApi::class)
 @Composable
@@ -188,42 +189,53 @@ private fun BottomNavBar(
 ) {
     val items = remember { BottomNavRoute.entries }
 
-    NavigationBar(
-        containerColor = ColorBottomBar,
-        contentColor = Blue80,
-        tonalElevation = 5.dp,
+    Column(
         modifier = if (visible) {
             Modifier.navigationBarsPadding()
         } else {
             Modifier.offset { IntOffset(x = 0, y = offset.value.toInt()) }
         }
     ) {
-        items.forEach { item ->
-            NavigationBarItem(
-                icon = {
-                    Icon(
-                        painter = painterResource(id = item.icon),
-                        contentDescription = stringResource(id = item.title)
-                    )
-                },
-                label = {
-                    Text(
-                        text = stringResource(id = item.title),
-                        fontFamily = FontFamily.SansSerif,
-                        fontWeight = FontWeight.Normal,
-                        fontSize = 13.sp
-                    )
-                },
-                selected = currentRoute == item,
-                alwaysShowLabel = false,
-                onClick = { onTabSelected(item) },
-                colors = NavigationBarItemDefaults.colors(
-                    selectedIconColor = Blue80,
-                    selectedTextColor = Blue80,
-                    unselectedIconColor = Color.Gray,
-                    unselectedTextColor = Color.Gray
+        HorizontalDivider(
+            modifier = Modifier.fillMaxWidth(),
+            thickness = 0.5.dp,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
+        )
+
+        NavigationBar(
+            containerColor = MaterialTheme.colorScheme.surface,
+            contentColor = MaterialTheme.colorScheme.onSurface,
+            tonalElevation = 0.dp,
+            modifier = Modifier.height(64.dp)
+        ) {
+            items.forEach { item ->
+                val selected = currentRoute == item
+                val animatedScale by animateFloatAsState(
+                    targetValue = if (selected) 1.15f else 1.0f,
+                    animationSpec = tween(durationMillis = 200),
+                    label = "IconScale"
                 )
-            )
+
+                NavigationBarItem(
+                    icon = {
+                        Icon(
+                            painter = painterResource(id = item.icon),
+                            contentDescription = stringResource(id = item.title),
+                            modifier = Modifier
+                                .padding(top = 8.dp)
+                                .scale(animatedScale)
+                        )
+                    },
+                    selected = selected,
+                    alwaysShowLabel = false,
+                    onClick = { onTabSelected(item) },
+                    colors = NavigationBarItemDefaults.colors(
+                        selectedIconColor = MaterialTheme.colorScheme.onSurface,
+                        unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                        indicatorColor = Color.Transparent
+                    )
+                )
+            }
         }
     }
 }

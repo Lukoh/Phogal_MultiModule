@@ -12,7 +12,7 @@ import androidx.compose.ui.unit.dp
 import androidx.paging.compose.LazyPagingItems
 import com.goforer.phogal.core.ui.R
 import com.goforer.phogal.data.model.remote.response.gallery.common.user.User
-import com.goforer.phogal.presentation.stateholder.uistate.PagingResult
+import com.goforer.phogal.presentation.stateholder.uistate.home.following.FollowingUserActions
 import com.goforer.phogal.presentation.ui.compose.screen.home.common.InitScreen
 
 @Composable
@@ -21,20 +21,14 @@ fun FollowingUsersContent(
     paddingValues: PaddingValues,
     users: LazyPagingItems<User>,
     enabledLoadPhotos: Boolean,
-    onLoadResult: (PagingResult) -> Unit,
-    onViewPhotos: (name: String, firstName: String, lastName: String, username: String) -> Unit,
-    onOpenWebView: (firstName: String, url: String?) -> Unit,
-    onFollow: (userUiState: User) -> Unit
+    actions: FollowingUserActions
 ) {
     if (users.itemCount > 0) {
         FollowingUsersSection(
             modifier = modifier,
             paddingValues = paddingValues,
             users = users,
-            onLoadResult = onLoadResult,
-            onViewPhotos = onViewPhotos,
-            onOpenWebView = onOpenWebView,
-            onFollow = onFollow
+            actions = actions
         )
     } else {
         if (enabledLoadPhotos) {

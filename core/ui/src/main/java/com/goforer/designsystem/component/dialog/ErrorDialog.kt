@@ -139,7 +139,7 @@ fun ErrorDialog(
     showSystemUi = true
 )
 @Composable
-fun ErrorDialogPreview(modifier: Modifier = Modifier) {
+fun ErrorDialogPreview() {
     PhogalTheme {
         Box(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
             Surface(

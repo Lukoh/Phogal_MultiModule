@@ -52,8 +52,9 @@ import com.goforer.phogal.data.model.remote.response.gallery.common.ProfileImage
 import com.goforer.phogal.data.model.remote.response.gallery.common.Social
 import com.goforer.phogal.data.model.remote.response.gallery.common.user.User
 import com.goforer.phogal.data.model.remote.response.gallery.common.user.UserLinks
-import com.goforer.phogal.presentation.stateholder.uistate.home.setting.following.FollowingUserItemUiState
-import com.goforer.phogal.presentation.stateholder.uistate.home.setting.following.rememberFollowingUserItemUiState
+import com.goforer.phogal.presentation.stateholder.uistate.home.following.FollowingUserItemActions
+import com.goforer.phogal.presentation.stateholder.uistate.home.following.FollowingUserItemUiState
+import com.goforer.phogal.presentation.stateholder.uistate.home.following.rememberFollowingUserItemUiState
 import com.goforer.phogal.presentation.ui.compose.screen.home.common.follow.ShowFollowButton
 import com.goforer.phogal.presentation.ui.compose.screen.home.common.user.ProfileItem
 import com.goforer.phogal.presentation.ui.compose.screen.home.common.user.UserInfoItem
@@ -64,9 +65,7 @@ import com.goforer.designsystem.theme.Blue50
 fun FollowingUsersItem(
     modifier: Modifier = Modifier,
     followingUserItemUiState: FollowingUserItemUiState = rememberFollowingUserItemUiState(),
-    onViewPhotos: (name: String, firstName: String, lastName: String, username: String) -> Unit,
-    onOpenWebView: (firstName: String, url: String?) -> Unit,
-    onFollow: (userUiState: User) -> Unit
+    actions: FollowingUserItemActions
 ) {
     if (followingUserItemUiState.user.isEmpty()) return
 
@@ -80,7 +79,7 @@ fun FollowingUsersItem(
             .padding(start = 16.dp, end = 16.dp, top = topPadding, bottom = bottomPadding)
             .clickable {
                 user.username?.let {
-                    onViewPhotos(it, user.firstName, user.lastName ?: "", it)
+                    actions.onViewPhotos(it, user.firstName, user.lastName ?: "", it)
                 }
             },
         shape = RoundedCornerShape(16.dp),
@@ -114,7 +113,7 @@ fun FollowingUsersItem(
                         position = 9,
                         onClicked = {
                             user.username?.let {
-                                onViewPhotos(it, user.firstName, user.lastName ?: "", it)
+                                actions.onViewPhotos(it, user.firstName, user.lastName ?: "", it)
                             }
                         }
                     )
@@ -125,7 +124,7 @@ fun FollowingUsersItem(
                     followColor = Blue50,
                     isUserFollowed = followingUserItemUiState.followed
                 ) {
-                    onFollow(user)
+                    actions.onFollow(user)
                 }
             }
 
@@ -164,7 +163,7 @@ fun FollowingUsersItem(
 
                 ShowPortfolioButton(
                     firstName = user.firstName,
-                    onOpenWebView = { onOpenWebView(user.firstName, user.portfolioUrl) }
+                    onOpenWebView = { actions.onOpenWebView(user.firstName, user.portfolioUrl) }
                 )
             }
         }
@@ -259,9 +258,11 @@ private fun FollowingUsersItemPreviewContent() {
                 ) {
                     FollowingUsersItem(
                         followingUserItemUiState = mockState,
-                        onViewPhotos = { _, _, _, _ -> },
-                        onOpenWebView = { _, _ -> },
-                        onFollow = {}
+                        actions = FollowingUserItemActions(
+                            onViewPhotos = { _, _, _, _ -> },
+                            onOpenWebView = { _, _ -> },
+                            onFollow = {}
+                        )
                     )
                 }
             }

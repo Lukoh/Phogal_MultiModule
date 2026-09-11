@@ -28,7 +28,6 @@ import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.scene.DialogSceneStrategy
 import com.goforer.base.customtab.openCustomTab
 import com.goforer.phogal.core.ui.R
-import com.goforer.phogal.data.model.remote.response.gallery.common.user.User
 import com.goforer.phogal.presentation.stateholder.business.home.common.photo.info.PictureViewModel
 import com.goforer.phogal.presentation.stateholder.business.home.common.user.UserPhotosViewModel
 import com.goforer.phogal.presentation.stateholder.business.home.download.PhotoDownloadViewModel
@@ -36,12 +35,19 @@ import com.goforer.phogal.presentation.stateholder.business.home.gallery.Gallery
 import com.goforer.phogal.presentation.stateholder.business.home.popularphotos.PopularPhotosViewModel
 import com.goforer.phogal.presentation.stateholder.business.home.setting.bookmark.BookmarkViewModel
 import com.goforer.phogal.presentation.stateholder.business.home.setting.follow.FollowViewModel
+import com.goforer.phogal.presentation.stateholder.uistate.UiState
+import com.goforer.phogal.presentation.stateholder.uistate.home.common.photo.PictureViewerScreenActions
 import com.goforer.phogal.presentation.stateholder.uistate.home.common.photo.rememberPhotoContentUiState
 import com.goforer.phogal.presentation.stateholder.uistate.home.common.user.photos.rememberUserPhotosContentUiState
+import com.goforer.phogal.presentation.stateholder.uistate.home.common.user.photos.UserPhotosScreenActions
 import com.goforer.phogal.presentation.stateholder.uistate.home.gallery.rememberSearchPhotosContentUiState
+import com.goforer.phogal.presentation.stateholder.uistate.home.gallery.SearchPhotosScreenActions
+import com.goforer.phogal.presentation.stateholder.uistate.home.popularphotos.PopularPhotosScreenActions
 import com.goforer.phogal.presentation.stateholder.uistate.home.popularphotos.rememberPopularPhotosContentUiState
-import com.goforer.phogal.presentation.stateholder.uistate.home.setting.bookmark.rememberBookmarkContentUiState
-import com.goforer.phogal.presentation.stateholder.uistate.home.setting.following.rememberFollowingUserContentUiState
+import com.goforer.phogal.presentation.stateholder.uistate.home.bookmark.BookmarkScreenActions
+import com.goforer.phogal.presentation.stateholder.uistate.home.bookmark.rememberBookmarkContentUiState
+import com.goforer.phogal.presentation.stateholder.uistate.home.following.FollowingUserScreenActions
+import com.goforer.phogal.presentation.stateholder.uistate.home.following.rememberFollowingUserContentUiState
 import com.goforer.phogal.presentation.stateholder.uistate.rememberBaseUiState
 import com.goforer.phogal.presentation.ui.compose.screen.home.common.photo.viewer.PictureViewerScreen
 import com.goforer.phogal.presentation.ui.compose.screen.home.common.user.userphotos.UserPhotosScreen
@@ -84,21 +90,23 @@ private fun EntryProviderScope<NavKey>.galleryTabEntries(navState: NavigationSta
 
         SearchPhotosScreen(
             contentUiState = contentUiState,
-            isUserFollowed = { user ->
-                followingUsers.any { it.id == user.id }
-            },
-            onToggleFollow = { user ->
-                followViewModel.setUserFollow(user)
-            },
-            onItemClicked = { id ->
-                navState.push(Routes.PictureRoute(id = id, showViewPhotosButton = true))
-            },
-            onViewPhotos = { name, first, last, user ->
-                navState.push(Routes.UserPhotosRoute(name, first, last, user))
-            },
-            onOpenWebView = { first, url ->
-                navState.push(Routes.WebViewRoute(first, url))
-            }
+            actions = SearchPhotosScreenActions(
+                isUserFollowed = { user ->
+                    followingUsers.any { it.id == user.id }
+                },
+                onToggleFollow = { user ->
+                    followViewModel.setUserFollow(user)
+                },
+                onItemClicked = { id ->
+                    navState.push(Routes.PictureRoute(id = id, showViewPhotosButton = true))
+                },
+                onViewPhotos = { name, first, last, user ->
+                    navState.push(Routes.UserPhotosRoute(name, first, last, user))
+                },
+                onOpenWebView = { first, url ->
+                    navState.push(Routes.WebViewRoute(first, url))
+                }
+            )
         )
     }
 
@@ -110,7 +118,7 @@ private fun EntryProviderScope<NavKey>.galleryTabEntries(navState: NavigationSta
         val photoDownloadViewModel: PhotoDownloadViewModel = hiltViewModel()
         val followViewModel: FollowViewModel = hiltViewModel()
         val followingUsers by followViewModel.users.collectAsStateWithLifecycle()
-
+        val bookmarkedPictures by bookmarkViewModel.photos.collectAsStateWithLifecycle()
         val contentUiState = rememberPhotoContentUiState(
             pictureViewModel = pictureViewModel,
             bookmarkViewModel = bookmarkViewModel,
@@ -121,21 +129,26 @@ private fun EntryProviderScope<NavKey>.galleryTabEntries(navState: NavigationSta
             }
         )
 
+        val currentPicture = (contentUiState.pictureState as? UiState.Success)?.data
+
+        contentUiState.setEnabledBookmark(enabledBookmark = bookmarkedPictures.any { it.id == currentPicture?.id })
         PictureViewerScreen(
             contentUiState = contentUiState,
-            isUserFollowed = { user ->
-                followingUsers.any { it.id == user.id }
-            },
-            onToggleFollow = { user ->
-                followViewModel.setUserFollow(user)
-            },
-            onViewPhotos = { name, first, last, user ->
-                navState.push(Routes.UserPhotosRoute(name, first, last, user))
-            },
-            onBackPressed = { navState.pop() },
-            onOpenWebView = { first, url ->
-                navState.push(Routes.WebViewRoute(first, url))
-            }
+            actions = PictureViewerScreenActions(
+                isUserFollowed = { user ->
+                    followingUsers.any { it.id == user.id }
+                },
+                onToggleFollow = { user ->
+                    followViewModel.setUserFollow(user)
+                },
+                onViewPhotos = { name, first, last, user ->
+                    navState.push(Routes.UserPhotosRoute(name, first, last, user))
+                },
+                onBackPressed = { navState.pop() },
+                onOpenWebView = { first, url ->
+                    navState.push(Routes.WebViewRoute(first, url))
+                }
+            )
         )
     }
 
@@ -152,16 +165,21 @@ private fun EntryProviderScope<NavKey>.galleryTabEntries(navState: NavigationSta
 
         UserPhotosScreen(
             contentUiState = contentUiState,
-            isUserFollowed = { user ->
-                followingUsers.any { it.id == user.id }
-            },
-            onToggleFollow = { user ->
-                followViewModel.setUserFollow(user)
-            },
-            onItemClicked = { id ->
-                navState.push(Routes.PictureRoute(id = id, showViewPhotosButton = false))
-            },
-            onBackPressed = { navState.pop() }
+            actions = UserPhotosScreenActions(
+                isUserFollowed = { user ->
+                    followingUsers.any { it.id == user.id }
+                },
+                onToggleFollow = { user ->
+                    followViewModel.setUserFollow(user)
+                },
+                onItemClicked = { id ->
+                    navState.push(Routes.PictureRoute(id = id, showViewPhotosButton = false))
+                },
+                onOpenWebView = { first, url ->
+                    navState.push(Routes.WebViewRoute(first, url))
+                },
+                onBackPressed = { navState.pop() }
+            )
         )
     }
 
@@ -199,21 +217,23 @@ private fun EntryProviderScope<NavKey>.popularTabEntries(navState: NavigationSta
 
         PopularPhotosScreen(
             contentUiState = contentUiState,
-            isUserFollowed = { user ->
-                followingUsers.any { it.id == user.id }
-            },
-            onToggleFollow = { user ->
-                followViewModel.setUserFollow(user)
-            },
-            onItemClicked = { id, _ ->
-                navState.push(Routes.PictureRoute(id = id, showViewPhotosButton = true))
-            },
-            onViewPhotos = { name, first, last, user ->
-                navState.push(Routes.UserPhotosRoute(name, first, last, user))
-            },
-            onOpenWebView = { first, url ->
-                navState.push(Routes.WebViewRoute(first, url))
-            }
+            actions = PopularPhotosScreenActions(
+                isUserFollowed = { user ->
+                    followingUsers.any { it.id == user.id }
+                },
+                onToggleFollow = { user ->
+                    followViewModel.setUserFollow(user)
+                },
+                onItemClicked = { id, _ ->
+                    navState.push(Routes.PictureRoute(id = id, showViewPhotosButton = true))
+                },
+                onViewPhotos = { name, first, last, user ->
+                    navState.push(Routes.UserPhotosRoute(name, first, last, user))
+                },
+                onOpenWebView = { first, url ->
+                    navState.push(Routes.WebViewRoute(first, url))
+                }
+            )
         )
     }
 }
@@ -269,22 +289,24 @@ private fun EntryProviderScope<NavKey>.settingTabEntries(navState: NavigationSta
 
         BookmarkedPhotosScreen(
             contentUiState = contentUiState,
-            onItemClicked = { picture, _ ->
-                navState.push(Routes.PictureRoute(id = picture.id, showViewPhotosButton = false))
-            },
-            onBackPressed = { navState.pop() },
-            isUserFollowed = { user: User ->
-                followingUsers.any { it.id == user.id }
-            },
-            onToggleFollow = { user: User ->
-                followViewModel.setUserFollow(user)
-            },
-            onViewPhotos = { name, first, last, user ->
-                navState.push(Routes.UserPhotosRoute(name, first, last, user))
-            },
-            onOpenWebView = { first, url ->
-                navState.push(Routes.WebViewRoute(first, url))
-            }
+            actions = BookmarkScreenActions(
+                onItemClicked = { picture, _ ->
+                    navState.push(Routes.PictureRoute(id = picture.id, showViewPhotosButton = false))
+                },
+                onBackPressed = { navState.pop() },
+                onViewPhotos = { name, first, last, user ->
+                    navState.push(Routes.UserPhotosRoute(name, first, last, user))
+                },
+                onOpenWebView = { first, url ->
+                    navState.push(Routes.WebViewRoute(first, url))
+                },
+                isUserFollowed = { user ->
+                    followingUsers.any { it.id == user.id }
+                },
+                onToggleFollow = { user ->
+                    followViewModel.setUserFollow(user)
+                }
+            )
         )
     }
 
@@ -301,13 +323,15 @@ private fun EntryProviderScope<NavKey>.settingTabEntries(navState: NavigationSta
 
         FollowingUsersScreen(
             contentUiState = contentUiState,
-            onBackPressed = { navState.pop() },
-            onViewPhotos = { name, first, last, user ->
-                navState.push(Routes.UserPhotosRoute(name, first, last, user))
-            },
-            onOpenWebView = { first, url ->
-                navState.push(Routes.WebViewRoute(first, url))
-            }
+            actions = FollowingUserScreenActions(
+                onBackPressed = { navState.pop() },
+                onViewPhotos = { name, first, last, user ->
+                    navState.push(Routes.UserPhotosRoute(name, first, last, user))
+                },
+                onOpenWebView = { first, url ->
+                    navState.push(Routes.WebViewRoute(first, url))
+                }
+            )
         )
     }
 

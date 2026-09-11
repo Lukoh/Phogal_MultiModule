@@ -96,26 +96,22 @@ class GalleryViewModel @Inject constructor(
      * Commits the current query to local search history, capped at [MAX_HISTORY_SIZE].
      * I/O is dispatched off the main thread.
      */
-    fun commitSearch() {
-        val keyword = _query.value.trim()
-        if (keyword.isEmpty()) return
+    fun commitSearch(keyword: String = _query.value) {
+        val trimmed = keyword.trim()
+        if (trimmed.isEmpty()) return
 
-        onQueryChanged(keyword, immediate = true)
+        onQueryChanged(trimmed, immediate = true)
         viewModelScope.launch {
             withContext(ioDispatcher) {
-                // Get current words from the StateFlow. Note: we use the raw list
-                // from the repo (which is reversed in the public recentWords flow).
-                // But it's easier to just use recentWords.value and reverse it back
-                // if we want to maintain the "append to end" logic, OR just prepend.
                 val currentKeywords = recentWords.value.reversed().toMutableList()
 
-                if (keyword in currentKeywords) return@withContext
+                if (trimmed in currentKeywords) return@withContext
                 if (currentKeywords.size >= MAX_HISTORY_SIZE) currentKeywords.removeAt(0)
-                currentKeywords += keyword
+                currentKeywords += trimmed
                 
                 photosRepository.setSearchWords(currentKeywords)
             }
-            _events.tryEmit(GalleryUiEvent.SearchCommitted(keyword))
+            _events.tryEmit(GalleryUiEvent.SearchCommitted(trimmed))
         }
     }
 

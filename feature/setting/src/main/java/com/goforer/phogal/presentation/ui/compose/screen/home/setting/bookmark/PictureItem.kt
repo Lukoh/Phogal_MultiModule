@@ -38,9 +38,11 @@ import coil.size.Size
 import com.goforer.designsystem.component.loadImagePainter
 import com.goforer.designsystem.component.snsShimmer
 import com.goforer.phogal.data.model.remote.response.gallery.photo.photoinfo.Picture
+import com.goforer.phogal.presentation.stateholder.uistate.home.common.photo.PictureItemActions
 import com.goforer.phogal.presentation.stateholder.uistate.home.common.photo.PictureItemUiState
 import com.goforer.phogal.presentation.stateholder.uistate.home.common.photo.rememberPictureItemUiState
 import com.goforer.phogal.presentation.stateholder.uistate.home.common.user.rememberUserContainerUiState
+import com.goforer.phogal.presentation.stateholder.uistate.home.common.photo.UserContainerActions
 import com.goforer.phogal.presentation.ui.compose.screen.home.common.user.UserContainer
 import com.goforer.designsystem.theme.Blue75
 import com.goforer.designsystem.theme.ColorSnowWhite
@@ -60,10 +62,7 @@ fun PictureItem(
     modifier: Modifier = Modifier,
     pictureItemUiState: PictureItemUiState = rememberPictureItemUiState(),
     isFollowed: Boolean,
-    onFollowClick: (User) -> Unit,
-    onShowUserInfo: (User) -> Unit,
-    onItemClicked: (item: Picture, index: Int) -> Unit,
-    onViewPhotos: (name: String, firstName: String, lastName: String, username: String) -> Unit
+    actions: PictureItemActions
 ) {
     val picture = pictureItemUiState.picture
     val topPadding = if (pictureItemUiState.index == 0) 16.dp else 8.dp
@@ -75,7 +74,7 @@ fun PictureItem(
             .padding(start = 16.dp, end = 16.dp, top = topPadding, bottom = bottomPadding)
             .clickable {
                 pictureItemUiState.setClicked(true)
-                onItemClicked(picture, pictureItemUiState.index)
+                actions.onItemClicked(picture, pictureItemUiState.index)
             },
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.elevatedCardColors(
@@ -149,9 +148,13 @@ fun PictureItem(
                     fromItem = rememberSaveable { mutableStateOf(true) }
                 ),
                 isFollowed = isFollowed,
-                onFollowClick = onFollowClick,
-                onShowUserInfo = onShowUserInfo,
-                onViewPhotos = onViewPhotos
+                actions = remember(actions) {
+                    UserContainerActions(
+                        onFollowClick = actions.onFollowClick,
+                        onShowUserInfo = actions.onShowUserInfo,
+                        onViewPhotos = actions.onViewPhotos
+                    )
+                }
             )
         }
     }
@@ -181,10 +184,12 @@ fun PictureItemPreview() {
                 PictureItem(
                     pictureItemUiState = mockUiState,
                     isFollowed = false,
-                    onFollowClick = {},
-                    onShowUserInfo = {},
-                    onItemClicked = { _, _ ->  },
-                    onViewPhotos = { _, _, _, _ -> }
+                    actions = PictureItemActions(
+                        onFollowClick = {},
+                        onShowUserInfo = {},
+                        onItemClicked = { _, _ ->  },
+                        onViewPhotos = { _, _, _, _ -> }
+                    )
                 )
             }
         }

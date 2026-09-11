@@ -49,8 +49,9 @@ import com.goforer.phogal.data.model.remote.response.gallery.common.ProfileImage
 import com.goforer.phogal.data.model.remote.response.gallery.common.Urls
 import com.goforer.phogal.data.model.remote.response.gallery.common.photo.Photo
 import com.goforer.phogal.data.model.remote.response.gallery.common.user.User
-import com.goforer.phogal.presentation.stateholder.uistate.PagingResult
+import com.goforer.phogal.presentation.stateholder.uistate.home.common.photo.PhotoItemActions
 import com.goforer.phogal.presentation.stateholder.uistate.home.common.photo.rememberPhotoItemUiState
+import com.goforer.phogal.presentation.stateholder.uistate.home.gallery.SearchPhotosActions
 import com.goforer.phogal.presentation.stateholder.uistate.home.gallery.SearchPhotosSectionUiState
 import com.goforer.phogal.presentation.stateholder.uistate.home.gallery.rememberSearchPhotosSectionUiState
 import com.goforer.phogal.presentation.ui.compose.screen.home.common.photo.LoadingPicture
@@ -69,13 +70,8 @@ fun SearchPhotosSection(
         rememberCoroutineScope(),
         rememberSaveable { mutableStateOf(false) }
     ),
+    actions: SearchPhotosActions,
     isPhotoBookmarked: (String) -> Boolean,
-    isUserFollowed: (User) -> Boolean,
-    onToggleFollow: (User) -> Unit,
-    onShowUserInfo: (User) -> Unit,
-    onItemClicked: (item: Photo, index: Int) -> Unit,
-    onViewPhotos: (name: String, firstName: String, lastName: String, username: String) -> Unit,
-    onLoadResult: (PagingResult) -> Unit,
     onScroll: (isScrolling: Boolean) -> Unit
 ) {
     SearchPhotosSectionContent(
@@ -83,13 +79,8 @@ fun SearchPhotosSection(
         paddingValues = paddingValues,
         photos = photos,
         sectionUiState = sectionUiState,
+        actions = actions,
         isPhotoBookmarked = isPhotoBookmarked,
-        isUserFollowed = isUserFollowed,
-        onToggleFollow = onToggleFollow,
-        onShowUserInfo = onShowUserInfo,
-        onItemClicked = onItemClicked,
-        onViewPhotos = onViewPhotos,
-        onLoadResult = onLoadResult,
         onScroll = onScroll,
         onRefresh = photos::refresh
     )
@@ -105,13 +96,8 @@ fun SearchPhotosSectionContent(
         rememberCoroutineScope(),
         rememberSaveable { mutableStateOf(false) }
     ),
+    actions: SearchPhotosActions,
     isPhotoBookmarked: (String) -> Boolean,
-    isUserFollowed: (User) -> Boolean,
-    onToggleFollow: (User) -> Unit,
-    onShowUserInfo: (User) -> Unit,
-    onItemClicked: (item: Photo, index: Int) -> Unit,
-    onViewPhotos: (name: String, firstName: String, lastName: String, username: String) -> Unit,
-    onLoadResult: (PagingResult) -> Unit,
     onScroll: (isScrolling: Boolean) -> Unit,
     onRefresh: () -> Unit
 ) {
@@ -127,7 +113,7 @@ fun SearchPhotosSectionContent(
         pagingItems = photos,
         onLoadingStarted = { sectionUiState.setLoadingStarted() },
         onLoadingDone = { sectionUiState.setLoadingDone() },
-        onLoadResult = onLoadResult,
+        onLoadResult = actions.onLoadResult,
         onRefreshTransition = { manualRefreshing = it },
         onPaginationReached = { Timber.d("Loaded all photos") },
         logTag = "SearchPhotosSection"
@@ -179,12 +165,8 @@ fun SearchPhotosSectionContent(
                 renderLoadState(
                     photos = photos,
                     sectionUiState = sectionUiState,
-                    isPhotoBookmarked = isPhotoBookmarked,
-                    isUserFollowed = isUserFollowed,
-                    onToggleFollow = onToggleFollow,
-                    onShowUserInfo = onShowUserInfo,
-                    onItemClicked = onItemClicked,
-                    onViewPhotos = onViewPhotos
+                    actions = actions,
+                    isPhotoBookmarked = isPhotoBookmarked
                 )
             }
 
@@ -217,12 +199,8 @@ fun SearchPhotosSectionContent(
 private fun LazyListScope.renderLoadState(
     photos: LazyPagingItems<Photo>,
     sectionUiState: SearchPhotosSectionUiState,
-    isPhotoBookmarked: (String) -> Boolean,
-    isUserFollowed: (User) -> Boolean,
-    onToggleFollow: (User) -> Unit,
-    onShowUserInfo: (User) -> Unit,
-    onItemClicked: (item: Photo, index: Int) -> Unit,
-    onViewPhotos: (name: String, firstName: String, lastName: String, username: String) -> Unit
+    actions: SearchPhotosActions,
+    isPhotoBookmarked: (String) -> Boolean
 ) {
     renderPagingLoadState(
         items = photos,
@@ -230,12 +208,12 @@ private fun LazyListScope.renderLoadState(
         content = {
             contentItems(
                 items = photos,
-                key = { index, photo -> "${photo.id}_$index" },
+                key = { _, photo -> photo.id },
                 content = { padding, index, photo ->
                     PhotoItem(
                         modifier = Modifier
                             .padding(top = padding)
-                            .animateItem(tween(durationMillis = 250)),
+                            .animateItem(tween(durationMillis = 200)),
                         state = rememberPhotoItemUiState(
                             index = rememberSaveable { mutableIntStateOf(index) },
                             photo = rememberSaveable { mutableStateOf(photo) },
@@ -244,11 +222,15 @@ private fun LazyListScope.renderLoadState(
                                 mutableStateOf(isPhotoBookmarked(photo.id))
                             }
                         ),
-                        isFollowed = isUserFollowed(photo.user),
-                        onFollowClick = onToggleFollow,
-                        onShowUserInfo = onShowUserInfo,
-                        onItemClicked = onItemClicked,
-                        onViewPhotos = onViewPhotos
+                        isFollowed = actions.isUserFollowed(photo.user),
+                        actions = remember(actions) {
+                            PhotoItemActions(
+                                onFollowClick = actions.onToggleFollow,
+                                onShowUserInfo = actions.onShowUserInfo,
+                                onItemClicked = { p, _ -> actions.onItemClicked(p.id) },
+                                onViewPhotos = actions.onViewPhotos
+                            )
+                        }
                     )
                 }
             )
@@ -301,13 +283,16 @@ fun SearchPhotosSectionPreview() {
         SearchPhotosSectionContent(
             paddingValues = PaddingValues(all = 0.dp),
             photos = photos,
+            actions = SearchPhotosActions(
+                onPerformSearch = { _, _ -> },
+                isUserFollowed = { false },
+                onToggleFollow = {},
+                onShowUserInfo = {},
+                onItemClicked = {},
+                onViewPhotos = { _, _, _, _ -> },
+                onLoadResult = {}
+            ),
             isPhotoBookmarked = { false },
-            isUserFollowed = { false },
-            onToggleFollow = {},
-            onShowUserInfo = {},
-            onItemClicked = { _, _ -> },
-            onViewPhotos = { _, _, _, _ -> },
-            onLoadResult = { },
             onScroll = {},
             onRefresh = {}
         )

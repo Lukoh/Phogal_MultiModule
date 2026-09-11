@@ -1,4 +1,4 @@
-package com.goforer.phogal.presentation.stateholder.uistate.home.setting.bookmark
+package com.goforer.phogal.presentation.stateholder.uistate.home.bookmark
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState

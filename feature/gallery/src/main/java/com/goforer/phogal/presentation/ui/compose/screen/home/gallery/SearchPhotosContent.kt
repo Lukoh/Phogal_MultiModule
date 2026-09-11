@@ -17,6 +17,8 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.getValue
+import kotlinx.coroutines.delay
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
@@ -27,21 +29,24 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.paging.compose.LazyPagingItems
+import androidx.paging.compose.collectAsLazyPagingItems
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.goforer.designsystem.animation.GenericCubicAnimationShape
+import com.goforer.phogal.presentation.stateholder.uistate.home.gallery.SearchPhotosActions
 import com.goforer.designsystem.component.Chips
 import com.goforer.phogal.core.ui.R
-import com.goforer.phogal.presentation.stateholder.uistate.PagingResult
 import com.goforer.phogal.data.model.remote.response.gallery.common.photo.Photo
 import com.goforer.phogal.data.model.remote.response.gallery.common.user.User
 import com.goforer.phogal.presentation.stateholder.uistate.home.gallery.SearchPhotosContentUiState
+import com.goforer.phogal.presentation.stateholder.uistate.home.gallery.SearchSectionUiState
 import com.goforer.phogal.presentation.stateholder.uistate.home.gallery.rememberSearchPhotosSectionUiState
-import com.goforer.phogal.presentation.stateholder.uistate.home.gallery.rememberSearchSectionUiState
 import com.goforer.phogal.presentation.ui.compose.screen.home.common.InitScreen
 import com.goforer.designsystem.theme.ColorSystemGray7
 import com.goforer.designsystem.theme.PhogalTheme
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.MultiplePermissionsState
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
+import kotlin.time.Duration.Companion.milliseconds
 
 @OptIn(
     ExperimentalComposeUiApi::class,
@@ -52,16 +57,14 @@ import com.google.accompanist.permissions.rememberMultiplePermissionsState
 fun SearchPhotosContent(
     modifier: Modifier = Modifier,
     contentUiState: SearchPhotosContentUiState,
+    sectionUiState: SearchSectionUiState,
     paddingValues: PaddingValues,
-    onSearch: (String) -> Unit,
-    onChipClicked: (String) -> Unit,
-    isUserFollowed: (User) -> Boolean,
-    onToggleFollow: (User) -> Unit,
-    onShowUserInfo: (User) -> Unit,
-    onItemClicked: (id: String) -> Unit,
-    onViewPhotos: (name: String, firstName: String, lastName: String, username: String) -> Unit,
-    onLoadResult: (PagingResult) -> Unit
+    actions: SearchPhotosActions
 ) {
+    val photos = contentUiState.galleryViewModel.photos.collectAsLazyPagingItems()
+    val currentQuery by contentUiState.galleryViewModel.query.collectAsStateWithLifecycle()
+    val recentWords by contentUiState.galleryViewModel.recentWords.collectAsStateWithLifecycle()
+
     Column(
         modifier = modifier.clickable {
             contentUiState.baseUiState.keyboardController?.hide()
@@ -69,29 +72,28 @@ fun SearchPhotosContent(
     ) {
         SearchSection(
             modifier = Modifier.padding(2.dp, 0.dp, 2.dp, 0.dp),
-            sectionUiState = rememberSearchSectionUiState(enabled = rememberSaveable { mutableStateOf(true) }),
-            onSearched = onSearch
+            sectionUiState = sectionUiState,
+            onSearched = { actions.onPerformSearch(it, false) }
         )
 
         // Sub-composables are stateless: they receive the values they need and
         // emit events back via callbacks. The holder is hidden from them.
         RecentWordsChips(
-            recentWords = contentUiState.galleryUiState.recentWords.asReversed(),
+            recentWords = recentWords.asReversed(),
             isScrolling = contentUiState.scrolling,
             triggered = contentUiState.triggered,
             onTriggeredConsumed = contentUiState::setTriggerConsumed,
-            onChipClicked = onChipClicked
+            onChipClicked = { keyword ->
+                sectionUiState.editableInputState.textState = keyword
+                sectionUiState.setWordChanged(true)
+                actions.onPerformSearch(keyword, true)
+            }
         )
         PhotosOrInitScreen(
             paddingValues = paddingValues,
-            query = contentUiState.galleryUiState.currentQuery,
-            photos = contentUiState.galleryUiState.photos,
-            isUserFollowed = isUserFollowed,
-            onToggleFollow = onToggleFollow,
-            onShowUserInfo = onShowUserInfo,
-            onItemClicked = { photo, _ -> onItemClicked(photo.id) },
-            onViewPhotos = onViewPhotos,
-            onLoadResult = onLoadResult,
+            query = currentQuery,
+            photos = photos,
+            actions = actions,
             onScroll = contentUiState::setScrollingChanged
         )
     }
@@ -121,8 +123,9 @@ private fun RecentWordsChips(
     onTriggeredConsumed: () -> Unit,
     onChipClicked: (String) -> Unit
 ) {
-    if (triggered) {
-        LaunchedEffect(Unit) {
+    LaunchedEffect(triggered) {
+        if (triggered) {
+            delay(1000.milliseconds)
             onTriggeredConsumed()
         }
     }
@@ -161,12 +164,7 @@ private fun ColumnScope.PhotosOrInitScreen(
     paddingValues: PaddingValues,
     query: String,
     photos: LazyPagingItems<Photo>,
-    isUserFollowed: (User) -> Boolean,
-    onToggleFollow: (User) -> Unit,
-    onShowUserInfo: (User) -> Unit,
-    onItemClicked: (Photo, Int) -> Unit,
-    onViewPhotos: (name: String, firstName: String, lastName: String, username: String) -> Unit,
-    onLoadResult: (PagingResult) -> Unit,
+    actions: SearchPhotosActions,
     onScroll: (Boolean) -> Unit
 ) {
     if (query.isNotBlank()) {
@@ -177,13 +175,8 @@ private fun ColumnScope.PhotosOrInitScreen(
             paddingValues = paddingValues,
             photos = photos,
             sectionUiState = rememberSearchPhotosSectionUiState(rememberCoroutineScope(), rememberSaveable { mutableStateOf(false) }),
+            actions = actions,
             isPhotoBookmarked = { false },
-            isUserFollowed = isUserFollowed,
-            onToggleFollow = onToggleFollow,
-            onShowUserInfo = onShowUserInfo,
-            onItemClicked = onItemClicked,
-            onViewPhotos = onViewPhotos,
-            onLoadResult = onLoadResult,
             onScroll = onScroll
         )
     } else {

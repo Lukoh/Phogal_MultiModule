@@ -1,6 +1,5 @@
-package com.goforer.phogal.presentation.stateholder.uistate.home.common.user.photos
+package com.goforer.phogal.presentation.stateholder.uistate.home.bookmark
 
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.Stable
@@ -13,66 +12,53 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItems
 import com.goforer.base.extension.toUser
-import com.goforer.phogal.data.model.remote.response.gallery.common.photo.Photo
 import com.goforer.phogal.data.model.remote.response.gallery.common.user.User
-import com.goforer.phogal.presentation.stateholder.business.home.common.user.UserPhotosViewModel
+import com.goforer.phogal.data.model.remote.response.gallery.photo.photoinfo.Picture
+import com.goforer.phogal.presentation.stateholder.business.home.setting.bookmark.BookmarkViewModel
 import com.goforer.phogal.presentation.stateholder.uistate.BaseUiState
 import com.goforer.phogal.presentation.stateholder.uistate.ErrorEntity
 import com.goforer.phogal.presentation.stateholder.uistate.PagingResult
 import com.goforer.phogal.presentation.stateholder.uistate.rememberBaseUiState
 
 @Stable
-data class UserPhotosActions(
+data class BookmarkActions(
     val isUserFollowed: (User) -> Boolean,
     val onToggleFollow: (User) -> Unit,
     val onShowUserInfo: (User) -> Unit,
-    val onItemClicked: (id: String) -> Unit,
+    val onItemClicked: (item: Picture, index: Int) -> Unit,
     val onViewPhotos: (name: String, firstName: String, lastName: String, username: String) -> Unit,
     val onLoadResult: (PagingResult) -> Unit
 )
 
 @Stable
-data class UserPhotosScreenActions(
+data class BookmarkScreenActions(
+    val onItemClicked: (item: Picture, index: Int) -> Unit,
+    val onBackPressed: () -> Unit,
+    val onViewPhotos: (name: String, firstName: String, lastName: String, username: String) -> Unit,
+    val onOpenWebView: (firstName: String, url: String) -> Unit,
     val isUserFollowed: (User) -> Boolean,
     val onToggleFollow: (User) -> Unit,
-    val onItemClicked: (id: String) -> Unit,
-    val onViewPhotos: (name: String, firstName: String, lastName: String, username: String) -> Unit = { _, _, _, _ -> },
-    val onOpenWebView: (firstName: String, url: String) -> Unit,
-    val onBackPressed: () -> Unit,
     val onStart: () -> Unit = {},
     val onStop: () -> Unit = {}
 )
 
 @Stable
-class UserPhotosContentUiState internal constructor(
+class BookmarkContentUiState internal constructor(
     val baseUiState: BaseUiState,
-    val userPhotosViewModel: UserPhotosViewModel,
-    val photos: LazyPagingItems<Photo>,
+    val bookmarkedPictures: LazyPagingItems<Picture>,
 
-    private val _name: MutableState<String>,
-    private val _firstName: MutableState<String>,
-    private val _visibleActions: MutableState<Boolean>,
+    private val _enabledLoadPhotos: MutableState<Boolean>,
     private val _error: MutableState<ErrorEntity?>,
     private val _selectedUser: MutableState<User?>,
 ) {
-    val name: String get() = _name.value
-    val firstName: String get() = _firstName.value
-    val visibleActions: Boolean get() = _visibleActions.value
+    val enabledLoadPhotos: Boolean get() = _enabledLoadPhotos.value
     val error: ErrorEntity? get() = _error.value
     var selectedUser: User?
         get() = _selectedUser.value
         set(value) { _selectedUser.value = value }
 
-    fun setName(name: String) {
-        _name.value = name
-    }
-
-    fun setFirstName(firstName: String) {
-        _firstName.value = firstName
-    }
-
-    fun setVisibleAction(visibleActions: Boolean) {
-        _visibleActions.value = visibleActions
+    fun setEnabledLoadPhotos(enabled: Boolean) {
+        _enabledLoadPhotos.value = enabled
     }
 
     fun setError(error: ErrorEntity?) {
@@ -81,12 +67,10 @@ class UserPhotosContentUiState internal constructor(
 }
 
 @Composable
-fun rememberUserPhotosContentUiState(
-    userPhotosViewModel: UserPhotosViewModel,
+fun rememberBookmarkContentUiState(
+    bookmarkViewModel: BookmarkViewModel,
     baseUiState: BaseUiState = rememberBaseUiState(),
-    name: MutableState<String> = rememberSaveable { mutableStateOf("") },
-    firstName: MutableState<String> = rememberSaveable { mutableStateOf("") },
-    visibleActions: MutableState<Boolean> = rememberSaveable { mutableStateOf(false) },
+    enabledLoadPhotos: MutableState<Boolean> = rememberSaveable { mutableStateOf(true) },
     error: MutableState<ErrorEntity?> = rememberSaveable(
         saver = Saver(
             save = { state ->
@@ -119,24 +103,19 @@ fun rememberUserPhotosContentUiState(
     selectedUser: MutableState<User?> = rememberSaveable(
         saver = Saver(
             save = { it.value?.toString() },
-            restore = { mutableStateOf(it?.toUser()) }
+            restore = { mutableStateOf(it.toUser()) }
         )
     ) {
         mutableStateOf(null)
     }
-): UserPhotosContentUiState  {
-    val photos = userPhotosViewModel.photos.collectAsLazyPagingItems()
+): BookmarkContentUiState {
+    val bookmarkedPictures = bookmarkViewModel.bookmarkedPictures.collectAsLazyPagingItems()
 
-    return remember(
-        baseUiState, userPhotosViewModel, name, firstName, visibleActions, error, selectedUser
-    ) {
-        UserPhotosContentUiState(
+    return remember(baseUiState, bookmarkViewModel, enabledLoadPhotos, error, selectedUser) {
+        BookmarkContentUiState(
             baseUiState = baseUiState,
-            userPhotosViewModel = userPhotosViewModel,
-            photos = photos,
-            _name = name,
-            _firstName = firstName,
-            _visibleActions = visibleActions,
+            bookmarkedPictures = bookmarkedPictures,
+            _enabledLoadPhotos = enabledLoadPhotos,
             _error = error,
             _selectedUser = selectedUser
         )
@@ -147,35 +126,38 @@ fun rememberUserPhotosContentUiState(
  * A helper structure to hold internal UI logic and stable callbacks.
  */
 @Stable
-class UserPhotosInternalActions internal constructor(
-    val actions: UserPhotosActions
+class BookmarkInternalActions internal constructor(
+    val actions: BookmarkActions
 )
 
 @Composable
-fun rememberUserPhotosInternalActions(
-    contentUiState: UserPhotosContentUiState,
-    screenActions: UserPhotosScreenActions,
-    snackbarHostState: SnackbarHostState
-): UserPhotosInternalActions {
+fun rememberBookmarkInternalActions(
+    contentUiState: BookmarkContentUiState,
+    screenActions: BookmarkScreenActions
+): BookmarkInternalActions {
     val currentActions by rememberUpdatedState(screenActions)
 
-    return remember(contentUiState, snackbarHostState) {
+    return remember(contentUiState) {
         val onLoadResultStable: (PagingResult) -> Unit = { result ->
-            if (result is PagingResult.Success || result is PagingResult.Error) {
-                contentUiState.setVisibleAction(result is PagingResult.Success)
-            }
-            if (result is PagingResult.Error) {
-                contentUiState.setError(result.error)
+            when (result) {
+                is PagingResult.Success -> {
+                    contentUiState.setEnabledLoadPhotos(true)
+                }
+                is PagingResult.Error -> {
+                    contentUiState.setEnabledLoadPhotos(false)
+                    contentUiState.setError(result.error)
+                }
+                else -> {}
             }
         }
 
-        UserPhotosInternalActions(
-            actions = UserPhotosActions(
+        BookmarkInternalActions(
+            actions = BookmarkActions(
                 isUserFollowed = { currentActions.isUserFollowed(it) },
                 onToggleFollow = { currentActions.onToggleFollow(it) },
                 onShowUserInfo = { contentUiState.selectedUser = it },
-                onItemClicked = { currentActions.onItemClicked(it) },
-                onViewPhotos = { _, _, _, _ -> },
+                onItemClicked = { item, index -> currentActions.onItemClicked(item, index) },
+                onViewPhotos = { name, first, last, user -> currentActions.onViewPhotos(name, first, last, user) },
                 onLoadResult = onLoadResultStable
             )
         )

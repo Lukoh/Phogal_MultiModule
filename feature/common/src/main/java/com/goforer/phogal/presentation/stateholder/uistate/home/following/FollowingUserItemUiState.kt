@@ -1,13 +1,20 @@
-package com.goforer.phogal.presentation.stateholder.uistate.home.setting.following
+package com.goforer.phogal.presentation.stateholder.uistate.home.following
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.Stable
-import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
+import com.goforer.phogal.data.model.remote.response.gallery.common.user.User
+
+@Stable
+data class FollowingUserItemActions(
+    val onViewPhotos: (name: String, firstName: String, lastName: String, username: String) -> Unit,
+    val onOpenWebView: (firstName: String, url: String?) -> Unit,
+    val onFollow: (User) -> Unit
+)
 
 @Stable
 class FollowingUserItemUiState internal constructor(

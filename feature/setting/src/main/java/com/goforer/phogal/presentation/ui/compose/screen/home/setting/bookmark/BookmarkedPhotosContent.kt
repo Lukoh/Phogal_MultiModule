@@ -11,9 +11,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.paging.compose.LazyPagingItems
 import com.goforer.phogal.core.ui.R
-import com.goforer.phogal.data.model.remote.response.gallery.common.user.User
 import com.goforer.phogal.data.model.remote.response.gallery.photo.photoinfo.Picture
-import com.goforer.phogal.presentation.stateholder.uistate.PagingResult
+import com.goforer.phogal.presentation.stateholder.uistate.home.bookmark.BookmarkActions
 import com.goforer.phogal.presentation.ui.compose.screen.home.common.InitScreen
 
 @Composable
@@ -22,24 +21,14 @@ fun BookmarkedPhotosContent(
     paddingValues: PaddingValues,
     bookmarkedPictures: LazyPagingItems<Picture>,
     enabledLoadPhotos: Boolean,
-    isUserFollowed: (User) -> Boolean,
-    onToggleFollow: (User) -> Unit,
-    onShowUserInfo: (User) -> Unit,
-    onItemClicked: (item: Picture, index: Int) -> Unit,
-    onLoadResult: (PagingResult) -> Unit,
-    onViewPhotos: (name: String, firstName: String, lastName: String, username: String) -> Unit
+    actions: BookmarkActions
 ) {
     if (bookmarkedPictures.itemCount > 0) {
         BookmarkedPhotosSection(
             modifier = modifier,
             paddingValues = paddingValues,
             photos = bookmarkedPictures,
-            isUserFollowed = isUserFollowed,
-            onToggleFollow = onToggleFollow,
-            onShowUserInfo = onShowUserInfo,
-            onItemClicked = onItemClicked,
-            onLoadResult = onLoadResult,
-            onViewPhotos = onViewPhotos
+            actions = actions
         )
     } else {
         if (enabledLoadPhotos) {

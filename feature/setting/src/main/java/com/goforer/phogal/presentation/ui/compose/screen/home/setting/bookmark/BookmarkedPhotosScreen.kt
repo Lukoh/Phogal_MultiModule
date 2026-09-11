@@ -12,18 +12,14 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarData
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.setValue
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -39,14 +35,16 @@ import androidx.lifecycle.LifecycleEventObserver
 import com.goforer.designsystem.component.CardSnackBar
 import com.goforer.designsystem.component.CustomCenterAlignedTopAppBar
 import com.goforer.designsystem.component.ScaffoldContent
-import com.goforer.phogal.core.ui.R
-import com.goforer.phogal.data.model.remote.response.gallery.photo.photoinfo.Picture
-import com.goforer.phogal.data.model.remote.response.gallery.common.user.User
-import com.goforer.phogal.presentation.stateholder.uistate.PagingResult
-import com.goforer.phogal.presentation.stateholder.uistate.home.setting.bookmark.BookmarkContentUiState
-import com.goforer.phogal.presentation.ui.compose.screen.home.common.user.UserInfoBottomSheet
+import com.goforer.designsystem.component.dialog.ErrorDialog
 import com.goforer.designsystem.theme.ColorBgSecondary
 import com.goforer.designsystem.theme.PhogalTheme
+import com.goforer.phogal.core.ui.R
+import com.goforer.phogal.presentation.stateholder.uistate.PagingResult
+import com.goforer.phogal.presentation.stateholder.uistate.home.bookmark.BookmarkActions
+import com.goforer.phogal.presentation.stateholder.uistate.home.bookmark.BookmarkContentUiState
+import com.goforer.phogal.presentation.stateholder.uistate.home.bookmark.BookmarkScreenActions
+import com.goforer.phogal.presentation.stateholder.uistate.home.bookmark.rememberBookmarkInternalActions
+import com.goforer.phogal.presentation.ui.compose.screen.home.common.user.UserInfoBottomSheet
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalComposeUiApi::class)
@@ -54,66 +52,42 @@ import kotlinx.coroutines.launch
 fun BookmarkedPhotosScreen(
     modifier: Modifier = Modifier,
     contentUiState: BookmarkContentUiState,
-    onItemClicked: (item: Picture, index: Int) -> Unit,
-    onBackPressed: () -> Unit,
-    onViewPhotos: (name: String, firstName: String, lastName: String, username: String) -> Unit,
-    onOpenWebView: (firstName: String, url: String) -> Unit,
-    onStart: () -> Unit = {
-        //To Do:: Implement the code what you want to do....
-    },
-    onStop: () -> Unit = {
-        //To Do:: Implement the code what you want to do....
-    },
-    isUserFollowed: (User) -> Boolean,
-    onToggleFollow: (User) -> Unit
+    actions: BookmarkScreenActions
 ) {
-    val currentOnStart by rememberUpdatedState(onStart)
-    val currentOnStop by rememberUpdatedState(onStop)
     val snackbarHostState = remember { SnackbarHostState() }
-    val backHandlingEnabled by remember { mutableStateOf(value = true) }
 
-    BackHandler(backHandlingEnabled) {
-        onBackPressed()
+    val internalActions = rememberBookmarkInternalActions(
+        contentUiState = contentUiState,
+        screenActions = actions
+    )
+
+    BackHandler(enabled = true) {
+        actions.onBackPressed()
     }
 
     DisposableEffect(contentUiState.baseUiState.lifecycle) {
-        // Create an observer that triggers our remembered callbacks
-        // for doing anything
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_START) {
-                currentOnStart()
+                actions.onStart()
             } else if (event == Lifecycle.Event.ON_STOP) {
-                currentOnStop()
+                actions.onStop()
             }
         }
-
-        // Add the observer to the lifecycle
         contentUiState.baseUiState.lifecycle.addObserver(observer)
-
-        // When the effect leaves the Composition, remove the observer
         onDispose {
             contentUiState.baseUiState.lifecycle.removeObserver(observer)
         }
     }
 
-    // Stable lambdas. The capture set is the bare minimum needed for the
-    // operation, which keeps Compose from invalidating these on every parent
-    // recomposition.
-    val snackbarHost = remember(snackbarHostState) {
-        @Composable {
+    Scaffold(
+        contentColor = ColorBgSecondary,
+        snackbarHost = {
             SnackbarHost(
                 snackbarHostState,
                 modifier = Modifier.navigationBarsPadding(),
-                snackbar = { snackbarData: SnackbarData ->
-                    CardSnackBar(modifier = Modifier, snackbarData)
-                }
+                snackbar = { CardSnackBar(modifier = Modifier, it) }
             )
-        }
-    }
-
-    Scaffold(
-        contentColor = ColorBgSecondary,
-        snackbarHost = snackbarHost,
+        },
         topBar = {
             CustomCenterAlignedTopAppBar(
                 title = {
@@ -131,7 +105,7 @@ fun BookmarkedPhotosScreen(
                     IconButton(
                         onClick = {
                             contentUiState.setEnabledLoadPhotos(false)
-                            onBackPressed()
+                            actions.onBackPressed()
                         }
                     ) {
                         Icon(
@@ -142,54 +116,38 @@ fun BookmarkedPhotosScreen(
                 }
             )
         }, content = { paddingValues ->
-            var selectedUserForInfo by rememberSaveable { mutableStateOf<User?>(null) }
-
             ScaffoldContent(topInterval = paddingValues.calculateTopPadding()) {
-                    BookmarkedPhotosContent(
-                        modifier = modifier,
-                        paddingValues = paddingValues,
-                        bookmarkedPictures = contentUiState.bookmarkedPictures,
-                        enabledLoadPhotos = contentUiState.enabledLoadPhotos,
-                        isUserFollowed = isUserFollowed,
-                        onToggleFollow = onToggleFollow,
-                        onShowUserInfo = { selectedUserForInfo = it },
-                        onItemClicked = onItemClicked,
-                        onLoadResult = { result ->
-                            when (result) {
-                                is PagingResult.Success -> {
-                                    contentUiState.setEnabledLoadPhotos(true)
-                                }
-
-                                is PagingResult.Error -> {
-                                    contentUiState.setEnabledLoadPhotos(false)
-                                    contentUiState.baseUiState.scope.launch {
-                                        snackbarHostState.showSnackbar(result.error.message)
-                                    }
-                                }
-
-                                else -> {}
-                            }
-                        },
-                        onViewPhotos = onViewPhotos
-                    )
+                BookmarkedPhotosContent(
+                    modifier = modifier,
+                    paddingValues = paddingValues,
+                    bookmarkedPictures = contentUiState.bookmarkedPictures,
+                    enabledLoadPhotos = contentUiState.enabledLoadPhotos,
+                    actions = internalActions.actions
+                )
             }
 
-            selectedUserForInfo?.let { user ->
-                val text = stringResource(id = R.string.user_info_has_no_portfolio)
+            contentUiState.error?.let { error ->
+                ErrorDialog(
+                    title = stringResource(id = R.string.error_dialog_title),
+                    text = error.message,
+                    onDismiss = { contentUiState.setError(null) }
+                )
+            }
 
+            contentUiState.selectedUser?.let { user ->
                 UserInfoBottomSheet(
                     user = user,
                     showUserInfoBottomSheet = true,
                     onDismissedRequest = { isPortfolioClicked ->
-                        selectedUserForInfo = null
+                        contentUiState.selectedUser = null
                         if (isPortfolioClicked) {
-                            val portfolioUrl = user.portfolioUrl
-                            if (portfolioUrl.isNullOrEmpty()) {
+                            user.portfolioUrl?.let {
+                                actions.onOpenWebView(user.firstName, it)
+                            } ?: run {
                                 contentUiState.baseUiState.scope.launch {
+                                    val text = contentUiState.baseUiState.context.getString(R.string.user_info_has_no_portfolio)
                                     snackbarHostState.showSnackbar("${user.firstName} $text")
                                 }
-                            } else {
-                                onOpenWebView(user.firstName, portfolioUrl)
                             }
                         }
                     }
@@ -198,6 +156,7 @@ fun BookmarkedPhotosScreen(
         }
     )
 }
+
 
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @Preview(name = "Light Mode")

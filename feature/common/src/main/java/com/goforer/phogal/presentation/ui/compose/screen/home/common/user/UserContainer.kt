@@ -61,6 +61,7 @@ import com.goforer.base.extension.toUser
 import com.goforer.phogal.core.ui.R
 import com.goforer.phogal.data.model.remote.response.gallery.common.user.User
 import com.goforer.phogal.presentation.stateholder.business.home.setting.follow.FollowViewModel
+import com.goforer.phogal.presentation.stateholder.uistate.home.common.photo.UserContainerActions
 import com.goforer.phogal.presentation.stateholder.uistate.home.common.user.UserContainerUiState
 import com.goforer.phogal.presentation.stateholder.uistate.home.common.user.rememberUserContainerUiState
 import com.goforer.phogal.presentation.ui.compose.screen.home.common.follow.ShowFollowButton
@@ -78,9 +79,7 @@ fun UserContainer(
     modifier: Modifier = Modifier,
     state: UserContainerUiState = rememberUserContainerUiState(),
     isFollowed: Boolean,
-    onFollowClick: (User) -> Unit,
-    onShowUserInfo: (User) -> Unit,
-    onViewPhotos: (name: String, firstName: String, lastName: String, username: String) -> Unit,
+    actions: UserContainerActions
 ) {
     if (state.user.isEmpty()) return
 
@@ -91,9 +90,7 @@ fun UserContainer(
         state = state,
         user = user,
         isFollowed = isFollowed,
-        onFollowClick = onFollowClick,
-        onShowUserInfo = onShowUserInfo,
-        onViewPhotos = onViewPhotos
+        actions = actions
     )
 }
 
@@ -104,9 +101,7 @@ fun UserContainerContent(
     state: UserContainerUiState = rememberUserContainerUiState(),
     user: User,
     isFollowed: Boolean,
-    onFollowClick: (User) -> Unit,
-    onShowUserInfo: (User) -> Unit,
-    onViewPhotos: (name: String, firstName: String, lastName: String, username: String) -> Unit,
+    actions: UserContainerActions
 ) {
     val focusManager = LocalFocusManager.current
     val lastName = user.lastName ?: stringResource(id = R.string.picture_no_last_name)
@@ -126,7 +121,7 @@ fun UserContainerContent(
                 .clickable {
                     state.baseUiState.keyboardController?.hide()
                     focusManager.clearFocus()
-                    onShowUserInfo(user)
+                    actions.onShowUserInfo(user)
                 },
         ) {
             ShowProfileImage(
@@ -134,7 +129,7 @@ fun UserContainerContent(
                 user = user,
                 lastName = lastName,
                 visibleViewPhotosButton = state.visibleViewButton,
-                onViewPhotos = onViewPhotos
+                onViewPhotos = actions.onViewPhotos
             )
             Spacer(modifier = Modifier.width(14.dp))
             Column(
@@ -179,7 +174,7 @@ fun UserContainerContent(
                 followColor = state.colors[4],
                 isFollowed
             ) {
-                onFollowClick(user)
+                actions.onFollowClick(user)
             }
         }
 
@@ -195,7 +190,7 @@ fun UserContainerContent(
                     )
                     .clickable {
                         user.username?.let { username ->
-                            onViewPhotos(
+                            actions.onViewPhotos(
                                 username,
                                 user.firstName,
                                 lastName,

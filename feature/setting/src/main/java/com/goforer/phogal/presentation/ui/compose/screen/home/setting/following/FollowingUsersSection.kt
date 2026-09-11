@@ -42,9 +42,11 @@ import com.goforer.phogal.data.model.remote.response.gallery.common.user.User
 import com.goforer.phogal.presentation.stateholder.uistate.PagingResult
 import com.goforer.phogal.presentation.stateholder.uistate.UIConstants.SCROLL_OFFSET_SIGNAL
 import com.goforer.phogal.presentation.stateholder.uistate.UIConstants.UP_BUTTON_THRESHOLD
-import com.goforer.phogal.presentation.stateholder.uistate.home.setting.following.FollowingUserSectionUiState
-import com.goforer.phogal.presentation.stateholder.uistate.home.setting.following.rememberFollowingUserItemUiState
-import com.goforer.phogal.presentation.stateholder.uistate.home.setting.following.rememberFollowingUserSectionUiState
+import com.goforer.phogal.presentation.stateholder.uistate.home.following.FollowingUserActions
+import com.goforer.phogal.presentation.stateholder.uistate.home.following.FollowingUserItemActions
+import com.goforer.phogal.presentation.stateholder.uistate.home.following.FollowingUserSectionUiState
+import com.goforer.phogal.presentation.stateholder.uistate.home.following.rememberFollowingUserItemUiState
+import com.goforer.phogal.presentation.stateholder.uistate.home.following.rememberFollowingUserSectionUiState
 import com.goforer.phogal.presentation.ui.compose.screen.home.common.photo.LoadingPicture
 import com.goforer.phogal.presentation.ui.compose.screen.home.common.photo.ShowUpButton
 import kotlinx.coroutines.launch
@@ -57,10 +59,7 @@ fun FollowingUsersSection(
     paddingValues: PaddingValues,
     sectionUiState: FollowingUserSectionUiState = rememberFollowingUserSectionUiState(),
     users: LazyPagingItems<User>,
-    onLoadResult: (PagingResult) -> Unit,
-    onViewPhotos: (name: String, firstName: String, lastName: String, username: String) -> Unit,
-    onOpenWebView: (firstName: String, url: String?) -> Unit,
-    onFollow: (userUiState: User) -> Unit
+    actions: FollowingUserActions
 ) {
     val lazyListState = users.rememberLazyListState()
     val scope = rememberCoroutineScope()
@@ -79,7 +78,7 @@ fun FollowingUsersSection(
         pagingItems = users,
         onLoadingStarted = { sectionUiState.setLoadingStarted() },
         onLoadingDone = { sectionUiState.setLoadingDone() },
-        onLoadResult = onLoadResult,
+        onLoadResult = actions.onLoadResult,
         onRefreshTransition = { manualRefreshing = it },
         onPaginationReached = { Timber.d("Loaded all photos") },
         logTag = "FollowingUsersSection"
@@ -128,9 +127,7 @@ fun FollowingUsersSection(
                 renderLoadState(
                     users = users,
                     sectionUiState = sectionUiState,
-                    onViewPhotos = onViewPhotos,
-                    onOpenWebView = onOpenWebView,
-                    onFollow = onFollow
+                    actions = actions
                 )
             }
         }
@@ -162,9 +159,7 @@ fun FollowingUsersSection(
 private fun LazyListScope.renderLoadState(
     users: LazyPagingItems<User>,
     sectionUiState: FollowingUserSectionUiState,
-    onViewPhotos: (name: String, firstName: String, lastName: String, username: String) -> Unit,
-    onOpenWebView: (firstName: String, url: String?) -> Unit,
-    onFollow: (userUiState: User) -> Unit
+    actions: FollowingUserActions
 ) {
     renderPagingLoadState(
         items = users,
@@ -184,9 +179,13 @@ private fun LazyListScope.renderLoadState(
                             visibleViewButton = rememberSaveable { mutableStateOf(true) },
                             followed = rememberSaveable { mutableStateOf(true) }
                         ),
-                        onViewPhotos = onViewPhotos,
-                        onOpenWebView = onOpenWebView,
-                        onFollow = onFollow
+                        actions = remember(actions) {
+                            FollowingUserItemActions(
+                                onViewPhotos = actions.onViewPhotos,
+                                onOpenWebView = actions.onOpenWebView,
+                                onFollow = { actions.onFollow(it) }
+                            )
+                        }
                     )
                 }
             )
