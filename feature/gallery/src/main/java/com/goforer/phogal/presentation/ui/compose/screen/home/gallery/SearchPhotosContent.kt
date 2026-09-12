@@ -18,6 +18,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import kotlinx.coroutines.delay
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
@@ -168,17 +169,21 @@ private fun ColumnScope.PhotosOrInitScreen(
     onScroll: (Boolean) -> Unit
 ) {
     if (query.isNotBlank()) {
-        SearchPhotosSection(
-            modifier = Modifier
-                .padding(top = 0.5.dp)
-                .weight(1f),
-            paddingValues = paddingValues,
-            photos = photos,
-            sectionUiState = rememberSearchPhotosSectionUiState(rememberCoroutineScope(), rememberSaveable { mutableStateOf(false) }),
-            actions = actions,
-            isPhotoBookmarked = { false },
-            onScroll = onScroll
-        )
+        // Add a key block so that SearchPhotosSection's built-in LazyListState resets
+        // completely instead of restoring past scroll positions whenever query changes.
+        key(query) {
+            SearchPhotosSection(
+                modifier = Modifier
+                    .padding(top = 0.5.dp)
+                    .weight(1f),
+                paddingValues = paddingValues,
+                photos = photos,
+                sectionUiState = rememberSearchPhotosSectionUiState(rememberCoroutineScope(), rememberSaveable { mutableStateOf(false) }),
+                actions = actions,
+                isPhotoBookmarked = { false },
+                onScroll = onScroll
+            )
+        }
     } else {
         InitScreen(
             modifier = Modifier
