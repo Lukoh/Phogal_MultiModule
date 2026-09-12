@@ -18,6 +18,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -106,6 +107,13 @@ fun SearchPhotosSectionContent(
     val isRefreshing by remember(photos.loadState.refresh, manualRefreshing, sectionUiState.loadingDone) {
         derivedStateOf {
             manualRefreshing || (sectionUiState.loadingDone && photos.itemCount > 0 && photos.loadState.refresh is LoadState.Loading)
+        }
+    }
+
+    //Reset scroll position to 0 immediately when a new search is triggered and loading starts.
+    LaunchedEffect(photos.loadState.refresh) {
+        if (photos.loadState.refresh is LoadState.Loading) {
+            lazyListState.scrollToItem(0)
         }
     }
 
