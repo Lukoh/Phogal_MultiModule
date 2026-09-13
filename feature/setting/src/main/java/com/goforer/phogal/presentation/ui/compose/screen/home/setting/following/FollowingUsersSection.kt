@@ -14,6 +14,7 @@ import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -65,6 +66,24 @@ fun FollowingUsersSection(
     val lazyListState = users.rememberLazyListState()
     val scope = rememberCoroutineScope()
     var manualRefreshing by remember { mutableStateOf(false) }
+    var isResettingScroll by remember { mutableStateOf(false) }
+
+    // When a refresh starts, mark that we should scroll to top once data arrives.
+    LaunchedEffect(users.loadState.refresh) {
+        if (users.loadState.refresh is LoadState.Loading) {
+            isResettingScroll = true
+        }
+    }
+
+    // Reset scroll position to 0 safely only when initial page data load completes
+    // successfully and we have items.
+    LaunchedEffect(users.loadState.refresh, users.itemCount) {
+        if (isResettingScroll && users.loadState.refresh is LoadState.NotLoading && users.itemCount > 0) {
+            lazyListState.scrollToItem(0)
+            isResettingScroll = false
+        }
+    }
+
     // Uncomment the code below to improve the Following feature using Room.
     /*
     val isRefreshing by remember(users.loadState.refresh, manualRefreshing, sectionUiState.loadingDone) {
@@ -130,7 +149,8 @@ fun FollowingUsersSection(
                     users = users,
                     sectionUiState = sectionUiState,
                     actions = actions,
-                    isInspectionMode = isInspectionMode
+                    isInspectionMode = isInspectionMode,
+                    isResettingScroll = isResettingScroll
                 )
             }
         }
@@ -163,8 +183,12 @@ private fun LazyListScope.renderLoadState(
     users: LazyPagingItems<User>,
     sectionUiState: FollowingUserSectionUiState,
     actions: FollowingUserActions,
-    isInspectionMode: Boolean
+    isInspectionMode: Boolean,
+    isResettingScroll: Boolean
 ) {
+    val isInitiallyLoading = users.loadState.refresh is LoadState.Loading
+    val suppressAnimation = isInitiallyLoading || isInspectionMode || isResettingScroll
+
     renderPagingLoadState(
         items = users,
         loadingDone = sectionUiState.loadingDone,
@@ -177,7 +201,7 @@ private fun LazyListScope.renderLoadState(
                         modifier = Modifier
                             .padding(top = padding)
                             .then(
-                                if (isInspectionMode) Modifier else Modifier.animateItem(tween(durationMillis = 250))
+                                if (suppressAnimation) Modifier else Modifier.animateItem(tween(durationMillis = 250))
                             ),
                         followingUserItemUiState = rememberFollowingUserItemUiState(
                             index = rememberSaveable { mutableIntStateOf(index) },

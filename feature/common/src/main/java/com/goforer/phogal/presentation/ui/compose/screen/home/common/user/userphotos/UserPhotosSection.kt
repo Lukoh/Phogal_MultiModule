@@ -107,21 +107,21 @@ fun UserPhotosSectionContent(
         }
     }
 
-    var shouldScrollToTop by remember { mutableStateOf(false) }
+    var isResettingScroll by remember { mutableStateOf(false) }
 
     // When a refresh starts, mark that we should scroll to top once data arrives.
     LaunchedEffect(photos.loadState.refresh) {
         if (photos.loadState.refresh is LoadState.Loading) {
-            shouldScrollToTop = true
+            isResettingScroll = true
         }
     }
 
     // Reset scroll position to 0 safely only when initial page data load completes
     // successfully and we have items.
     LaunchedEffect(photos.loadState.refresh, photos.itemCount) {
-        if (shouldScrollToTop && photos.loadState.refresh is LoadState.NotLoading && photos.itemCount > 0) {
+        if (isResettingScroll && photos.loadState.refresh is LoadState.NotLoading && photos.itemCount > 0) {
             lazyListState.scrollToItem(0)
-            shouldScrollToTop = false
+            isResettingScroll = false
         }
     }
 
@@ -180,7 +180,8 @@ fun UserPhotosSectionContent(
                     sectionUiState = sectionUiState,
                     actions = actions,
                     isPhotoBookmarked = isPhotoBookmarked,
-                    isInspectionMode = isInspectionMode
+                    isInspectionMode = isInspectionMode,
+                    isResettingScroll = isResettingScroll
                 )
             }
 
@@ -213,8 +214,12 @@ private fun LazyListScope.renderLoadState(
     sectionUiState: UserPhotosSectionUiState,
     actions: UserPhotosActions,
     isPhotoBookmarked: (String) -> Boolean,
-    isInspectionMode: Boolean
+    isInspectionMode: Boolean,
+    isResettingScroll: Boolean
 ) {
+    val isInitiallyLoading = photos.loadState.refresh is LoadState.Loading
+    val suppressAnimation = isInitiallyLoading || isInspectionMode || isResettingScroll
+
     renderPagingLoadState(
         items = photos,
         loadingDone = sectionUiState.loadingDone,
@@ -227,7 +232,7 @@ private fun LazyListScope.renderLoadState(
                         modifier = Modifier
                             .padding(top = padding)
                             .then(
-                                if (isInspectionMode) Modifier else Modifier.animateItem(tween(durationMillis = 250))
+                                if (suppressAnimation) Modifier else Modifier.animateItem(tween(durationMillis = 250))
                             ),
                         state = rememberPhotoItemUiState(
                             index = rememberSaveable { mutableIntStateOf(index) },
