@@ -30,6 +30,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -104,16 +105,29 @@ fun SearchPhotosSectionContent(
 ) {
     val lazyListState = photos.rememberLazyListState()
     var manualRefreshing by remember { mutableStateOf(false) }
-    val isRefreshing by remember(photos.loadState.refresh, manualRefreshing, sectionUiState.loadingDone) {
+    val isRefreshing by remember(photos.loadState.refresh, manualRefreshing) {
         derivedStateOf {
-            manualRefreshing || (sectionUiState.loadingDone && photos.itemCount > 0 && photos.loadState.refresh is LoadState.Loading)
+            manualRefreshing && photos.loadState.refresh is LoadState.Loading
         }
     }
 
-    //Reset scroll position to 0 immediately when a new search is triggered and loading starts.
+    var shouldScrollToTop by remember { mutableStateOf(false) }
+
+    // When a refresh (e.g. new search) starts, mark that we should scroll to top
+    // once data arrives.
     LaunchedEffect(photos.loadState.refresh) {
         if (photos.loadState.refresh is LoadState.Loading) {
+            shouldScrollToTop = true
+        }
+    }
+
+    // Reset scroll position to 0 safely only when initial page data load completes
+    // successfully and we have items. We use a combination of NotLoading and itemCount
+    // to ensure we don't scroll while the list is still empty or showing old data.
+    LaunchedEffect(photos.loadState.refresh, photos.itemCount) {
+        if (shouldScrollToTop && photos.loadState.refresh is LoadState.NotLoading && photos.itemCount > 0) {
             lazyListState.scrollToItem(0)
+            shouldScrollToTop = false
         }
     }
 
@@ -158,6 +172,8 @@ fun SearchPhotosSectionContent(
                 .fillMaxSize()
                 .clip(RoundedCornerShape(0.2.dp))
         ) {
+            val isInspectionMode = LocalInspectionMode.current
+
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
@@ -174,7 +190,8 @@ fun SearchPhotosSectionContent(
                     photos = photos,
                     sectionUiState = sectionUiState,
                     actions = actions,
-                    isPhotoBookmarked = isPhotoBookmarked
+                    isPhotoBookmarked = isPhotoBookmarked,
+                    isInspectionMode = isInspectionMode
                 )
             }
 
@@ -208,8 +225,11 @@ private fun LazyListScope.renderLoadState(
     photos: LazyPagingItems<Photo>,
     sectionUiState: SearchPhotosSectionUiState,
     actions: SearchPhotosActions,
-    isPhotoBookmarked: (String) -> Boolean
+    isPhotoBookmarked: (String) -> Boolean,
+    isInspectionMode: Boolean
 ) {
+    val isInitiallyLoading = photos.loadState.refresh is LoadState.Loading
+
     renderPagingLoadState(
         items = photos,
         loadingDone = sectionUiState.loadingDone,
@@ -221,7 +241,9 @@ private fun LazyListScope.renderLoadState(
                     PhotoItem(
                         modifier = Modifier
                             .padding(top = padding)
-                            .animateItem(tween(durationMillis = 200)),
+                            .then(
+                                if (isInitiallyLoading || isInspectionMode) Modifier else Modifier.animateItem(tween(durationMillis = 200))
+                            ),
                         state = rememberPhotoItemUiState(
                             index = rememberSaveable { mutableIntStateOf(index) },
                             photo = rememberSaveable { mutableStateOf(photo) },

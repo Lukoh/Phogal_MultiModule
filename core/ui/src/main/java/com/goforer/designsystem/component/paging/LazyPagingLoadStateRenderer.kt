@@ -120,11 +120,9 @@ fun <T : Any> LazyListScope.renderPagingLoadState(
             isRefreshing -> loadingPlaceholder()
             refresh is LoadState.Error -> errorState(refresh.error)
             else -> {
-                // If we're not loading, not in error, and have 0 items:
-                // We should only show empty state if we've actually finished a refresh
-                // and confirmed there's nothing (endOfPaginationReached).
-                // The 'loadingDone' check alone causes flashes when switching tabs because
-                // it might be true from a previous session while itemCount is briefly 0.
+                // When a new stream arrives, the loadState could be briefly NotLoading
+                // before it flips to Loading or right before itemCount is dispatched.
+                // We should only show empty state if we've actually completed loading and confirmed there is zero items.
                 if (loadingDone && append.endOfPaginationReached) {
                     emptyState()
                 } else {

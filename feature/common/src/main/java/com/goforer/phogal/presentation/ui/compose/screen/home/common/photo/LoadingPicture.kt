@@ -46,7 +46,7 @@ fun LoadingPicture(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .aspectRatio(4f / 3f)
+                    .aspectRatio(3f / 4f) // Fixed aspect ratio consistent with typical vertical photos
                     .snsShimmer()
             ) {
                 if (enableLoadIndicator) {

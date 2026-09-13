@@ -24,6 +24,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.paging.LoadState
@@ -95,6 +96,7 @@ fun BookmarkedPhotosSection(
                 .fillMaxHeight()
                 .clip(RoundedCornerShape(0.2.dp))
         ) {
+            val isInspectionMode = LocalInspectionMode.current
             val layoutDirection = LocalLayoutDirection.current
             val isDark = isSystemInDarkTheme()
             val skyBlueBackground = if (isDark)
@@ -118,7 +120,8 @@ fun BookmarkedPhotosSection(
                 renderLoadState(
                     photos = photos,
                     sectionUiState = sectionUiState,
-                    actions = actions
+                    actions = actions,
+                    isInspectionMode = isInspectionMode
                 )
             }
 
@@ -149,7 +152,8 @@ fun BookmarkedPhotosSection(
 private fun LazyListScope.renderLoadState(
     photos: LazyPagingItems<Picture>,
     sectionUiState: BookmarkSectionUiState,
-    actions: BookmarkActions
+    actions: BookmarkActions,
+    isInspectionMode: Boolean
 ) {
     renderPagingLoadState(
         items = photos,
@@ -163,7 +167,9 @@ private fun LazyListScope.renderLoadState(
                     PictureItem(
                         modifier = Modifier
                             .padding(top = padding)
-                            .animateItem(tween(durationMillis = 250)),
+                            .then(
+                                if (isInspectionMode) Modifier else Modifier.animateItem(tween(durationMillis = 250))
+                            ),
                         pictureItemUiState = rememberPictureItemUiState(
                             picture = rememberSaveable { mutableStateOf(photo) }
                         ),

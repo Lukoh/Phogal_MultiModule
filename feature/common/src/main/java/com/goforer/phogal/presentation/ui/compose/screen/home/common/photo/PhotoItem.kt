@@ -34,6 +34,7 @@ import com.goforer.phogal.presentation.stateholder.uistate.home.common.photo.rem
 import com.goforer.phogal.presentation.stateholder.uistate.home.common.user.rememberUserContainerUiState
 import com.goforer.phogal.presentation.stateholder.uistate.home.common.photo.UserContainerActions
 import com.goforer.phogal.presentation.ui.compose.screen.home.common.user.UserContainer
+import com.goforer.designsystem.component.snsShimmer
 import com.goforer.designsystem.theme.Blue75
 import com.goforer.designsystem.theme.ColorSnowWhite
 import com.goforer.designsystem.theme.ColorSystemGray1
@@ -80,6 +81,7 @@ fun PhotoItem(
                             state.photo.width.toFloat() / state.photo.height.toFloat()
                         else 4f / 3f
                     )
+                    .snsShimmer()
             ) {
                 AsyncImage(
                     model = ImageRequest.Builder(LocalContext.current)

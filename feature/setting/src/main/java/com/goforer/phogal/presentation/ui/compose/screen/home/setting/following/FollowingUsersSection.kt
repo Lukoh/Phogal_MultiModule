@@ -25,6 +25,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -104,6 +105,7 @@ fun FollowingUsersSection(
         Box(
             modifier = modifier.clip(RoundedCornerShape(0.2.dp))
         ) {
+            val isInspectionMode = LocalInspectionMode.current
             val layoutDirection = LocalLayoutDirection.current
             val isDark = isSystemInDarkTheme()
             val skyBlueBackground = if (isDark)
@@ -127,7 +129,8 @@ fun FollowingUsersSection(
                 renderLoadState(
                     users = users,
                     sectionUiState = sectionUiState,
-                    actions = actions
+                    actions = actions,
+                    isInspectionMode = isInspectionMode
                 )
             }
         }
@@ -159,7 +162,8 @@ fun FollowingUsersSection(
 private fun LazyListScope.renderLoadState(
     users: LazyPagingItems<User>,
     sectionUiState: FollowingUserSectionUiState,
-    actions: FollowingUserActions
+    actions: FollowingUserActions,
+    isInspectionMode: Boolean
 ) {
     renderPagingLoadState(
         items = users,
@@ -172,7 +176,9 @@ private fun LazyListScope.renderLoadState(
                     FollowingUsersItem(
                         modifier = Modifier
                             .padding(top = padding)
-                            .animateItem(tween(durationMillis = 250)),
+                            .then(
+                                if (isInspectionMode) Modifier else Modifier.animateItem(tween(durationMillis = 250))
+                            ),
                         followingUserItemUiState = rememberFollowingUserItemUiState(
                             index = rememberSaveable { mutableIntStateOf(index) },
                             user = rememberSaveable { mutableStateOf(user.toString()) },

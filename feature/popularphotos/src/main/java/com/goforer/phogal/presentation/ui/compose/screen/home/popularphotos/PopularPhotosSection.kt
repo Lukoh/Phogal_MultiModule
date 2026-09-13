@@ -20,6 +20,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -30,6 +31,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -93,9 +95,27 @@ fun PopularPhotosSectionContent(
 ) {
     val lazyListState = photos.rememberLazyListState()
     var manualRefreshing by remember { mutableStateOf(false) }
-    val isRefreshing by remember(photos.loadState.refresh, manualRefreshing, sectionUiState.loadingDone) {
+    val isRefreshing by remember(photos.loadState.refresh, manualRefreshing) {
         derivedStateOf {
-            manualRefreshing || (sectionUiState.loadingDone && photos.itemCount > 0 && photos.loadState.refresh is LoadState.Loading)
+            manualRefreshing && photos.loadState.refresh is LoadState.Loading
+        }
+    }
+
+    var shouldScrollToTop by remember { mutableStateOf(false) }
+
+    // When a refresh starts, mark that we should scroll to top once data arrives.
+    LaunchedEffect(photos.loadState.refresh) {
+        if (photos.loadState.refresh is LoadState.Loading) {
+            shouldScrollToTop = true
+        }
+    }
+
+    // Reset scroll position to 0 safely only when initial page data load completes
+    // successfully and we have items.
+    LaunchedEffect(photos.loadState.refresh, photos.itemCount) {
+        if (shouldScrollToTop && photos.loadState.refresh is LoadState.NotLoading && photos.itemCount > 0) {
+            lazyListState.scrollToItem(0)
+            shouldScrollToTop = false
         }
     }
 
@@ -133,6 +153,8 @@ fun PopularPhotosSectionContent(
             modifier = Modifier
                 .fillMaxSize()
         ) {
+            val isInspectionMode = LocalInspectionMode.current
+
             LazyColumn(
                 modifier = Modifier
                     .clip(RoundedCornerShape(0.2.dp))
@@ -150,7 +172,8 @@ fun PopularPhotosSectionContent(
                     photos = photos,
                     sectionUiState = sectionUiState,
                     actions = actions,
-                    isPhotoBookmarked = isPhotoBookmarked
+                    isPhotoBookmarked = isPhotoBookmarked,
+                    isInspectionMode = isInspectionMode
                 )
             }
 
@@ -182,20 +205,25 @@ private fun LazyListScope.renderLoadState(
     photos: LazyPagingItems<Photo>,
     sectionUiState: PopularPhotosSectionUiState,
     actions: PopularPhotosActions,
-    isPhotoBookmarked: (String) -> Boolean
+    isPhotoBookmarked: (String) -> Boolean,
+    isInspectionMode: Boolean
 ) {
+    val isInitiallyLoading = photos.loadState.refresh is LoadState.Loading
+
     renderPagingLoadState(
         items = photos,
         loadingDone = sectionUiState.loadingDone,
         content = {
             contentItems(
                 items = photos,
-                key = { index, photo -> "${photo.id}_$index" },
+                key = { _, photo -> photo.id },
                 content = { padding, index, photo ->
                     PhotoItem(
                         modifier = Modifier
                             .padding(top = padding)
-                            .animateItem(tween(durationMillis = 250)),
+                            .then(
+                                if (isInitiallyLoading || isInspectionMode) Modifier else Modifier.animateItem(tween(durationMillis = 250))
+                            ),
                         state = rememberPhotoItemUiState(
                             index = rememberSaveable { mutableIntStateOf(index) },
                             photo = rememberSaveable { mutableStateOf(photo) },
