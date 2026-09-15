@@ -122,7 +122,9 @@ fun FollowingUsersSection(
         }
     ) {
         Box(
-            modifier = modifier.clip(RoundedCornerShape(0.2.dp))
+            modifier = Modifier
+                .fillMaxWidth()
+                .fillMaxHeight()
         ) {
             val isInspectionMode = LocalInspectionMode.current
             val layoutDirection = LocalLayoutDirection.current

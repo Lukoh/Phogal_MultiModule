@@ -30,7 +30,7 @@ room = "2.8.4"
 # Compose BOM 2026.08.00 works with Kotlin 2.4.10.
 composeBom = "2026.08.00"
 material3 = "1.4.0"
-animation = "1.12.0"
+animation = "1.12.1"
 composeMaterialCore = "1.6.2"
 
 # --- Hilt ---
@@ -73,10 +73,10 @@ junit = "4.13.2"
 extJunit = "1.3.0"
 espressoCore = "3.7.0"
 runner = "1.7.0"
-ui = "1.12.0"
-runtime = "1.12.0"
+ui = "1.12.1"
+runtime = "1.12.1"
 volley = "1.2.1"
-foundation = "1.12.0"
+foundation = "1.12.1"
 runtimeVersion = "1.12.1"
 
 

@@ -157,7 +157,6 @@ fun PopularPhotosSectionContent(
 
             LazyColumn(
                 modifier = Modifier
-                    .clip(RoundedCornerShape(0.2.dp))
                     .fillMaxSize()
                     .background(skyBlueBackground),
                 state = lazyListState,

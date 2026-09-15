@@ -109,10 +109,9 @@ fun BookmarkedPhotosSection(
         }
     ) {
         Box(
-            modifier = modifier
+            modifier = Modifier
                 .fillMaxWidth()
                 .fillMaxHeight()
-                .clip(RoundedCornerShape(0.2.dp))
         ) {
             val isInspectionMode = LocalInspectionMode.current
             val layoutDirection = LocalLayoutDirection.current

@@ -170,7 +170,6 @@ fun SearchPhotosSectionContent(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .clip(RoundedCornerShape(0.2.dp))
         ) {
             val isInspectionMode = LocalInspectionMode.current
 
