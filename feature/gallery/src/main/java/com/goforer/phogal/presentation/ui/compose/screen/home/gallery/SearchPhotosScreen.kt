@@ -20,10 +20,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -47,9 +44,9 @@ import com.goforer.designsystem.component.dialog.ErrorDialog
 import com.goforer.designsystem.theme.ColorBgSecondary
 import com.goforer.designsystem.theme.PhogalTheme
 import com.goforer.phogal.core.ui.R
-import com.goforer.phogal.presentation.stateholder.uistate.home.gallery.SearchPhotosContentUiState
-import com.goforer.phogal.presentation.stateholder.uistate.home.gallery.SearchPhotosScreenActions
-import com.goforer.phogal.presentation.stateholder.uistate.home.gallery.rememberSearchPhotosInternalActions
+import com.goforer.phogal.presentation.stateholder.uistate.home.gallery.SearchPhotoContentUiState
+import com.goforer.phogal.presentation.stateholder.uistate.home.gallery.SearchPhotosScreenCallbacks
+import com.goforer.phogal.presentation.stateholder.uistate.home.gallery.rememberSearchPhotosInternalCallbacks
 import com.goforer.phogal.presentation.stateholder.uistate.home.gallery.rememberSearchSectionUiState
 import com.goforer.phogal.presentation.ui.compose.screen.home.OfflineScreen
 import com.goforer.phogal.presentation.ui.compose.screen.home.common.user.UserInfoBottomSheet
@@ -59,34 +56,34 @@ import kotlinx.coroutines.launch
 @Composable
 fun SearchPhotosScreen(
     modifier: Modifier = Modifier,
-    contentUiState: SearchPhotosContentUiState,
-    actions: SearchPhotosScreenActions
+    contentUiState: SearchPhotoContentUiState,
+    callbacks: SearchPhotosScreenCallbacks
 ) {
     if (!ConnectionUtils.isNetworkAvailable(contentUiState.baseUiState.context)) {
         OfflineScreen(modifier = Modifier)
     } else {
         val snackbarHostState = remember { SnackbarHostState() }
         val sectionUiState = rememberSearchSectionUiState(
-            enabled = rememberSaveable { mutableStateOf(contentUiState.enabled) }
+            initialEnabled = contentUiState.enabled
         )
 
         LaunchedEffect(contentUiState.enabled) {
-            sectionUiState.setEnabled(contentUiState.enabled)
+            sectionUiState.enabled = contentUiState.enabled
         }
 
         // Encapsulate all logic and stable callbacks in a single object.
         // This dramatically reduces variable declarations in the screen body.
-        val internalActions = rememberSearchPhotosInternalActions(
+        val internalCallbacks = rememberSearchPhotosInternalCallbacks(
             contentUiState = contentUiState,
             sectionUiState = sectionUiState,
-            screenActions = actions,
+            screenCallbacks = callbacks,
             snackbarHostState = snackbarHostState
         )
 
         ObserveLifecycle(
             lifecycleOwner = LocalLifecycleOwner.current,
-            onStart = actions.onStart,
-            onStop = actions.onStop
+            onStart = callbacks.onStart,
+            onStop = callbacks.onStop
         )
 
         BackHandler(enabled = true) {
@@ -105,9 +102,9 @@ fun SearchPhotosScreen(
             },
             topBar = {
                 SearchTopBar(
-                    showFavoriteActionProvider = { contentUiState.visibleActions },
-                    onMenuClick = internalActions.onMenuClick,
-                    onFavoriteClick = internalActions.onFavoriteClick
+                    showFavoriteActionProvider = { contentUiState.visible },
+                    onMenuClick = internalCallbacks.onMenuClick,
+                    onFavoriteClick = internalCallbacks.onFavoriteClick
                 )
             },
             content = { paddingValues ->
@@ -122,7 +119,7 @@ fun SearchPhotosScreen(
                             end = paddingValues.calculateEndPadding(layoutDirection),
                             bottom = paddingValues.calculateBottomPadding()
                         ),
-                        actions = internalActions.actions
+                        callbacks = internalCallbacks.callbacks
                     )
                 }
 
@@ -130,7 +127,7 @@ fun SearchPhotosScreen(
                     ErrorDialog(
                         title = stringResource(id = R.string.error_dialog_title),
                         text = error.message,
-                        onDismiss = { contentUiState.setError(null) }
+                        onDismiss = { contentUiState.error = null }
                     )
                 }
 
@@ -142,7 +139,7 @@ fun SearchPhotosScreen(
                             contentUiState.selectedUser = null
                             if (isPortfolioClicked) {
                                 user.portfolioUrl?.let {
-                                    actions.onOpenWebView(user.firstName, it)
+                                    callbacks.onOpenWebView(user.firstName, it)
                                 } ?: run {
                                     contentUiState.baseUiState.scope.launch {
                                         val text = contentUiState.baseUiState.context.getString(R.string.user_info_has_no_portfolio)

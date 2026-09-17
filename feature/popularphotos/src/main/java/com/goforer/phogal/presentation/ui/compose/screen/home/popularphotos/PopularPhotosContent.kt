@@ -14,8 +14,9 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.paging.compose.LazyPagingItems
 import com.goforer.phogal.data.model.remote.response.gallery.common.photo.Photo
-import com.goforer.phogal.presentation.stateholder.uistate.home.popularphotos.PopularPhotosActions
+import com.goforer.phogal.presentation.stateholder.uistate.home.popularphotos.PopularPhotosCallbacks
 import com.goforer.designsystem.theme.PhogalTheme
+import com.goforer.phogal.presentation.stateholder.uistate.home.popularphotos.rememberPopularPhotosSectionUiState
 
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
@@ -23,13 +24,13 @@ fun PopularPhotosContent(
     modifier: Modifier = Modifier,
     paddingValues: PaddingValues,
     photos: LazyPagingItems<Photo>,
-    actions: PopularPhotosActions
+    callbacks: PopularPhotosCallbacks
 ) {
     PopularPhotosSection(
         modifier = modifier,
         paddingValues = paddingValues,
-        photos = photos,
-        actions = actions,
+        sectionUiState = rememberPopularPhotosSectionUiState(photos),
+        callbacks = callbacks,
         isPhotoBookmarked = { false }
     )
 }

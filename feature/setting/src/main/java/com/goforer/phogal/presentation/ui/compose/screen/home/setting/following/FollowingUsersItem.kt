@@ -33,7 +33,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -52,7 +51,7 @@ import com.goforer.phogal.data.model.remote.response.gallery.common.ProfileImage
 import com.goforer.phogal.data.model.remote.response.gallery.common.Social
 import com.goforer.phogal.data.model.remote.response.gallery.common.user.User
 import com.goforer.phogal.data.model.remote.response.gallery.common.user.UserLinks
-import com.goforer.phogal.presentation.stateholder.uistate.home.following.FollowingUserItemActions
+import com.goforer.phogal.presentation.stateholder.uistate.home.following.FollowingUserItemCallbacks
 import com.goforer.phogal.presentation.stateholder.uistate.home.following.FollowingUserItemUiState
 import com.goforer.phogal.presentation.stateholder.uistate.home.following.rememberFollowingUserItemUiState
 import com.goforer.phogal.presentation.ui.compose.screen.home.common.follow.ShowFollowButton
@@ -65,7 +64,7 @@ import com.goforer.designsystem.theme.Blue50
 fun FollowingUsersItem(
     modifier: Modifier = Modifier,
     followingUserItemUiState: FollowingUserItemUiState = rememberFollowingUserItemUiState(),
-    actions: FollowingUserItemActions
+    callbacks: FollowingUserItemCallbacks
 ) {
     if (followingUserItemUiState.user.isEmpty()) return
 
@@ -79,7 +78,7 @@ fun FollowingUsersItem(
             .padding(start = 16.dp, end = 16.dp, top = topPadding, bottom = bottomPadding)
             .clickable {
                 user.username?.let {
-                    actions.onViewPhotos(it, user.firstName, user.lastName ?: "", it)
+                    callbacks.onViewPhotos(it, user.firstName, user.lastName ?: "", it)
                 }
             },
         shape = RoundedCornerShape(16.dp),
@@ -113,7 +112,7 @@ fun FollowingUsersItem(
                         position = 9,
                         onClicked = {
                             user.username?.let {
-                                actions.onViewPhotos(it, user.firstName, user.lastName ?: "", it)
+                                callbacks.onViewPhotos(it, user.firstName, user.lastName ?: "", it)
                             }
                         }
                     )
@@ -124,7 +123,7 @@ fun FollowingUsersItem(
                     followColor = Blue50,
                     isUserFollowed = followingUserItemUiState.followed
                 ) {
-                    actions.onFollow(user)
+                    callbacks.onFollow(user)
                 }
             }
 
@@ -163,7 +162,7 @@ fun FollowingUsersItem(
 
                 ShowPortfolioButton(
                     firstName = user.firstName,
-                    onOpenWebView = { actions.onOpenWebView(user.firstName, user.portfolioUrl) }
+                    onOpenWebView = { callbacks.onOpenWebView(user.firstName, user.portfolioUrl) }
                 )
             }
         }
@@ -238,11 +237,11 @@ private fun FollowingUsersItemPreviewContent() {
     )
 
     val mockState = rememberFollowingUserItemUiState(
-        index = remember { mutableIntStateOf(0) }, // index = 0
-        user = remember { mutableStateOf(dummyUser.toString()) },
-        visibleViewButton = remember { mutableStateOf(true) },
-        clicked = remember { mutableStateOf(false) },
-        followed = remember { mutableStateOf(true) }
+        userData = dummyUser.toString(),
+        index = 0,
+        initialVisibleViewButton = true,
+        initialClicked = false,
+        initialFollowed = true
     )
 
     MaterialTheme {
@@ -258,7 +257,7 @@ private fun FollowingUsersItemPreviewContent() {
                 ) {
                     FollowingUsersItem(
                         followingUserItemUiState = mockState,
-                        actions = FollowingUserItemActions(
+                        callbacks = FollowingUserItemCallbacks(
                             onViewPhotos = { _, _, _, _ -> },
                             onOpenWebView = { _, _ -> },
                             onFollow = {}

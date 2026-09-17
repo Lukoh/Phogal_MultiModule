@@ -31,9 +31,9 @@ import com.goforer.designsystem.component.ScaffoldContent
 import com.goforer.designsystem.component.dialog.ErrorDialog
 import com.goforer.designsystem.theme.ColorBgSecondary
 import com.goforer.phogal.core.ui.R
-import com.goforer.phogal.presentation.stateholder.uistate.home.popularphotos.PopularPhotosContentUiState
-import com.goforer.phogal.presentation.stateholder.uistate.home.popularphotos.PopularPhotosScreenActions
-import com.goforer.phogal.presentation.stateholder.uistate.home.popularphotos.rememberPopularPhotosInternalActions
+import com.goforer.phogal.presentation.stateholder.uistate.home.popularphotos.PopularPhotoContentUiState
+import com.goforer.phogal.presentation.stateholder.uistate.home.popularphotos.PopularPhotosScreenCallbacks
+import com.goforer.phogal.presentation.stateholder.uistate.home.popularphotos.rememberPopularPhotosInternalCallbacks
 import com.goforer.phogal.presentation.ui.compose.screen.home.OfflineScreen
 import com.goforer.phogal.presentation.ui.compose.screen.home.common.user.UserInfoBottomSheet
 import kotlinx.coroutines.launch
@@ -42,17 +42,17 @@ import kotlinx.coroutines.launch
 @Composable
 fun PopularPhotosScreen(
     modifier: Modifier = Modifier,
-    contentUiState: PopularPhotosContentUiState,
-    actions: PopularPhotosScreenActions
+    contentUiState: PopularPhotoContentUiState,
+    callbacks: PopularPhotosScreenCallbacks
 ) {
     if (!ConnectionUtils.isNetworkAvailable(contentUiState.baseUiState.context)) {
         OfflineScreen(modifier = Modifier)
     } else {
         val snackbarHostState = remember { SnackbarHostState() }
 
-        val internalActions = rememberPopularPhotosInternalActions(
+        val internalCallbacks = rememberPopularPhotosInternalCallbacks(
             contentUiState = contentUiState,
-            screenActions = actions
+            screenCallbacks = callbacks
         )
 
         BackHandler(enabled = true) {
@@ -62,9 +62,9 @@ fun PopularPhotosScreen(
         DisposableEffect(contentUiState.baseUiState.lifecycle) {
             val observer = LifecycleEventObserver { _, event ->
                 if (event == Lifecycle.Event.ON_START) {
-                    actions.onStart()
+                    callbacks.onStart()
                 } else if (event == Lifecycle.Event.ON_STOP) {
-                    actions.onStop()
+                    callbacks.onStop()
                 }
             }
             contentUiState.baseUiState.lifecycle.addObserver(observer)
@@ -110,7 +110,7 @@ fun PopularPhotosScreen(
                             bottom = paddingValues.calculateBottomPadding()
                         ),
                         photos = contentUiState.photos,
-                        actions = internalActions.actions
+                        callbacks = internalCallbacks.callbacks
                     )
                 }
 
@@ -118,7 +118,7 @@ fun PopularPhotosScreen(
                     ErrorDialog(
                         title = stringResource(id = R.string.error_dialog_title),
                         text = error.message,
-                        onDismiss = { contentUiState.setError(null) }
+                        onDismiss = { contentUiState.error = null }
                     )
                 }
 
@@ -130,7 +130,7 @@ fun PopularPhotosScreen(
                             contentUiState.selectedUser = null
                             if (isPortfolioClicked) {
                                 user.portfolioUrl?.let {
-                                    actions.onOpenWebView(user.firstName, it)
+                                    callbacks.onOpenWebView(user.firstName, it)
                                 } ?: run {
                                     contentUiState.baseUiState.scope.launch {
                                         val text = contentUiState.baseUiState.context.getString(R.string.user_info_has_no_portfolio)

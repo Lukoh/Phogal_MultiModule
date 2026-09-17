@@ -45,7 +45,7 @@ dependencies {
     implementation(libs.androidx.compose.animation)
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
-    debugImplementation(libs.androidx.compose.ui.tooling)
+    implementation(libs.androidx.compose.ui.tooling)
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
     implementation(project(":core:model"))

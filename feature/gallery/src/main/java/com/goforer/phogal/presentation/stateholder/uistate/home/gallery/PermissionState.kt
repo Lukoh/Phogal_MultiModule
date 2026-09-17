@@ -14,7 +14,7 @@ import kotlinx.coroutines.CoroutineScope
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Stable
-class PermissionState internal constructor(
+class PermissionState(
     val scope: CoroutineScope,
     val bottomSheetState: SheetState,
 

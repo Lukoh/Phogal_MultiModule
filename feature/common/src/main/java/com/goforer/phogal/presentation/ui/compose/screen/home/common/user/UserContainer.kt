@@ -52,24 +52,23 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImagePainter
 import coil.size.Size
+import com.goforer.base.extension.toUser
 import com.goforer.designsystem.component.IconButton
 import com.goforer.designsystem.component.IconContainer
 import com.goforer.designsystem.component.ImageCrossFade
 import com.goforer.designsystem.component.loadImagePainter
 import com.goforer.designsystem.component.snsShimmer
-import com.goforer.base.extension.toUser
-import com.goforer.phogal.core.ui.R
-import com.goforer.phogal.data.model.remote.response.gallery.common.user.User
-import com.goforer.phogal.presentation.stateholder.business.home.setting.follow.FollowViewModel
-import com.goforer.phogal.presentation.stateholder.uistate.home.common.photo.UserContainerActions
-import com.goforer.phogal.presentation.stateholder.uistate.home.common.user.UserContainerUiState
-import com.goforer.phogal.presentation.stateholder.uistate.home.common.user.rememberUserContainerUiState
-import com.goforer.phogal.presentation.ui.compose.screen.home.common.follow.ShowFollowButton
 import com.goforer.designsystem.theme.Black
 import com.goforer.designsystem.theme.Blue50
 import com.goforer.designsystem.theme.DarkGreen60
 import com.goforer.designsystem.theme.DarkGreenGray99
 import com.goforer.designsystem.theme.PhogalTheme
+import com.goforer.phogal.core.ui.R
+import com.goforer.phogal.data.model.remote.response.gallery.common.user.User
+import com.goforer.phogal.presentation.stateholder.uistate.home.common.photo.UserContainerCallbacks
+import com.goforer.phogal.presentation.stateholder.uistate.home.common.user.UserContainerUiState
+import com.goforer.phogal.presentation.stateholder.uistate.home.common.user.rememberUserContainerUiState
+import com.goforer.phogal.presentation.ui.compose.screen.home.common.follow.ShowFollowButton
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
@@ -79,7 +78,7 @@ fun UserContainer(
     modifier: Modifier = Modifier,
     state: UserContainerUiState = rememberUserContainerUiState(),
     isFollowed: Boolean,
-    actions: UserContainerActions
+    callbacks: UserContainerCallbacks
 ) {
     if (state.user.isEmpty()) return
 
@@ -90,7 +89,7 @@ fun UserContainer(
         state = state,
         user = user,
         isFollowed = isFollowed,
-        actions = actions
+        callbacks = callbacks
     )
 }
 
@@ -101,7 +100,7 @@ fun UserContainerContent(
     state: UserContainerUiState = rememberUserContainerUiState(),
     user: User,
     isFollowed: Boolean,
-    actions: UserContainerActions
+    callbacks: UserContainerCallbacks
 ) {
     val focusManager = LocalFocusManager.current
     val lastName = user.lastName ?: stringResource(id = R.string.picture_no_last_name)
@@ -121,7 +120,7 @@ fun UserContainerContent(
                 .clickable {
                     state.baseUiState.keyboardController?.hide()
                     focusManager.clearFocus()
-                    actions.onShowUserInfo(user)
+                    callbacks.onShowUserInfo(user)
                 },
         ) {
             ShowProfileImage(
@@ -129,7 +128,7 @@ fun UserContainerContent(
                 user = user,
                 lastName = lastName,
                 visibleViewPhotosButton = state.visibleViewButton,
-                onViewPhotos = actions.onViewPhotos
+                onViewPhotos = callbacks.onViewPhotos
             )
             Spacer(modifier = Modifier.width(14.dp))
             Column(
@@ -174,7 +173,7 @@ fun UserContainerContent(
                 followColor = state.colors[4],
                 isFollowed
             ) {
-                actions.onFollowClick(user)
+                callbacks.onFollowClick(user)
             }
         }
 
@@ -190,7 +189,7 @@ fun UserContainerContent(
                     )
                     .clickable {
                         user.username?.let { username ->
-                            actions.onViewPhotos(
+                            callbacks.onViewPhotos(
                                 username,
                                 user.firstName,
                                 lastName,

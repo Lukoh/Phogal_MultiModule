@@ -79,7 +79,7 @@ fun SearchSection(
             value = if (sectionUiState.editableInputState.isHint) "" else sectionUiState.editableInputState.textState,
             onValueChange = {
                 if (!it.contains("\n")) {
-                    sectionUiState.setWordChanged(true)
+                    sectionUiState.wordChanged = true
                     sectionUiState.editableInputState.textState = it
                 }
             },
@@ -178,7 +178,7 @@ fun SearchSectionPreview() {
                 interactionSource = mockInteractionSource,
                 editableInputState = mockEditableInputState
             ).apply {
-                setWordChanged(true)
+                wordChanged = true
                 editableInputState.textState = "Android Compose"
             }
 

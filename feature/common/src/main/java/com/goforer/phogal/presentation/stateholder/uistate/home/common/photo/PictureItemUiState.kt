@@ -1,17 +1,18 @@
 package com.goforer.phogal.presentation.stateholder.uistate.home.common.photo
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.Stable
-import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.Saver
+import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
-import com.goforer.phogal.data.model.remote.response.gallery.photo.photoinfo.Picture
+import androidx.compose.runtime.setValue
 import com.goforer.phogal.data.model.remote.response.gallery.common.user.User
+import com.goforer.phogal.data.model.remote.response.gallery.photo.photoinfo.Picture
 
 @Stable
-data class PictureItemActions(
+data class PictureItemCallbacks(
     val onFollowClick: (User) -> Unit,
     val onShowUserInfo: (User) -> Unit,
     val onItemClicked: (item: Picture, index: Int) -> Unit,
@@ -20,44 +21,45 @@ data class PictureItemActions(
 
 @Stable
 class PictureItemUiState(
-    private val _index: MutableState<Int>,
-    private val _picture: MutableState<Picture>,
-    private val _visibleViewButton: MutableState<Boolean>,
-    private val _clicked: MutableState<Boolean>,
+    val index: Int = 0,
+    val picture: Picture = Picture.empty(),
+    val visibleViewButton: Boolean = false,
+    initialClicked: Boolean = false,
 ) {
-    val index: Int get() = _index.value
-    val picture: Picture get() = _picture.value
-    val visibleViewButton: Boolean get() = _visibleViewButton.value
-    val clicked: Boolean get() = _clicked.value
-
-    fun setIndex(index: Int) {
-        _index.value = index
-    }
-
-    fun setPicture(picture: Picture) {
-        _picture?.value = picture
-    }
-
-    fun setClicked(clicked: Boolean) {
-        _clicked.value = clicked
-    }
-
-    fun setVisibleViewButton(visibleViewButton: Boolean) {
-        _visibleViewButton.value = visibleViewButton
+    var clicked: Boolean by mutableStateOf(initialClicked)
+    companion object {
+        fun Saver(picture: Picture): Saver<PictureItemUiState, *> = listSaver(
+            save = {
+                listOf(it.index, it.visibleViewButton, it.clicked)
+            },
+            restore = {
+                PictureItemUiState(
+                    index = it[0] as Int,
+                    picture = picture,
+                    visibleViewButton = it[1] as Boolean,
+                    initialClicked = it[2] as Boolean
+                )
+            }
+        )
     }
 }
 
 @Composable
 fun rememberPictureItemUiState(
-    index: MutableState<Int> = rememberSaveable { mutableIntStateOf(0) },
-    picture: MutableState<Picture> = remember { mutableStateOf(Picture.empty()) },
-    visibleViewButton: MutableState<Boolean> = rememberSaveable() { mutableStateOf(false) },
-    clicked: MutableState<Boolean> = rememberSaveable { mutableStateOf(false) }
-): PictureItemUiState = remember(index, picture, visibleViewButton, clicked) {
-    PictureItemUiState(
-        _index = index,
-        _picture = picture,
-        _visibleViewButton = visibleViewButton,
-        _clicked = clicked
-    )
+    index: Int = 0,
+    picture: Picture = Picture.empty(),
+    initialVisibleViewButton: Boolean = false,
+    initialClicked: Boolean = false
+): PictureItemUiState {
+    return rememberSaveable(
+        picture,
+        saver = PictureItemUiState.Saver(picture)
+    ) {
+        PictureItemUiState(
+            index = index,
+            picture = picture,
+            visibleViewButton = initialVisibleViewButton,
+            initialClicked = initialClicked
+        )
+    }
 }

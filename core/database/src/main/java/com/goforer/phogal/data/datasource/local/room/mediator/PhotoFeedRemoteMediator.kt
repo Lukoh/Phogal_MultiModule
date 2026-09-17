@@ -83,18 +83,18 @@ class PhotoFeedRemoteMediator(
 
                 // Atomic swap: readers never observe a half-written feed.
                 database.withTransaction {
-                    // Upsert the new data first without deleting the existing data.
-                    // This completely prevents the list from becoming empty at any point.
-                    photoFeedDao.insertAll(photos.map { PhotoFeedEntity.of(feedKey, it, now) })
-
                     if (loadType == LoadType.REFRESH) {
                         val prefix = feedKey.substringBefore('/') + "/"
 
-                        // Instead of a full deletion, delete only the old data saved before the current insertion time (now).
-                        // (This cleans up outdated caches that were not updated because they were missing from the network response.)
-                        photoFeedDao.deleteOldFeedsByPrefix(prefix, now)
+                        // Clear the existing cache for this prefix BEFORE inserting new data.
+                        // This ensures that new items (page 1) are the only ones in the DB
+                        // for this feed, preventing old page 2+ items from appearing first
+                        // due to auto-generated ID ordering.
+                        photoFeedDao.clearFeedsByPrefix(prefix)
                         remoteKeyDao.clearByPrefix(prefix)
                     }
+
+                    photoFeedDao.insertAll(photos.map { PhotoFeedEntity.of(feedKey, it, now) })
 
                     val previous = remoteKeyDao.remoteKey(feedKey)
                     remoteKeyDao.upsert(

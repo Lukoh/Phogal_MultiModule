@@ -5,30 +5,37 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.paging.compose.LazyPagingItems
+import com.goforer.designsystem.component.paging.rememberLazyListState
 import com.goforer.phogal.core.ui.R
 import com.goforer.phogal.data.model.remote.response.gallery.photo.photoinfo.Picture
-import com.goforer.phogal.presentation.stateholder.uistate.home.bookmark.BookmarkActions
+import com.goforer.phogal.presentation.stateholder.uistate.home.bookmark.BookmarkCallbacks
+import com.goforer.phogal.presentation.stateholder.uistate.home.bookmark.rememberBookmarkSectionUiState
 import com.goforer.phogal.presentation.ui.compose.screen.home.common.InitScreen
 
 @Composable
 fun BookmarkedPhotosContent(
     modifier: Modifier = Modifier,
     paddingValues: PaddingValues,
-    bookmarkedPictures: LazyPagingItems<Picture>,
+    photos: LazyPagingItems<Picture>,
     enabledLoadPhotos: Boolean,
-    actions: BookmarkActions
+    callbacks: BookmarkCallbacks
 ) {
-    if (bookmarkedPictures.itemCount > 0) {
+    if (photos.itemCount > 0) {
         BookmarkedPhotosSection(
             modifier = modifier,
             paddingValues = paddingValues,
-            photos = bookmarkedPictures,
-            actions = actions
+            sectionUiState = rememberBookmarkSectionUiState(
+                photos,
+                rememberCoroutineScope(),
+                photos.rememberLazyListState()
+            ),
+            callbacks = callbacks
         )
     } else {
         if (enabledLoadPhotos) {

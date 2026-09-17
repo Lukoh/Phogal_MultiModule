@@ -16,26 +16,27 @@ import com.goforer.phogal.presentation.stateholder.uistate.PagingResult
 import com.goforer.phogal.presentation.stateholder.uistate.toErrorEntity
 import timber.log.Timber
 
+data class PagingLoadStateCallbacks(
+    val onLoadingStarted: () -> Unit,
+    val onLoadingDone: () -> Unit,
+    val onLoadResult: (PagingResult) -> Unit,
+    val onRefreshTransition: (isRefreshing: Boolean) -> Unit = {},
+    val onPaginationReached: () -> Unit = {}
+)
+
 /**
  * A side effect handler for [LazyPagingItems] load states.
  * Detects state changes and handles side effects such as success/error callbacks,
  * loading state updates, and logging.
  *
  * @param pagingItems The [LazyPagingItems] to monitor.
- * @param onLoadingStarted Callback triggered when loading starts (refresh or append).
- * @param onLoadingDone Callback triggered when initial loading is complete.
- * @param onLoadResult Callback triggered with the [PagingResult] of the load operation.
- * @param onRefreshTransition Callback triggered when the refresh state changes (useful for resetting manual refresh flags).
+ * @param callbacks The [PagingLoadStateCallbacks] defining behavior for lifecycle hooks.
  * @param logTag Tag for logging pagination events.
  */
 @Composable
 fun <T : Any> PagingLoadStateEffect(
     pagingItems: LazyPagingItems<T>,
-    onLoadingStarted: () -> Unit,
-    onLoadingDone: () -> Unit,
-    onLoadResult: (PagingResult) -> Unit,
-    onRefreshTransition: (isRefreshing: Boolean) -> Unit = {},
-    onPaginationReached: () -> Unit = {},
+    callbacks: PagingLoadStateCallbacks,
     logTag: String = "PagingLoadStateEffect"
 ) {
     var hasStartedLoading by remember(pagingItems) { mutableStateOf(false) }
@@ -46,27 +47,27 @@ fun <T : Any> PagingLoadStateEffect(
 
         when {
             refresh is LoadState.Error -> {
-                onLoadResult(PagingResult.Error(refresh.error.toErrorEntity()))
+                callbacks.onLoadResult(PagingResult.Error(refresh.error.toErrorEntity()))
             }
 
             append is LoadState.Error -> {
-                onLoadResult(PagingResult.Error(append.error.toErrorEntity()))
+                callbacks.onLoadResult(PagingResult.Error(append.error.toErrorEntity()))
             }
 
             refresh is LoadState.Loading || append is LoadState.Loading -> {
                 hasStartedLoading = true
-                onLoadingStarted()
-                onLoadResult(PagingResult.Loading)
+                callbacks.onLoadingStarted()
+                callbacks.onLoadResult(PagingResult.Loading)
             }
 
             refresh is LoadState.NotLoading -> {
-                onLoadResult(PagingResult.Success(""))
+                callbacks.onLoadResult(PagingResult.Success(""))
             }
         }
 
         if (append is LoadState.NotLoading && append.endOfPaginationReached) {
             Timber.tag(logTag).d("Pagination reached to the end of page")
-            onPaginationReached()
+            callbacks.onPaginationReached()
         }
     }
 
@@ -76,12 +77,12 @@ fun <T : Any> PagingLoadStateEffect(
 
         if (refresh is LoadState.NotLoading) {
             if (pagingItems.itemCount > 0 || (hasStartedLoading && append.endOfPaginationReached)) {
-                onLoadingDone()
+                callbacks.onLoadingDone()
             }
         }
 
         if (refresh !is LoadState.Loading) {
-            onRefreshTransition(false)
+            callbacks.onRefreshTransition(false)
         }
     }
 }

@@ -95,8 +95,8 @@ import com.goforer.phogal.data.model.remote.response.gallery.common.user.UserLin
 import com.goforer.phogal.data.model.remote.response.gallery.common.Links
 import com.goforer.phogal.presentation.stateholder.uistate.ErrorEntity
 import com.goforer.phogal.presentation.stateholder.uistate.UiState
-import com.goforer.phogal.presentation.stateholder.uistate.home.common.photo.PictureViewerActions
-import com.goforer.phogal.presentation.stateholder.uistate.home.common.photo.UserContainerActions
+import com.goforer.phogal.presentation.stateholder.uistate.home.common.photo.PictureViewerCallbacks
+import com.goforer.phogal.presentation.stateholder.uistate.home.common.photo.UserContainerCallbacks
 import com.goforer.phogal.presentation.stateholder.uistate.home.common.user.rememberUserContainerUiState
 import com.goforer.phogal.presentation.ui.compose.screen.home.common.user.UserContainer
 import com.goforer.designsystem.theme.Blue75
@@ -131,7 +131,7 @@ fun PictureViewerContent(
     dialogState: DownloadDialogState,
     visibleViewButton: Boolean,
     isFollowed: Boolean,
-    actions: PictureViewerActions
+    callbacks: PictureViewerCallbacks
 ) {
     Box(
         modifier = modifier.fillMaxSize()
@@ -142,7 +142,7 @@ fun PictureViewerContent(
             pictureState = pictureState,
             visibleViewButton = visibleViewButton,
             isFollowed = isFollowed,
-            actions = actions
+            callbacks = callbacks
         )
 
         if (showPopup) {
@@ -152,16 +152,16 @@ fun PictureViewerContent(
         DownloadPhoto(
             trackDownloadState = trackDownloadState,
             showPopup = showPopup,
-            onRetry = actions.onRetry,
-            onDismissPopup = actions.onDismissPopup,
-            onDownload = actions.onDownloadPhoto
+            onRetry = callbacks.onRetry,
+            onDismissPopup = callbacks.onDismissPopup,
+            onDownload = callbacks.onDownloadPhoto
         )
     }
 
     ShowDialog(
         dialogState = dialogState,
-        onDismiss = actions.onDismissDialog,
-        onDismissRequest = actions.onDismissDialog
+        onDismiss = callbacks.onDismissDialog,
+        onDismissRequest = callbacks.onDismissDialog
     )
 }
 
@@ -172,21 +172,21 @@ fun PictureBody(
     pictureState: UiState<Picture>,
     visibleViewButton: Boolean,
     isFollowed: Boolean,
-    actions: PictureViewerActions
+    callbacks: PictureViewerCallbacks
 ) {
     when (pictureState) {
         is UiState.Success -> {
             val picture = pictureState.data
 
-            actions.onSuccess(true)
-            LaunchedEffect(picture.id) { actions.onShownPhoto(picture) }
+            callbacks.onSuccess(true)
+            LaunchedEffect(picture.id) { callbacks.onShownPhoto(picture) }
             PictureBodyContent(
                 modifier = modifier,
                 contentPadding = contentPadding,
                 picture = picture,
                 visibleViewButton = visibleViewButton,
                 isFollowed = isFollowed,
-                actions = actions
+                callbacks = callbacks
             )
         }
         UiState.Loading, UiState.Idle -> {
@@ -206,7 +206,7 @@ fun PictureBody(
             }
         }
         is UiState.Error -> {
-            actions.onSuccess(false)
+            callbacks.onSuccess(false)
             Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 AnimatedVisibility(
                     visible = true,
@@ -224,7 +224,7 @@ fun PictureBody(
                         else
                             stringResource(id = R.string.error_dialog_title),
                         message = "${stringResource(id = R.string.error_get_picture)}${"\n\n"}${error.message}",
-                        onRetry = actions.onRetry
+                        onRetry = callbacks.onRetry
                     )
                 }
             }
@@ -294,7 +294,7 @@ fun PictureBodyContent(
     picture: Picture,
     visibleViewButton: Boolean,
     isFollowed: Boolean,
-    actions: PictureViewerActions
+    callbacks: PictureViewerCallbacks
 ) {
     Box(
         modifier = modifier
@@ -314,7 +314,7 @@ fun PictureBodyContent(
                 picture = picture,
                 visibleViewPhotosButton = visibleViewButton,
                 isFollowed = isFollowed,
-                actions = actions
+                callbacks = callbacks
             )
             Spacer(modifier = Modifier.height(30.dp))
         }
@@ -362,7 +362,7 @@ fun BodyContent(
     picture: Picture,
     visibleViewPhotosButton: Boolean,
     isFollowed: Boolean,
-    actions: PictureViewerActions
+    callbacks: PictureViewerCallbacks
 ) {
     var visibleCameraInfo by remember { mutableStateOf(false) }
 
@@ -402,30 +402,30 @@ fun BodyContent(
                 UserContainer(
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
                     state = rememberUserContainerUiState(
-                        user = rememberSaveable { mutableStateOf(picture.user.toString()) },
-                        profileSize = rememberSaveable { mutableDoubleStateOf(48.0) },
-                        colors = remember { mutableStateOf(listOf(ColorSystemGray1, ColorSystemGray1, ColorSnowWhite, ColorSystemGray5, Blue75, DarkGreen60)) },
-                        visibleViewButton = rememberSaveable { mutableStateOf(visibleViewPhotosButton) },
-                        fromItem = rememberSaveable { mutableStateOf(false) }
+                        user = picture.user.toString(),
+                        initialProfileSize = 48.0,
+                        initialColors = listOf(ColorSystemGray1, ColorSystemGray1, ColorSnowWhite, ColorSystemGray5, Blue75, DarkGreen60),
+                        initialVisibleViewButton = visibleViewPhotosButton,
+                        initialFromItem = false
                     ),
                     isFollowed = isFollowed,
-                    actions = actions.userContainerActions
+                    callbacks = callbacks.userContainerCallbacks
                 )
 
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 12.dp)
-                        .clip(RoundedCornerShape(12.dp))
+                AnimatedVisibility(
+                    visible = true,
+                    enter = scaleIn(transformOrigin = TransformOrigin(0f, 0f)) + fadeIn(),
+                    exit = scaleOut(transformOrigin = TransformOrigin(0f, 0f)) + fadeOut(),
                 ) {
-                    androidx.compose.animation.AnimatedVisibility(
-                        visible = true,
-                        enter = scaleIn(transformOrigin = TransformOrigin(0f, 0f)) + fadeIn(),
-                        exit = scaleOut(transformOrigin = TransformOrigin(0f, 0f)) + fadeOut(),
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp)
+                            .clip(RoundedCornerShape(12.dp))
                     ) {
                         ImageContent(
                             painter = painter,
-                            onClick = { actions.onDownloadTriggered(picture.id) }
+                            onClick = { callbacks.onDownloadTriggered(picture.id) }
                         )
                     }
                 }
@@ -505,7 +505,7 @@ fun BodyContent(
                 }
 
                 LaunchedEffect(picture.id) {
-                    actions.onShownPhoto(picture)
+                    callbacks.onShownPhoto(picture)
                 }
             }
         }
@@ -691,8 +691,8 @@ fun PictureViewerContentPreview() {
             dialogState = DownloadDialogState.Idle,
             visibleViewButton = true,
             isFollowed = false,
-            actions = PictureViewerActions(
-                userContainerActions = UserContainerActions(
+            callbacks = PictureViewerCallbacks(
+                userContainerCallbacks = UserContainerCallbacks(
                     onFollowClick = {},
                     onShowUserInfo = {},
                     onViewPhotos = { _, _, _, _ -> }

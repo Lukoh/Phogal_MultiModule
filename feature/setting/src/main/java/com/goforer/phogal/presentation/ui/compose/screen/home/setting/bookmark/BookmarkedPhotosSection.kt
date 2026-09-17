@@ -20,7 +20,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -30,24 +29,23 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.paging.LoadState
 import androidx.paging.compose.LazyPagingItems
+import com.goforer.designsystem.component.paging.PagingLoadStateCallbacks
 import com.goforer.designsystem.component.paging.PagingLoadStateEffect
+import com.goforer.designsystem.component.paging.contentItems
 import com.goforer.designsystem.component.paging.rememberLazyListState
 import com.goforer.designsystem.component.paging.renderPagingLoadState
-import com.goforer.designsystem.component.paging.contentItems
-import com.goforer.phogal.data.model.remote.response.gallery.photo.photoinfo.Picture
-import com.goforer.phogal.presentation.stateholder.uistate.PagingResult
-import com.goforer.phogal.presentation.stateholder.uistate.UIConstants.SCROLL_OFFSET_SIGNAL
-import com.goforer.phogal.presentation.stateholder.uistate.UIConstants.UP_BUTTON_THRESHOLD
-import com.goforer.phogal.presentation.stateholder.uistate.home.bookmark.BookmarkActions
-import com.goforer.phogal.presentation.stateholder.uistate.home.bookmark.BookmarkSectionUiState
-import com.goforer.phogal.presentation.stateholder.uistate.home.bookmark.rememberBookmarkSectionUiState
-import com.goforer.phogal.presentation.stateholder.uistate.home.common.photo.PictureItemActions
-import com.goforer.phogal.presentation.stateholder.uistate.home.common.photo.rememberPictureItemUiState
-import com.goforer.phogal.data.model.remote.response.gallery.common.user.User
-import com.goforer.phogal.presentation.ui.compose.screen.home.common.photo.LoadingPicture
-import com.goforer.phogal.presentation.ui.compose.screen.home.common.photo.ShowUpButton
 import com.goforer.designsystem.theme.Blue15
 import com.goforer.designsystem.theme.Blue95
+import com.goforer.phogal.data.model.remote.response.gallery.photo.photoinfo.Picture
+import com.goforer.phogal.presentation.stateholder.uistate.UIConstants.SCROLL_OFFSET_SIGNAL
+import com.goforer.phogal.presentation.stateholder.uistate.UIConstants.UP_BUTTON_THRESHOLD
+import com.goforer.phogal.presentation.stateholder.uistate.home.bookmark.BookmarkCallbacks
+import com.goforer.phogal.presentation.stateholder.uistate.home.bookmark.BookmarkSectionUiState
+import com.goforer.phogal.presentation.stateholder.uistate.home.bookmark.rememberBookmarkSectionUiState
+import com.goforer.phogal.presentation.stateholder.uistate.home.common.photo.PictureItemCallbacks
+import com.goforer.phogal.presentation.stateholder.uistate.home.common.photo.rememberPictureItemUiState
+import com.goforer.phogal.presentation.ui.compose.screen.home.common.photo.LoadingPicture
+import com.goforer.phogal.presentation.ui.compose.screen.home.common.photo.ShowUpButton
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
@@ -56,47 +54,45 @@ import timber.log.Timber
 fun BookmarkedPhotosSection(
     modifier: Modifier = Modifier,
     paddingValues: PaddingValues,
-    sectionUiState: BookmarkSectionUiState = rememberBookmarkSectionUiState(),
-    photos: LazyPagingItems<Picture>,
-    actions: BookmarkActions
+    sectionUiState: BookmarkSectionUiState,
+    callbacks: BookmarkCallbacks
 ) {
-    val lazyListState = photos.rememberLazyListState()
-    val scope = rememberCoroutineScope()
-    var manualRefreshing by remember { mutableStateOf(false) }
-    var isResettingScroll by remember { mutableStateOf(false) }
-
     // When a refresh starts, mark that we should scroll to top once data arrives.
-    LaunchedEffect(photos.loadState.refresh) {
-        if (photos.loadState.refresh is LoadState.Loading) {
-            isResettingScroll = true
+    LaunchedEffect(sectionUiState.photos.loadState.refresh) {
+        if (sectionUiState.photos.loadState.refresh is LoadState.Loading) {
+            sectionUiState.isResettingScroll = true
         }
     }
 
     // Reset scroll position to 0 safely only when initial page data load completes
     // successfully and we have items.
-    LaunchedEffect(photos.loadState.refresh, photos.itemCount) {
-        if (isResettingScroll && photos.loadState.refresh is LoadState.NotLoading && photos.itemCount > 0) {
-            lazyListState.scrollToItem(0)
-            isResettingScroll = false
+    LaunchedEffect(sectionUiState.photos.loadState.refresh, sectionUiState.photos.itemCount) {
+        if (sectionUiState.isResettingScroll && sectionUiState.photos.loadState.refresh is LoadState.NotLoading && sectionUiState.photos.itemCount > 0) {
+            sectionUiState.lazyListState.scrollToItem(0)
+            sectionUiState.isResettingScroll = false
         }
     }
 
     PagingLoadStateEffect(
-        pagingItems = photos,
-        onLoadingStarted = { sectionUiState.setLoadingStarted() },
-        onLoadingDone = { sectionUiState.setLoadingDone() },
-        onLoadResult = actions.onLoadResult,
-        onRefreshTransition = { manualRefreshing = it },
-        onPaginationReached = { Timber.d("Loaded all photos") },
+        pagingItems = sectionUiState.photos,
+        callbacks = remember(sectionUiState, callbacks) {
+            PagingLoadStateCallbacks(
+                onLoadingStarted = { sectionUiState.loadingDone = false },
+                onLoadingDone = { sectionUiState.loadingDone = true },
+                onLoadResult = callbacks.onLoadResult,
+                onRefreshTransition = { sectionUiState.manualRefreshing = it },
+                onPaginationReached = { Timber.d("Loaded all photos") }
+            )
+        },
         logTag = "BookmarkedPhotosSection"
     )
 
     // derivedStateOf: only triggers recomposition when the boolean actually flips,
     // not on every scroll tick.
-    val isScrolledPastThreshold by remember(lazyListState) {
+    val isScrolledPastThreshold by remember(sectionUiState.lazyListState) {
         derivedStateOf {
-            !lazyListState.isScrollInProgress && lazyListState.firstVisibleItemIndex > UP_BUTTON_THRESHOLD &&
-                    lazyListState.firstVisibleItemScrollOffset > SCROLL_OFFSET_SIGNAL
+            !sectionUiState.lazyListState.isScrollInProgress && sectionUiState.lazyListState.firstVisibleItemIndex > UP_BUTTON_THRESHOLD &&
+                    sectionUiState.lazyListState.firstVisibleItemScrollOffset > SCROLL_OFFSET_SIGNAL
         }
     }
 
@@ -104,8 +100,8 @@ fun BookmarkedPhotosSection(
         modifier = modifier.clip(RoundedCornerShape(2.dp)),
         isRefreshing = false, //isRefreshing :Uncomment the code below to improve the Following feature using Room.
         onRefresh = {
-            manualRefreshing = true
-            photos.refresh()
+            sectionUiState.manualRefreshing = true
+            sectionUiState.photos.refresh()
         }
     ) {
         Box(
@@ -126,7 +122,7 @@ fun BookmarkedPhotosSection(
                     .fillMaxWidth()
                     .fillMaxHeight()
                     .background(skyBlueBackground),
-                state = lazyListState,
+                state = sectionUiState.lazyListState,
                 contentPadding = PaddingValues(
                     start = paddingValues.calculateLeftPadding(layoutDirection),
                     top = 0.dp,
@@ -135,11 +131,11 @@ fun BookmarkedPhotosSection(
                 )
             ) {
                 renderLoadState(
-                    photos = photos,
+                    photos = sectionUiState.photos,
                     sectionUiState = sectionUiState,
-                    actions = actions,
+                    callbacks = callbacks,
                     isInspectionMode = isInspectionMode,
-                    isResettingScroll = isResettingScroll
+                    isResettingScroll = sectionUiState.isResettingScroll
                 )
             }
 
@@ -152,8 +148,8 @@ fun BookmarkedPhotosSection(
                     ),
                 visible = isScrolledPastThreshold,
                 onClick = {
-                    scope.launch {
-                        lazyListState.animateScrollToItem (0)
+                    sectionUiState.scope.launch {
+                        sectionUiState.lazyListState.animateScrollToItem (0)
                     }
                 }
             )
@@ -170,7 +166,7 @@ fun BookmarkedPhotosSection(
 private fun LazyListScope.renderLoadState(
     photos: LazyPagingItems<Picture>,
     sectionUiState: BookmarkSectionUiState,
-    actions: BookmarkActions,
+    callbacks: BookmarkCallbacks,
     isInspectionMode: Boolean,
     isResettingScroll: Boolean
 ) {
@@ -193,15 +189,16 @@ private fun LazyListScope.renderLoadState(
                                 if (suppressAnimation) Modifier else Modifier.animateItem(tween(durationMillis = 250))
                             ),
                         pictureItemUiState = rememberPictureItemUiState(
-                            picture = rememberSaveable { mutableStateOf(photo) }
+                            picture = photo,
+                            index = index
                         ),
-                        isFollowed = actions.isUserFollowed(photo.user),
-                        actions = remember(actions) {
-                            PictureItemActions(
-                                onFollowClick = actions.onToggleFollow,
-                                onShowUserInfo = actions.onShowUserInfo,
-                                onItemClicked = actions.onItemClicked,
-                                onViewPhotos = actions.onViewPhotos
+                        isFollowed = callbacks.isUserFollowed(photo.user),
+                        callbacks = remember(callbacks) {
+                            PictureItemCallbacks(
+                                onFollowClick = callbacks.onToggleFollow,
+                                onShowUserInfo = callbacks.onShowUserInfo,
+                                onItemClicked = callbacks.onItemClicked,
+                                onViewPhotos = callbacks.onViewPhotos
                             )
                         }
                     )

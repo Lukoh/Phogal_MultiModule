@@ -1,6 +1,9 @@
 package com.goforer.phogal.data.datasource.network
 
-import com.goforer.phogal.data.model.BackendException
+import com.goforer.phogal.data.datasource.network.NetworkResult.Empty
+import com.goforer.phogal.data.datasource.network.NetworkResult.Error
+import com.goforer.phogal.data.datasource.network.NetworkResult.Exception
+import com.goforer.phogal.data.datasource.network.NetworkResult.Success
 
 /**
  * Type-safe result wrapper for network responses.
@@ -29,28 +32,28 @@ sealed interface NetworkResult<out T> {
 
 /** Convenience: is this a successful state? */
 val NetworkResult<*>.isSuccess: Boolean
-    get() = this is NetworkResult.Success
+    get() = this is Success
 
 /** Convenience: is this a terminal failure state (either [Error] or [Exception])? */
 val NetworkResult<*>.isFailure: Boolean
-    get() = this is NetworkResult.Error || this is NetworkResult.Exception
+    get() = this is Error || this is Exception
 
 /** Returns the data if this is [Success], null otherwise. */
-fun <T> NetworkResult<T>.getOrNull(): T? = (this as? NetworkResult.Success)?.data
+fun <T> NetworkResult<T>.getOrNull(): T? = (this as? Success)?.data
 
 /** Returns the data if this is [Success], or [defaultValue] otherwise. */
 fun <T> NetworkResult<T>.getOrElse(defaultValue: () -> T): T =
-    (this as? NetworkResult.Success)?.data ?: defaultValue()
+    (this as? Success)?.data ?: defaultValue()
 
 /** Returns the throwable if this is [Exception], null otherwise. */
 fun NetworkResult<*>.exceptionOrNull(): Throwable? =
-    (this as? NetworkResult.Exception)?.throwable
+    (this as? Exception)?.throwable
 
 /**
  * Performs the given [action] if this is [Success].
  */
 inline fun <T> NetworkResult<T>.onSuccess(action: (T) -> Unit): NetworkResult<T> {
-    if (this is NetworkResult.Success) action(data)
+    if (this is Success) action(data)
     return this
 }
 
@@ -58,7 +61,7 @@ inline fun <T> NetworkResult<T>.onSuccess(action: (T) -> Unit): NetworkResult<T>
  * Performs the given [action] if this is [Empty].
  */
 inline fun <T> NetworkResult<T>.onEmpty(action: () -> Unit): NetworkResult<T> {
-    if (this is NetworkResult.Empty) action()
+    if (this is Empty) action()
     return this
 }
 
@@ -66,7 +69,7 @@ inline fun <T> NetworkResult<T>.onEmpty(action: () -> Unit): NetworkResult<T> {
  * Performs the given [action] if this is [Error].
  */
 inline fun <T> NetworkResult<T>.onError(action: (code: Int, message: String) -> Unit): NetworkResult<T> {
-    if (this is NetworkResult.Error) action(code, message)
+    if (this is Error) action(code, message)
     return this
 }
 
@@ -74,7 +77,7 @@ inline fun <T> NetworkResult<T>.onError(action: (code: Int, message: String) -> 
  * Performs the given [action] if this is [Exception].
  */
 inline fun <T> NetworkResult<T>.onException(action: (Throwable) -> Unit): NetworkResult<T> {
-    if (this is NetworkResult.Exception) action(throwable)
+    if (this is Exception) action(throwable)
     return this
 }
 
@@ -83,8 +86,8 @@ inline fun <T> NetworkResult<T>.onException(action: (Throwable) -> Unit): Networ
  */
 inline fun <T> NetworkResult<T>.onFailure(action: (message: String?, throwable: Throwable?) -> Unit): NetworkResult<T> {
     when (this) {
-        is NetworkResult.Error -> action(message, null)
-        is NetworkResult.Exception -> action(null, throwable)
+        is Error -> action(message, null)
+        is Exception -> action(null, throwable)
         else -> Unit
     }
     return this
@@ -94,10 +97,10 @@ inline fun <T> NetworkResult<T>.onFailure(action: (message: String?, throwable: 
  * Maps the success payload of a [NetworkResult] to another type, leaving failure states untouched.
  */
 inline fun <T, R> NetworkResult<T>.mapSuccess(transform: (T) -> R): NetworkResult<R> = when (this) {
-    is NetworkResult.Success -> NetworkResult.Success(transform(data))
-    is NetworkResult.Empty -> NetworkResult.Empty
-    is NetworkResult.Error -> this
-    is NetworkResult.Exception -> this
+    is Success -> Success(transform(data))
+    is Empty -> Empty
+    is Error -> this
+    is Exception -> this
 }
 
 /**
@@ -109,8 +112,8 @@ inline fun <T, R> NetworkResult<T>.fold(
     onError: (code: Int, message: String) -> R,
     onException: (Throwable) -> R
 ): R = when (this) {
-    is NetworkResult.Success -> onSuccess(data)
-    is NetworkResult.Empty -> onEmpty()
-    is NetworkResult.Error -> onError(code, message)
-    is NetworkResult.Exception -> onException(throwable)
+    is Success -> onSuccess(data)
+    is Empty -> onEmpty()
+    is Error -> onError(code, message)
+    is Exception -> onException(throwable)
 }

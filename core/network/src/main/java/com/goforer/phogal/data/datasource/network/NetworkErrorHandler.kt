@@ -1,5 +1,6 @@
 package com.goforer.phogal.data.datasource.network
 
+import kotlinx.serialization.InternalSerializationApi
 import kotlinx.serialization.json.Json
 import timber.log.Timber
 import javax.inject.Inject
@@ -22,6 +23,7 @@ class NetworkErrorHandler @Inject constructor(
      * @param jsonString The raw error body from the network response.
      * @return The parsed [NetworkError], or null if parsing fails.
      */
+    @OptIn(InternalSerializationApi::class)
     fun parseError(jsonString: String?): NetworkError? {
         if (jsonString.isNullOrBlank()) return null
 
@@ -38,6 +40,7 @@ class NetworkErrorHandler @Inject constructor(
      * @param errorMessage The raw JSON error string.
      * @return A human-readable message extracted from the error body.
      */
+    @OptIn(InternalSerializationApi::class)
     fun getErrorMessage(errorMessage: String?): String {
         val error = parseError(errorMessage) ?: return "Unknown network error"
         

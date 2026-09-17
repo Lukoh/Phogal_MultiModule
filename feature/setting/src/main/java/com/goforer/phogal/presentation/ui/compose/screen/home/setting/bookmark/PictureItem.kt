@@ -19,7 +19,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableDoubleStateOf
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -38,11 +37,11 @@ import coil.size.Size
 import com.goforer.designsystem.component.loadImagePainter
 import com.goforer.designsystem.component.snsShimmer
 import com.goforer.phogal.data.model.remote.response.gallery.photo.photoinfo.Picture
-import com.goforer.phogal.presentation.stateholder.uistate.home.common.photo.PictureItemActions
+import com.goforer.phogal.presentation.stateholder.uistate.home.common.photo.PictureItemCallbacks
 import com.goforer.phogal.presentation.stateholder.uistate.home.common.photo.PictureItemUiState
 import com.goforer.phogal.presentation.stateholder.uistate.home.common.photo.rememberPictureItemUiState
 import com.goforer.phogal.presentation.stateholder.uistate.home.common.user.rememberUserContainerUiState
-import com.goforer.phogal.presentation.stateholder.uistate.home.common.photo.UserContainerActions
+import com.goforer.phogal.presentation.stateholder.uistate.home.common.photo.UserContainerCallbacks
 import com.goforer.phogal.presentation.ui.compose.screen.home.common.user.UserContainer
 import com.goforer.designsystem.theme.Blue75
 import com.goforer.designsystem.theme.ColorSnowWhite
@@ -62,7 +61,7 @@ fun PictureItem(
     modifier: Modifier = Modifier,
     pictureItemUiState: PictureItemUiState = rememberPictureItemUiState(),
     isFollowed: Boolean,
-    actions: PictureItemActions
+    callbacks: PictureItemCallbacks
 ) {
     val picture = pictureItemUiState.picture
     val topPadding = if (pictureItemUiState.index == 0) 16.dp else 8.dp
@@ -73,8 +72,8 @@ fun PictureItem(
             .fillMaxWidth()
             .padding(start = 16.dp, end = 16.dp, top = topPadding, bottom = bottomPadding)
             .clickable {
-                pictureItemUiState.setClicked(true)
-                actions.onItemClicked(picture, pictureItemUiState.index)
+                pictureItemUiState.clicked = true
+                callbacks.onItemClicked(picture, pictureItemUiState.index)
             },
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.elevatedCardColors(
@@ -141,18 +140,18 @@ fun PictureItem(
             UserContainer(
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
                 state = rememberUserContainerUiState(
-                    user = rememberSaveable { mutableStateOf(picture.user.toString()) },
-                    profileSize = rememberSaveable { mutableDoubleStateOf(36.0) },
-                    colors = remember { mutableStateOf(listOf(ColorSystemGray1, ColorSystemGray1, ColorSnowWhite, ColorSystemGray5, Blue75, DarkGreen60)) },
-                    visibleViewButton = rememberSaveable { mutableStateOf(pictureItemUiState.visibleViewButton) },
-                    fromItem = rememberSaveable { mutableStateOf(true) }
+                    user = picture.user.toString(),
+                    initialProfileSize = 36.0,
+                    initialColors = listOf(ColorSystemGray1, ColorSystemGray1, ColorSnowWhite, ColorSystemGray5, Blue75, DarkGreen60),
+                    initialVisibleViewButton = pictureItemUiState.visibleViewButton,
+                    initialFromItem = true
                 ),
                 isFollowed = isFollowed,
-                actions = remember(actions) {
-                    UserContainerActions(
-                        onFollowClick = actions.onFollowClick,
-                        onShowUserInfo = actions.onShowUserInfo,
-                        onViewPhotos = actions.onViewPhotos
+                callbacks = remember(callbacks) {
+                    UserContainerCallbacks(
+                        onFollowClick = callbacks.onFollowClick,
+                        onShowUserInfo = callbacks.onShowUserInfo,
+                        onViewPhotos = callbacks.onViewPhotos
                     )
                 }
             )
@@ -170,9 +169,9 @@ fun PictureItem(
 fun PictureItemPreview() {
     val mockPicture = PreviewMockData.createMockPicture()
     val mockUiState = rememberPictureItemUiState(
-        picture = remember { mutableStateOf(mockPicture) },
-        index = remember { mutableIntStateOf(0) },
-        visibleViewButton = remember { mutableStateOf(true) }
+        picture = mockPicture,
+        index = 0,
+        initialVisibleViewButton = true
     )
 
     PhogalTheme {
@@ -184,7 +183,7 @@ fun PictureItemPreview() {
                 PictureItem(
                     pictureItemUiState = mockUiState,
                     isFollowed = false,
-                    actions = PictureItemActions(
+                    callbacks = PictureItemCallbacks(
                         onFollowClick = {},
                         onShowUserInfo = {},
                         onItemClicked = { _, _ ->  },

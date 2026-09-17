@@ -52,8 +52,8 @@ import com.goforer.phogal.presentation.stateholder.business.home.common.photo.in
 import com.goforer.phogal.presentation.stateholder.uistate.ErrorEntity
 import com.goforer.phogal.presentation.stateholder.uistate.UiState
 import com.goforer.phogal.presentation.stateholder.uistate.home.common.photo.PhotoContentUiState
-import com.goforer.phogal.presentation.stateholder.uistate.home.common.photo.PictureViewerScreenActions
-import com.goforer.phogal.presentation.stateholder.uistate.home.common.photo.rememberPictureViewerInternalActions
+import com.goforer.phogal.presentation.stateholder.uistate.home.common.photo.PictureViewerScreenCallbacks
+import com.goforer.phogal.presentation.stateholder.uistate.home.common.photo.rememberPictureViewerInternalCallbacks
 import com.goforer.phogal.presentation.ui.compose.screen.home.common.user.UserInfoBottomSheet
 import kotlinx.coroutines.launch
 
@@ -62,22 +62,22 @@ import kotlinx.coroutines.launch
 fun PictureViewerScreen(
     modifier: Modifier = Modifier,
     contentUiState: PhotoContentUiState,
-    actions: PictureViewerScreenActions
+    callbacks: PictureViewerScreenCallbacks
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
 
-    val internalActions = rememberPictureViewerInternalActions(
+    val internalCallbacks = rememberPictureViewerInternalCallbacks(
         contentUiState = contentUiState,
-        screenActions = actions,
+        screenCallbacks = callbacks,
         snackbarHostState = snackbarHostState
     )
 
-    BackHandler(enabled = true) { internalActions.onBackPressed() }
+    BackHandler(enabled = true) { internalCallbacks.onBackPressed() }
     DisposableEffect(contentUiState.baseUiState.lifecycle) {
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
-                Lifecycle.Event.ON_START -> actions.onStart()
-                Lifecycle.Event.ON_STOP  -> actions.onStop()
+                Lifecycle.Event.ON_START -> callbacks.onStart()
+                Lifecycle.Event.ON_STOP  -> callbacks.onStop()
                 else -> Unit
             }
         }
@@ -120,7 +120,7 @@ fun PictureViewerScreen(
                     )
                 },
                 navigationIcon = {
-                    IconButton(onClick = internalActions.onBackPressed) {
+                    IconButton(onClick = internalCallbacks.onBackPressed) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Picture"
@@ -128,12 +128,12 @@ fun PictureViewerScreen(
                     }
                 },
                 actions = {
-                    if (contentUiState.visibleActions && (currentPicture != null)) {
+                    if (contentUiState.visible && (currentPicture != null)) {
                         IconButton(
                             colors = IconButtonDefaults.iconButtonColors(
                                 contentColor = if (isLikedByUser) Red60 else Color.Black
                             ),
-                            onClick = internalActions.onLikedClick
+                            onClick = internalCallbacks.onLikedClick
                         ) {
                             Icon(
                                 imageVector = if (isLikedByUser) {
@@ -154,7 +154,7 @@ fun PictureViewerScreen(
                                 }
                             ),
                             onClick = {
-                                internalActions.onBookmarkClick(currentPicture)
+                                internalCallbacks.onBookmarkClick(currentPicture)
                             }
                         ) {
                             Icon(
@@ -172,7 +172,7 @@ fun PictureViewerScreen(
         },
         content = { paddingValues ->
             ScaffoldContent(0.dp) {
-                val isFollowed = currentPicture?.let { actions.isUserFollowed(it.user) } ?: false
+                val isFollowed = currentPicture?.let { callbacks.isUserFollowed(it.user) } ?: false
 
                 PictureViewerContent(
                     modifier = modifier,
@@ -183,7 +183,7 @@ fun PictureViewerScreen(
                     dialogState = contentUiState.dialogState,
                     visibleViewButton = contentUiState.visibleViewButton,
                     isFollowed = isFollowed,
-                    actions = internalActions.viewerActions
+                    callbacks = internalCallbacks.viewerCallbacks
                 )
             }
 
@@ -195,7 +195,7 @@ fun PictureViewerScreen(
                         contentUiState.selectedUser = null
                         if (isPortfolioClicked) {
                             user.portfolioUrl?.let {
-                                actions.onOpenWebView(user.firstName, it)
+                                callbacks.onOpenWebView(user.firstName, it)
                             } ?: run {
                                 contentUiState.baseUiState.scope.launch {
                                     val text = contentUiState.baseUiState.context.getString(R.string.user_info_has_no_portfolio)

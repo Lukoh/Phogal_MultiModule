@@ -39,6 +39,7 @@ import androidx.paging.LoadState
 import androidx.paging.PagingData
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItems
+import com.goforer.designsystem.component.paging.PagingLoadStateCallbacks
 import com.goforer.designsystem.component.paging.PagingLoadStateEffect
 import com.goforer.designsystem.component.paging.contentItems
 import com.goforer.designsystem.component.paging.rememberIsScrolledPastThreshold
@@ -51,9 +52,9 @@ import com.goforer.phogal.data.model.remote.response.gallery.common.ProfileImage
 import com.goforer.phogal.data.model.remote.response.gallery.common.Urls
 import com.goforer.phogal.data.model.remote.response.gallery.common.photo.Photo
 import com.goforer.phogal.data.model.remote.response.gallery.common.user.User
-import com.goforer.phogal.presentation.stateholder.uistate.home.common.photo.PhotoItemActions
+import com.goforer.phogal.presentation.stateholder.uistate.home.common.photo.PhotoItemCallbacks
 import com.goforer.phogal.presentation.stateholder.uistate.home.common.photo.rememberPhotoItemUiState
-import com.goforer.phogal.presentation.stateholder.uistate.home.popularphotos.PopularPhotosActions
+import com.goforer.phogal.presentation.stateholder.uistate.home.popularphotos.PopularPhotosCallbacks
 import com.goforer.phogal.presentation.stateholder.uistate.home.popularphotos.PopularPhotosSectionUiState
 import com.goforer.phogal.presentation.stateholder.uistate.home.popularphotos.rememberPopularPhotosSectionUiState
 import com.goforer.phogal.presentation.ui.compose.screen.home.common.photo.LoadingPicture
@@ -61,24 +62,23 @@ import com.goforer.phogal.presentation.ui.compose.screen.home.common.photo.Photo
 import com.goforer.phogal.presentation.ui.compose.screen.home.common.photo.ShowUpButton
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
+import timber.log.Timber
 
 @Composable
 fun PopularPhotosSection(
     modifier: Modifier = Modifier,
     paddingValues: PaddingValues,
-    photos: LazyPagingItems<Photo>,
-    sectionUiState: PopularPhotosSectionUiState = rememberPopularPhotosSectionUiState(),
-    actions: PopularPhotosActions,
+    sectionUiState: PopularPhotosSectionUiState,
+    callbacks: PopularPhotosCallbacks,
     isPhotoBookmarked: (String) -> Boolean
 ) {
     PopularPhotosSectionContent(
         modifier = modifier,
         paddingValues = paddingValues,
-        photos = photos,
         sectionUiState = sectionUiState,
-        actions = actions,
+        callbacks = callbacks,
         isPhotoBookmarked = isPhotoBookmarked,
-        onRefresh = photos::refresh
+        onRefresh = sectionUiState.photos::refresh
     )
 }
 
@@ -87,51 +87,55 @@ fun PopularPhotosSection(
 fun PopularPhotosSectionContent(
     modifier: Modifier = Modifier,
     paddingValues: PaddingValues,
-    photos: LazyPagingItems<Photo>,
-    sectionUiState: PopularPhotosSectionUiState = rememberPopularPhotosSectionUiState(),
-    actions: PopularPhotosActions,
+    sectionUiState: PopularPhotosSectionUiState,
+    callbacks: PopularPhotosCallbacks,
     isPhotoBookmarked: (String) -> Boolean,
     onRefresh: () -> Unit
 ) {
-    val lazyListState = photos.rememberLazyListState()
-    var manualRefreshing by remember { mutableStateOf(false) }
-    val isRefreshing by remember(photos.loadState.refresh, manualRefreshing) {
+    val isRefreshing by remember(sectionUiState.photos.loadState.refresh, sectionUiState.manualRefreshing) {
         derivedStateOf {
-            manualRefreshing && photos.loadState.refresh is LoadState.Loading
+            sectionUiState.manualRefreshing && sectionUiState.photos.loadState.refresh is LoadState.Loading
         }
     }
 
-    var isResettingScroll by remember { mutableStateOf(false) }
+    LaunchedEffect(
+        sectionUiState.photos.loadState.refresh,
+        sectionUiState.photos.itemCount
+    ) {
+        val refreshState = sectionUiState.photos.loadState.refresh
+        val itemCount = sectionUiState.photos.itemCount
 
-    // When a refresh starts, mark that we should scroll to top once data arrives.
-    LaunchedEffect(photos.loadState.refresh) {
-        if (photos.loadState.refresh is LoadState.Loading) {
-            isResettingScroll = true
-        }
-    }
+        when (refreshState) {
+            // Mark scroll reset as pending when a refresh starts.
+            is LoadState.Loading -> sectionUiState.isResettingScroll = true
 
-    // Reset scroll position to 0 safely only when initial page data load completes
-    // successfully and we have items.
-    LaunchedEffect(photos.loadState.refresh, photos.itemCount) {
-        if (isResettingScroll && photos.loadState.refresh is LoadState.NotLoading && photos.itemCount > 0) {
-            lazyListState.scrollToItem(0)
-            isResettingScroll = false
+            // Reset scroll to top when initial loading completes, a reset is pending,
+            // and there is at least one item.
+            is LoadState.NotLoading -> {
+                sectionUiState.resetScrollIfNeeded(itemCount)
+            }
+
+            else -> Unit
         }
     }
 
     PagingLoadStateEffect(
-        pagingItems = photos,
-        onLoadingStarted = { sectionUiState.setLoadingStarted() },
-        onLoadingDone = { sectionUiState.setLoadingDone() },
-        onLoadResult = actions.onLoadResult,
-        onRefreshTransition = { manualRefreshing = it },
-        onPaginationReached = { actions.onLoadedPhotos(true) },
+        pagingItems = sectionUiState.photos,
+        callbacks = remember(sectionUiState, callbacks) {
+            PagingLoadStateCallbacks(
+                onLoadingStarted = { sectionUiState.loadingDone = false },
+                onLoadingDone = { sectionUiState.loadingDone = true },
+                onLoadResult = callbacks.onLoadResult,
+                onRefreshTransition = { sectionUiState.manualRefreshing = it },
+                onPaginationReached = { callbacks.onLoadedPhotos(true) }
+            )
+        },
         logTag = "PopularPhotosSection"
     )
 
     // derivedStateOf: only triggers recomposition when the boolean actually flips,
     // not on every scroll tick.
-    val isScrolledPastThreshold = lazyListState.rememberIsScrolledPastThreshold()
+    val isScrolledPastThreshold = sectionUiState.lazyListState.rememberIsScrolledPastThreshold()
     val layoutDirection = LocalLayoutDirection.current
 
     // Material 3 PullToRefreshBox — default indicator is rendered automatically.
@@ -139,7 +143,7 @@ fun PopularPhotosSectionContent(
         modifier = modifier.clip(RoundedCornerShape(2.dp)),
         isRefreshing = isRefreshing,
         onRefresh = {
-            manualRefreshing = true
+            sectionUiState.manualRefreshing = true
             onRefresh()
         }
     ) {
@@ -159,7 +163,7 @@ fun PopularPhotosSectionContent(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(skyBlueBackground),
-                state = lazyListState,
+                state = sectionUiState.lazyListState,
                 contentPadding = PaddingValues(
                     start = paddingValues.calculateStartPadding(layoutDirection).coerceAtLeast(0.dp),
                     top = paddingValues.calculateTopPadding().coerceAtLeast(0.dp),
@@ -168,12 +172,11 @@ fun PopularPhotosSectionContent(
                 )
             ) {
                 renderLoadState(
-                    photos = photos,
                     sectionUiState = sectionUiState,
-                    actions = actions,
+                    callbacks = callbacks,
                     isPhotoBookmarked = isPhotoBookmarked,
                     isInspectionMode = isInspectionMode,
-                    isResettingScroll = isResettingScroll
+                    isResettingScroll = sectionUiState.isResettingScroll
                 )
             }
 
@@ -187,7 +190,7 @@ fun PopularPhotosSectionContent(
                 visible = isScrolledPastThreshold,
                 onClick = {
                     sectionUiState.scope.launch {
-                        lazyListState.animateScrollToItem(0)
+                        sectionUiState.lazyListState.animateScrollToItem(0)
                     }
                 }
             )
@@ -196,28 +199,27 @@ fun PopularPhotosSectionContent(
 }
 
 /**
- * Dispatches the current [LoadState] of [photos] into the appropriate sub-renderer.
+ * Dispatches the current [LoadState] of [PopularPhotosSectionUiState.photos] into the appropriate sub-renderer.
  * Kept as a LazyListScope extension so each sub-renderer can emit `item {}` / `items {}`
  * directly without re-wrapping.
  */
 @OptIn(ExperimentalFoundationApi::class)
 private fun LazyListScope.renderLoadState(
-    photos: LazyPagingItems<Photo>,
     sectionUiState: PopularPhotosSectionUiState,
-    actions: PopularPhotosActions,
+    callbacks: PopularPhotosCallbacks,
     isPhotoBookmarked: (String) -> Boolean,
     isInspectionMode: Boolean,
     isResettingScroll: Boolean
 ) {
-    val isInitiallyLoading = photos.loadState.refresh is LoadState.Loading
+    val isInitiallyLoading = sectionUiState.photos.loadState.refresh is LoadState.Loading
     val suppressAnimation = isInitiallyLoading || isInspectionMode || isResettingScroll
 
     renderPagingLoadState(
-        items = photos,
+        items = sectionUiState.photos,
         loadingDone = sectionUiState.loadingDone,
         content = {
             contentItems(
-                items = photos,
+                items = sectionUiState.photos,
                 key = { _, photo -> photo.id },
                 content = { padding, index, photo ->
                     PhotoItem(
@@ -227,20 +229,18 @@ private fun LazyListScope.renderLoadState(
                                 if (suppressAnimation) Modifier else Modifier.animateItem(tween(durationMillis = 250))
                             ),
                         state = rememberPhotoItemUiState(
-                            index = rememberSaveable { mutableIntStateOf(index) },
-                            photo = rememberSaveable { mutableStateOf(photo) },
-                            visibleViewButton = rememberSaveable { mutableStateOf(true) },
-                            bookmarked = rememberSaveable {
-                                mutableStateOf(isPhotoBookmarked(photo.id))
-                            }
+                            photo = photo,
+                            index = index,
+                            initialVisibleViewButton = true,
+                            initialBookmarked = isPhotoBookmarked(photo.id)
                         ),
-                        isFollowed = actions.isUserFollowed(photo.user),
-                        actions = remember(actions) {
-                            PhotoItemActions(
-                                onFollowClick = actions.onToggleFollow,
-                                onShowUserInfo = actions.onShowUserInfo,
-                                onItemClicked = { p, i -> actions.onItemClicked(p.id, i) },
-                                onViewPhotos = actions.onViewPhotos
+                        isFollowed = callbacks.isUserFollowed(photo.user),
+                        callbacks = remember(callbacks) {
+                            PhotoItemCallbacks(
+                                onFollowClick = callbacks.onToggleFollow,
+                                onShowUserInfo = callbacks.onShowUserInfo,
+                                onItemClicked = { p, i -> callbacks.onItemClicked(p.id, i) },
+                                onViewPhotos = callbacks.onViewPhotos
                             )
                         }
                     )
@@ -288,14 +288,14 @@ fun PopularPhotosSectionPreview() {
         width = 1080,
         height = 720
     )
-    val pagingData = PagingData.from(listOf(mockPhoto, mockPhoto))
+    val pagingData = PagingData.from(listOf(mockPhoto, mockPhoto.copy(id = "2")))
     val photos = flowOf(pagingData).collectAsLazyPagingItems()
 
     PhogalTheme {
         PopularPhotosSectionContent(
             paddingValues = PaddingValues(all = 0.dp),
-            photos = photos,
-            actions = PopularPhotosActions(
+            sectionUiState = rememberPopularPhotosSectionUiState(photos),
+            callbacks = PopularPhotosCallbacks(
                 isUserFollowed = { false },
                 onToggleFollow = {},
                 onShowUserInfo = {},

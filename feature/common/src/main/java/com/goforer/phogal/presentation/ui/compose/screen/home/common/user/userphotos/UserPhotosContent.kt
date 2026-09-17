@@ -18,32 +18,30 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.paging.compose.LazyPagingItems
+import com.goforer.designsystem.theme.ColorSystemGray7
+import com.goforer.designsystem.theme.PhogalTheme
 import com.goforer.phogal.core.ui.R
 import com.goforer.phogal.data.model.remote.response.gallery.common.photo.Photo
-import com.goforer.phogal.data.model.remote.response.gallery.common.user.User
-import com.goforer.phogal.presentation.stateholder.uistate.home.common.user.photos.UserPhotosActions
-import com.goforer.phogal.presentation.stateholder.uistate.home.common.user.photos.UserPhotosContentUiState
+import com.goforer.phogal.presentation.stateholder.uistate.home.common.user.photos.UserPhotosCallbacks
+import com.goforer.phogal.presentation.stateholder.uistate.home.common.user.photos.UserPhotoContentUiState
 import com.goforer.phogal.presentation.stateholder.uistate.home.common.user.photos.rememberUserPhotosSectionUiState
 import com.goforer.phogal.presentation.ui.compose.screen.home.common.InitScreen
 import com.goforer.phogal.presentation.ui.compose.screen.home.gallery.SearchSection
-import com.goforer.designsystem.theme.ColorSystemGray7
-import com.goforer.designsystem.theme.PhogalTheme
 
 @Composable
 fun UserPhotosContent(
     modifier: Modifier = Modifier,
     paddingValues: PaddingValues = PaddingValues(4.dp),
-    contentUiState: UserPhotosContentUiState,
+    contentUiState: UserPhotoContentUiState,
     photos: LazyPagingItems<Photo>,
-    actions: UserPhotosActions
+    callbacks: UserPhotosCallbacks
 ) {
     if (contentUiState.name.isNotBlank()) {
         UserPhotosSection(
             modifier = modifier,
             paddingValues = paddingValues,
-            photos = photos,
-            sectionUiState = rememberUserPhotosSectionUiState(),
-            actions = actions,
+            sectionUiState = rememberUserPhotosSectionUiState(photos),
+            callbacks = callbacks,
             isPhotoBookmarked = { false }
         )
     } else {

@@ -1,38 +1,35 @@
 package com.goforer.phogal.presentation.stateholder.uistate.home.common.user.photos
 
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.Stable
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.paging.compose.LazyPagingItems
+import com.goforer.designsystem.component.paging.rememberLazyListState
+import com.goforer.phogal.data.model.remote.response.gallery.common.photo.Photo
+import com.goforer.phogal.presentation.stateholder.uistate.home.common.base.BaseSectionUiState
 import kotlinx.coroutines.CoroutineScope
 
 @Stable
 class UserPhotosSectionUiState internal constructor(
-    val scope: CoroutineScope,
-    private val _clicked: MutableState<Boolean>,
-    private val _visibleUpButton: MutableState<Boolean>,
-    private val _loadingDone: MutableState<Boolean>
-) {
-    val clicked: Boolean get() = _clicked.value
-    val visibleUpButton: Boolean get() = _visibleUpButton.value
-    val loadingDone: Boolean get() = _loadingDone.value
-
-    fun setUpButtonClicked() { _clicked.value = true }
-    fun setScrollConsumed() { _clicked.value = false }
-    fun setUpButtonVisibilityChanged(visible: Boolean) { _visibleUpButton.value = visible }
-    fun setLoadingDone() { _loadingDone.value = true }
-    fun setLoadingStarted() { _loadingDone.value = false }
-}
+    val photos: LazyPagingItems<Photo>,
+    override val scope: CoroutineScope,
+    override val lazyListState: LazyListState,
+) : BaseSectionUiState(
+    scope = scope,
+    lazyListState = lazyListState,
+)
 
 @Composable
 fun rememberUserPhotosSectionUiState(
+    photos: LazyPagingItems<Photo>,
     scope: CoroutineScope = rememberCoroutineScope(),
-    clicked: MutableState<Boolean> = rememberSaveable { mutableStateOf(false) },
-    visibleUpButton: MutableState<Boolean> = rememberSaveable { mutableStateOf(false) },
-    loadingDone: MutableState<Boolean> = rememberSaveable { mutableStateOf(false) }
-): UserPhotosSectionUiState = remember(scope, clicked,loadingDone) {
-        UserPhotosSectionUiState(scope = scope, _clicked = clicked, _visibleUpButton = visibleUpButton, _loadingDone = loadingDone)
-    }
+    lazyListState: LazyListState = photos.rememberLazyListState(),
+): UserPhotosSectionUiState = remember(photos, scope, lazyListState) {
+    UserPhotosSectionUiState(
+        photos = photos,
+        scope = scope,
+        lazyListState = lazyListState,
+    )
+}

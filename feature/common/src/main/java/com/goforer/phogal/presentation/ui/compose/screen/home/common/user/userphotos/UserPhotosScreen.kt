@@ -35,9 +35,9 @@ import com.goforer.designsystem.component.ScaffoldContent
 import com.goforer.designsystem.component.dialog.ErrorDialog
 import com.goforer.designsystem.theme.ColorBgSecondary
 import com.goforer.phogal.core.ui.R
-import com.goforer.phogal.presentation.stateholder.uistate.home.common.user.photos.UserPhotosContentUiState
-import com.goforer.phogal.presentation.stateholder.uistate.home.common.user.photos.UserPhotosScreenActions
-import com.goforer.phogal.presentation.stateholder.uistate.home.common.user.photos.rememberUserPhotosInternalActions
+import com.goforer.phogal.presentation.stateholder.uistate.home.common.user.photos.UserPhotoContentUiState
+import com.goforer.phogal.presentation.stateholder.uistate.home.common.user.photos.UserPhotosScreenCallbacks
+import com.goforer.phogal.presentation.stateholder.uistate.home.common.user.photos.rememberUserPhotosInternalCallbacks
 import com.goforer.phogal.presentation.ui.compose.screen.home.common.user.UserInfoBottomSheet
 import kotlinx.coroutines.launch
 
@@ -45,8 +45,8 @@ import kotlinx.coroutines.launch
 @Composable
 fun UserPhotosScreen(
     modifier: Modifier = Modifier,
-    contentUiState: UserPhotosContentUiState,
-    actions: UserPhotosScreenActions
+    contentUiState: UserPhotoContentUiState,
+    callbacks: UserPhotosScreenCallbacks
 ) {
     if (contentUiState.name.isNotBlank()) {
         LaunchedEffect(contentUiState.name) {
@@ -56,22 +56,22 @@ fun UserPhotosScreen(
 
     val snackbarHostState = remember { SnackbarHostState() }
 
-    val internalActions = rememberUserPhotosInternalActions(
+    val internalCallbacks = rememberUserPhotosInternalCallbacks(
         contentUiState = contentUiState,
-        screenActions = actions,
+        screenCallbacks = callbacks,
         snackbarHostState = snackbarHostState
     )
 
     BackHandler(enabled = true) {
-        actions.onBackPressed()
+        callbacks.onBackPressed()
     }
 
     DisposableEffect(contentUiState.baseUiState.lifecycle) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_START) {
-                actions.onStart()
+                callbacks.onStart()
             } else if (event == Lifecycle.Event.ON_STOP) {
-                actions.onStop()
+                callbacks.onStop()
             }
         }
         contentUiState.baseUiState.lifecycle.addObserver(observer)
@@ -106,8 +106,8 @@ fun UserPhotosScreen(
                 navigationIcon = {
                     IconButton(
                         onClick = {
-                            contentUiState.setVisibleAction(false)
-                            actions.onBackPressed()
+                            contentUiState.visible = false
+                            callbacks.onBackPressed()
                         }
                     ) {
                         Icon(
@@ -117,7 +117,7 @@ fun UserPhotosScreen(
                     }
                 },
                 actions = {
-                    if (contentUiState.visibleActions) {
+                    if (contentUiState.visible) {
                         IconButton(onClick = { /* doSomething() */ }) {
                             Icon(
                                 imageVector = Icons.Filled.Favorite,
@@ -140,7 +140,7 @@ fun UserPhotosScreen(
                     ),
                     contentUiState = contentUiState,
                     photos = contentUiState.photos,
-                    actions = internalActions.actions
+                    callbacks = internalCallbacks.callbacks
                 )
             }
 
@@ -148,7 +148,7 @@ fun UserPhotosScreen(
                 ErrorDialog(
                     title = stringResource(id = R.string.error_dialog_title),
                     text = error.message,
-                    onDismiss = { contentUiState.setError(null) }
+                    onDismiss = { contentUiState.error = null }
                 )
             }
 
@@ -160,7 +160,7 @@ fun UserPhotosScreen(
                         contentUiState.selectedUser = null
                         if (isPortfolioClicked) {
                             user.portfolioUrl?.let {
-                                actions.onOpenWebView(user.firstName, it)
+                                callbacks.onOpenWebView(user.firstName, it)
                             } ?: run {
                                 contentUiState.baseUiState.scope.launch {
                                     val text = contentUiState.baseUiState.context.getString(R.string.user_info_has_no_portfolio)

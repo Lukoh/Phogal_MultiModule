@@ -2,7 +2,6 @@ package com.goforer.phogal.presentation.stateholder.uistate.home.following
 
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -10,6 +9,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItems
 import com.goforer.base.extension.isNull
@@ -21,10 +21,11 @@ import com.goforer.phogal.presentation.stateholder.uistate.BaseUiState
 import com.goforer.phogal.presentation.stateholder.uistate.ErrorEntity
 import com.goforer.phogal.presentation.stateholder.uistate.PagingResult
 import com.goforer.phogal.presentation.stateholder.uistate.rememberBaseUiState
+import com.goforer.phogal.presentation.stateholder.uistate.home.common.BaseContentUiState
 import kotlinx.coroutines.launch
 
 @Stable
-data class FollowingUserActions(
+data class FollowingUserCallbacks(
     val onViewPhotos: (name: String, firstName: String, lastName: String, username: String) -> Unit,
     val onOpenWebView: (firstName: String, url: String?) -> Unit,
     val onFollow: (User) -> Unit,
@@ -32,7 +33,7 @@ data class FollowingUserActions(
 )
 
 @Stable
-data class FollowingUserScreenActions(
+data class FollowingUserScreenCallbacks(
     val onBackPressed: () -> Unit,
     val onViewPhotos: (name: String, firstName: String, lastName: String, username: String) -> Unit,
     val onOpenWebView: (firstName: String, url: String) -> Unit,
@@ -42,50 +43,46 @@ data class FollowingUserScreenActions(
 
 @Stable
 class FollowingUserContentUiState internal constructor(
+    override val baseUiState: BaseUiState,
     val followViewModel: FollowViewModel,
-    val baseUiState: BaseUiState,
     val users: LazyPagingItems<User>,
-
-    private val _enabledLoadPhotos: MutableState<Boolean>,
-    private val _error: MutableState<ErrorEntity?>,
-    private val _selectedUser: MutableState<User?>,
+    initialEnabledLoadPhotos: Boolean,
+    initialError: ErrorEntity?,
+    initialSelectedUser: User?,
+) : BaseContentUiState(
+    baseUiState = baseUiState,
+    initialError = initialError,
+    initialSelectedUser = initialSelectedUser,
 ) {
-    val enabledLoadPhotos: Boolean get() = _enabledLoadPhotos.value
-    val error: ErrorEntity? get() = _error.value
-    var selectedUser: User?
-        get() = _selectedUser.value
-        set(value) { _selectedUser.value = value }
+    var enabledLoadPhotos: Boolean by mutableStateOf(initialEnabledLoadPhotos)
 
-    fun setEnabledLoadPhotos(enabledLoadPhotos: Boolean) {
-        _enabledLoadPhotos.value = enabledLoadPhotos
-    }
-
-    fun setError(error: ErrorEntity?) {
-        _error.value = error
-    }
-}
-
-@Composable
-fun rememberFollowingUserContentUiState(
-    followViewModel: FollowViewModel,
-    baseUiState: BaseUiState = rememberBaseUiState(),
-    enabledLoadPhotos: MutableState<Boolean> = rememberSaveable { mutableStateOf(true) },
-    error: MutableState<ErrorEntity?> = rememberSaveable(
-        saver = Saver(
-            save = { state ->
-                state.value?.let {
-                    mapOf(
-                        "type" to it::class.simpleName,
-                        "message" to it.message,
-                        "code" to (it as? ErrorEntity.Network)?.code
-                    )
-                }
+    companion object {
+        fun Saver(
+            followViewModel: FollowViewModel,
+            users: LazyPagingItems<User>,
+            baseUiState: BaseUiState
+        ): Saver<FollowingUserContentUiState, *> = Saver(
+            save = {
+                listOf(
+                    it.enabledLoadPhotos,
+                    it.error?.let { err ->
+                        mapOf(
+                            "type" to err::class.simpleName,
+                            "message" to err.message,
+                            "code" to (err as? ErrorEntity.Network)?.code
+                        )
+                    },
+                    it.selectedUser?.toString()
+                )
             },
-            restore = { map ->
-                val type = map["type"] as? String
-                val message = map["message"] as? String ?: ""
-                val code = map["code"] as? Int ?: 0
-                mutableStateOf(
+            restore = {
+                val enabledLoadPhotos = it[0] as Boolean
+                val errorMap = it[1] as? Map<*, *>
+                val selectedUserStr = it[2] as? String
+                val error = errorMap?.let { map ->
+                    val type = map["type"] as? String
+                    val message = map["message"] as? String ?: ""
+                    val code = map["code"] as? Int ?: 0
                     when (type) {
                         "Network" -> ErrorEntity.Network(code, message)
                         "Persistence" -> ErrorEntity.Persistence(message)
@@ -93,31 +90,41 @@ fun rememberFollowingUserContentUiState(
                         "Unknown" -> ErrorEntity.Unknown(message)
                         else -> null
                     }
+                }
+                FollowingUserContentUiState(
+                    followViewModel = followViewModel,
+                    users = users,
+                    initialEnabledLoadPhotos = enabledLoadPhotos,
+                    baseUiState = baseUiState,
+                    initialError = error,
+                    initialSelectedUser = selectedUserStr?.toUser()
                 )
             }
         )
-    ) {
-        mutableStateOf(null)
-    },
-    selectedUser: MutableState<User?> = rememberSaveable(
-        saver = Saver(
-            save = { it.value?.toString() },
-            restore = { mutableStateOf(it?.toUser()) }
-        )
-    ) {
-        mutableStateOf(null)
     }
+}
+
+@Composable
+fun rememberFollowingUserContentUiState(
+    followViewModel: FollowViewModel,
+    baseUiState: BaseUiState = rememberBaseUiState(),
+    initialEnabledLoadPhotos: Boolean = true,
+    initialError: ErrorEntity? = null,
+    initialSelectedUser: User? = null
 ): FollowingUserContentUiState {
     val users = followViewModel.followedUsers.collectAsLazyPagingItems()
 
-    return remember(baseUiState, followViewModel, enabledLoadPhotos, error, selectedUser) {
+    return rememberSaveable(
+        followViewModel, users, baseUiState,
+        saver = FollowingUserContentUiState.Saver(followViewModel, users, baseUiState)
+    ) {
         FollowingUserContentUiState(
             followViewModel = followViewModel,
             baseUiState = baseUiState,
             users = users,
-            _enabledLoadPhotos = enabledLoadPhotos,
-            _error = error,
-            _selectedUser = selectedUser
+            initialEnabledLoadPhotos = initialEnabledLoadPhotos,
+            initialError = initialError,
+            initialSelectedUser = initialSelectedUser
         )
     }
 }
@@ -126,28 +133,28 @@ fun rememberFollowingUserContentUiState(
  * A helper structure to hold internal UI logic and stable callbacks.
  */
 @Stable
-class FollowingUserInternalActions internal constructor(
-    val actions: FollowingUserActions
+class FollowingUserInternalCallbacks internal constructor(
+    val callbacks: FollowingUserCallbacks
 )
 
 @Composable
-fun rememberFollowingUserInternalActions(
+fun rememberFollowingUserInternalCallbacks(
     contentUiState: FollowingUserContentUiState,
-    screenActions: FollowingUserScreenActions,
+    screenCallbacks: FollowingUserScreenCallbacks,
     snackbarHostState: SnackbarHostState
-): FollowingUserInternalActions {
-    val currentActions by rememberUpdatedState(screenActions)
+): FollowingUserInternalCallbacks {
+    val currentCallbacks by rememberUpdatedState(screenCallbacks)
     val text = R.string.user_info_has_no_portfolio
 
     return remember(contentUiState, snackbarHostState, text) {
         val onLoadResultStable: (PagingResult) -> Unit = { result ->
             when (result) {
                 is PagingResult.Success -> {
-                    contentUiState.setEnabledLoadPhotos(true)
+                    contentUiState.enabledLoadPhotos = true
                 }
                 is PagingResult.Error -> {
-                    contentUiState.setEnabledLoadPhotos(false)
-                    contentUiState.setError(result.error)
+                    contentUiState.enabledLoadPhotos = false
+                    contentUiState.error = result.error
                 }
                 else -> {}
             }
@@ -159,13 +166,13 @@ fun rememberFollowingUserInternalActions(
                     snackbarHostState.showSnackbar("${firstName} ${contentUiState.baseUiState.context.getString(text)}")
                 }
             }, {
-                currentActions.onOpenWebView(firstName, it)
+                currentCallbacks.onOpenWebView(firstName, it)
             })
         }
 
-        FollowingUserInternalActions(
-            actions = FollowingUserActions(
-                onViewPhotos = { name, first, last, user -> currentActions.onViewPhotos(name, first, last, user) },
+        FollowingUserInternalCallbacks(
+            callbacks = FollowingUserCallbacks(
+                onViewPhotos = { name, first, last, user -> currentCallbacks.onViewPhotos(name, first, last, user) },
                 onOpenWebView = onOpenWebViewLocal,
                 onFollow = { contentUiState.followViewModel.setUserFollow(it) },
                 onLoadResult = onLoadResultStable

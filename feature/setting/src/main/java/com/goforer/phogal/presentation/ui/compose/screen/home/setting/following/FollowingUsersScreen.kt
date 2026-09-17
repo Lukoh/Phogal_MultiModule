@@ -31,34 +31,34 @@ import com.goforer.designsystem.component.dialog.ErrorDialog
 import com.goforer.designsystem.theme.ColorBgSecondary
 import com.goforer.phogal.core.ui.R
 import com.goforer.phogal.presentation.stateholder.uistate.home.following.FollowingUserContentUiState
-import com.goforer.phogal.presentation.stateholder.uistate.home.following.FollowingUserScreenActions
-import com.goforer.phogal.presentation.stateholder.uistate.home.following.rememberFollowingUserInternalActions
+import com.goforer.phogal.presentation.stateholder.uistate.home.following.FollowingUserScreenCallbacks
+import com.goforer.phogal.presentation.stateholder.uistate.home.following.rememberFollowingUserInternalCallbacks
 
 @OptIn(ExperimentalComposeUiApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun FollowingUsersScreen(
     modifier: Modifier = Modifier,
     contentUiState: FollowingUserContentUiState,
-    actions: FollowingUserScreenActions
+    callbacks: FollowingUserScreenCallbacks
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
 
-    val internalActions = rememberFollowingUserInternalActions(
+    val internalCallbacks = rememberFollowingUserInternalCallbacks(
         contentUiState = contentUiState,
-        screenActions = actions,
+        screenCallbacks = callbacks,
         snackbarHostState = snackbarHostState
     )
 
     BackHandler(enabled = true) {
-        actions.onBackPressed()
+        callbacks.onBackPressed()
     }
 
     DisposableEffect(contentUiState.baseUiState.lifecycle) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_START) {
-                actions.onStart()
+                callbacks.onStart()
             } else if (event == Lifecycle.Event.ON_STOP) {
-                actions.onStop()
+                callbacks.onStop()
             }
         }
         contentUiState.baseUiState.lifecycle.addObserver(observer)
@@ -92,8 +92,8 @@ fun FollowingUsersScreen(
                 navigationIcon = {
                     IconButton(
                         onClick = {
-                            contentUiState.setEnabledLoadPhotos(false)
-                            actions.onBackPressed()
+                            contentUiState.enabledLoadPhotos = false
+                            callbacks.onBackPressed()
                         }
                     ) {
                         Icon(
@@ -110,7 +110,7 @@ fun FollowingUsersScreen(
                     paddingValues = paddingValues,
                     users = contentUiState.users,
                     enabledLoadPhotos = contentUiState.enabledLoadPhotos,
-                    actions = internalActions.actions
+                    callbacks = internalCallbacks.callbacks
                 )
             }
 
@@ -118,7 +118,7 @@ fun FollowingUsersScreen(
                 ErrorDialog(
                     title = stringResource(id = R.string.error_dialog_title),
                     text = error.message,
-                    onDismiss = { contentUiState.setError(null) }
+                    onDismiss = { contentUiState.error = null }
                 )
             }
         }

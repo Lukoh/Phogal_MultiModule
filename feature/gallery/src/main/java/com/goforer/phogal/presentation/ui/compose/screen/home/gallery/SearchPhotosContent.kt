@@ -4,8 +4,8 @@ import android.content.res.Configuration
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -14,12 +14,8 @@ import androidx.compose.material3.MaterialTheme.typography
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
-import kotlinx.coroutines.delay
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
@@ -29,24 +25,22 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.paging.compose.LazyPagingItems
-import androidx.paging.compose.collectAsLazyPagingItems
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.paging.compose.collectAsLazyPagingItems
 import com.goforer.designsystem.animation.GenericCubicAnimationShape
-import com.goforer.phogal.presentation.stateholder.uistate.home.gallery.SearchPhotosActions
 import com.goforer.designsystem.component.Chips
+import com.goforer.designsystem.theme.ColorSystemGray7
+import com.goforer.designsystem.theme.PhogalTheme
 import com.goforer.phogal.core.ui.R
-import com.goforer.phogal.data.model.remote.response.gallery.common.photo.Photo
-import com.goforer.phogal.data.model.remote.response.gallery.common.user.User
-import com.goforer.phogal.presentation.stateholder.uistate.home.gallery.SearchPhotosContentUiState
+import com.goforer.phogal.presentation.stateholder.uistate.home.gallery.SearchPhotoContentUiState
+import com.goforer.phogal.presentation.stateholder.uistate.home.gallery.SearchPhotosCallbacks
 import com.goforer.phogal.presentation.stateholder.uistate.home.gallery.SearchSectionUiState
 import com.goforer.phogal.presentation.stateholder.uistate.home.gallery.rememberSearchPhotosSectionUiState
 import com.goforer.phogal.presentation.ui.compose.screen.home.common.InitScreen
-import com.goforer.designsystem.theme.ColorSystemGray7
-import com.goforer.designsystem.theme.PhogalTheme
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.MultiplePermissionsState
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
+import kotlinx.coroutines.delay
 import kotlin.time.Duration.Companion.milliseconds
 
 @OptIn(
@@ -57,13 +51,11 @@ import kotlin.time.Duration.Companion.milliseconds
 @Composable
 fun SearchPhotosContent(
     modifier: Modifier = Modifier,
-    contentUiState: SearchPhotosContentUiState,
+    contentUiState: SearchPhotoContentUiState,
     sectionUiState: SearchSectionUiState,
     paddingValues: PaddingValues,
-    actions: SearchPhotosActions
+    callbacks: SearchPhotosCallbacks
 ) {
-    val photos = contentUiState.galleryViewModel.photos.collectAsLazyPagingItems()
-    val currentQuery by contentUiState.galleryViewModel.query.collectAsStateWithLifecycle()
     val recentWords by contentUiState.galleryViewModel.recentWords.collectAsStateWithLifecycle()
 
     Column(
@@ -74,7 +66,7 @@ fun SearchPhotosContent(
         SearchSection(
             modifier = Modifier.padding(2.dp, 0.dp, 2.dp, 0.dp),
             sectionUiState = sectionUiState,
-            onSearched = { actions.onPerformSearch(it, false) }
+            onSearched = { callbacks.onPerformSearch(it, false) }
         )
 
         // Sub-composables are stateless: they receive the values they need and
@@ -83,19 +75,17 @@ fun SearchPhotosContent(
             recentWords = recentWords.asReversed(),
             isScrolling = contentUiState.scrolling,
             triggered = contentUiState.triggered,
-            onTriggeredConsumed = contentUiState::setTriggerConsumed,
+            onTriggeredConsumed = contentUiState::consumeSearchTrigger,
             onChipClicked = { keyword ->
                 sectionUiState.editableInputState.textState = keyword
-                sectionUiState.setWordChanged(true)
-                actions.onPerformSearch(keyword, true)
+                sectionUiState.wordChanged = true
+                callbacks.onPerformSearch(keyword, true)
             }
         )
         PhotosOrInitScreen(
             paddingValues = paddingValues,
-            query = currentQuery,
-            photos = photos,
-            actions = actions,
-            onScroll = contentUiState::setScrollingChanged
+            contentUiState = contentUiState,
+            callbacks = callbacks
         )
     }
 
@@ -103,10 +93,10 @@ fun SearchPhotosContent(
         permissions = contentUiState.permissions,
         permissionVisible = contentUiState.permissionVisible,
         rationaleText = contentUiState.rationaleText,
-        onPermissionGranted = contentUiState::setPermissionGranted,
-        onPermissionDenied = contentUiState::setPermissionDenied,
-        onDialogDismissed = contentUiState::setPermissionDialogDismissed,
-        onDialogConfirmed = contentUiState::setPermissionDialogConfirmed
+        onPermissionGranted = contentUiState::onPermissionGranted,
+        onPermissionDenied = contentUiState::onPermissionDenied,
+        onDialogDismissed = contentUiState::onPermissionDialogDismissed,
+        onDialogConfirmed = contentUiState::onPermissionDialogConfirmed
     )
 }
 
@@ -114,7 +104,7 @@ fun SearchPhotosContent(
  * Animated row of recent search keywords. Hidden while scrolling. When a
  * `triggered` signal arrives, only the most recent keyword is shown (UX
  * requirement so the newly-committed keyword is highlighted without the full
- * history noise).
+ history noise).
  */
 @Composable
 private fun RecentWordsChips(
@@ -163,23 +153,27 @@ private fun RecentWordsChips(
 @Composable
 private fun ColumnScope.PhotosOrInitScreen(
     paddingValues: PaddingValues,
-    query: String,
-    photos: LazyPagingItems<Photo>,
-    actions: SearchPhotosActions,
-    onScroll: (Boolean) -> Unit
+    contentUiState: SearchPhotoContentUiState,
+    callbacks: SearchPhotosCallbacks
 ) {
-    if (query.isNotBlank()) {
-        SearchPhotosSection(
-            modifier = Modifier
-                .padding(top = 0.5.dp)
-                .weight(1f),
-            paddingValues = paddingValues,
-            photos = photos,
-            sectionUiState = rememberSearchPhotosSectionUiState(rememberCoroutineScope(), rememberSaveable { mutableStateOf(false) }),
-            actions = actions,
-            isPhotoBookmarked = { false },
-            onScroll = onScroll
-        )
+    val currentQuery by contentUiState.galleryViewModel.query.collectAsStateWithLifecycle()
+    val searchingQuery by contentUiState.galleryViewModel.searchingQuery.collectAsStateWithLifecycle()
+    val sessionId by contentUiState.galleryViewModel.searchSessionId.collectAsStateWithLifecycle()
+
+    if (currentQuery.isNotBlank()) {
+        key(searchingQuery, sessionId) {
+            val photos = contentUiState.galleryViewModel.photos.collectAsLazyPagingItems()
+
+            SearchPhotosSection(
+                modifier = Modifier
+                    .padding(top = 0.5.dp)
+                    .weight(1f),
+                paddingValues = paddingValues,
+                sectionUiState = rememberSearchPhotosSectionUiState(photos),
+                callbacks = callbacks,
+                isPhotoBookmarked = { false }
+            )
+        }
     } else {
         InitScreen(
             modifier = Modifier

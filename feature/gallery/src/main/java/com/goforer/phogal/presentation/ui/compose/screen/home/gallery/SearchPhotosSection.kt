@@ -21,12 +21,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -36,13 +31,12 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.paging.LoadState
 import androidx.paging.PagingData
-import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItems
+import com.goforer.designsystem.component.paging.PagingLoadStateCallbacks
 import com.goforer.designsystem.component.paging.PagingLoadStateEffect
 import com.goforer.designsystem.component.paging.ScrollSignalEffect
 import com.goforer.designsystem.component.paging.contentItems
 import com.goforer.designsystem.component.paging.rememberIsScrolledPastThreshold
-import com.goforer.designsystem.component.paging.rememberLazyListState
 import com.goforer.designsystem.component.paging.renderPagingLoadState
 import com.goforer.designsystem.theme.Blue15
 import com.goforer.designsystem.theme.Blue95
@@ -51,40 +45,32 @@ import com.goforer.phogal.data.model.remote.response.gallery.common.ProfileImage
 import com.goforer.phogal.data.model.remote.response.gallery.common.Urls
 import com.goforer.phogal.data.model.remote.response.gallery.common.photo.Photo
 import com.goforer.phogal.data.model.remote.response.gallery.common.user.User
-import com.goforer.phogal.presentation.stateholder.uistate.home.common.photo.PhotoItemActions
+import com.goforer.phogal.presentation.stateholder.uistate.home.common.photo.PhotoItemCallbacks
 import com.goforer.phogal.presentation.stateholder.uistate.home.common.photo.rememberPhotoItemUiState
-import com.goforer.phogal.presentation.stateholder.uistate.home.gallery.SearchPhotosActions
+import com.goforer.phogal.presentation.stateholder.uistate.home.gallery.SearchPhotosCallbacks
 import com.goforer.phogal.presentation.stateholder.uistate.home.gallery.SearchPhotosSectionUiState
 import com.goforer.phogal.presentation.stateholder.uistate.home.gallery.rememberSearchPhotosSectionUiState
 import com.goforer.phogal.presentation.ui.compose.screen.home.common.photo.LoadingPicture
 import com.goforer.phogal.presentation.ui.compose.screen.home.common.photo.PhotoItem
 import com.goforer.phogal.presentation.ui.compose.screen.home.common.photo.ShowUpButton
 import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.launch
 import timber.log.Timber
 
 @Composable
 fun SearchPhotosSection(
     modifier: Modifier = Modifier,
     paddingValues: PaddingValues,
-    photos: LazyPagingItems<Photo>,
-    sectionUiState: SearchPhotosSectionUiState = rememberSearchPhotosSectionUiState(
-        rememberCoroutineScope(),
-        rememberSaveable { mutableStateOf(false) }
-    ),
-    actions: SearchPhotosActions,
-    isPhotoBookmarked: (String) -> Boolean,
-    onScroll: (isScrolling: Boolean) -> Unit
+    sectionUiState: SearchPhotosSectionUiState,
+    callbacks: SearchPhotosCallbacks,
+    isPhotoBookmarked: (String) -> Boolean
 ) {
     SearchPhotosSectionContent(
         modifier = modifier,
         paddingValues = paddingValues,
-        photos = photos,
         sectionUiState = sectionUiState,
-        actions = actions,
+        callbacks = callbacks,
         isPhotoBookmarked = isPhotoBookmarked,
-        onScroll = onScroll,
-        onRefresh = photos::refresh
+        onRefresh = sectionUiState.photos::refresh
     )
 }
 
@@ -93,61 +79,64 @@ fun SearchPhotosSection(
 fun SearchPhotosSectionContent(
     modifier: Modifier = Modifier,
     paddingValues: PaddingValues,
-    photos: LazyPagingItems<Photo>,
-    sectionUiState: SearchPhotosSectionUiState = rememberSearchPhotosSectionUiState(
-        rememberCoroutineScope(),
-        rememberSaveable { mutableStateOf(false) }
-    ),
-    actions: SearchPhotosActions,
+    sectionUiState: SearchPhotosSectionUiState,
+    callbacks: SearchPhotosCallbacks,
     isPhotoBookmarked: (String) -> Boolean,
-    onScroll: (isScrolling: Boolean) -> Unit,
     onRefresh: () -> Unit
 ) {
-    val lazyListState = photos.rememberLazyListState()
-    var manualRefreshing by remember { mutableStateOf(false) }
-    val isRefreshing by remember(photos.loadState.refresh, manualRefreshing) {
+    val isRefreshing by remember(sectionUiState.photos.loadState.refresh, sectionUiState.manualRefreshing) {
         derivedStateOf {
-            manualRefreshing && photos.loadState.refresh is LoadState.Loading
+            sectionUiState.manualRefreshing && sectionUiState.photos.loadState.refresh is LoadState.Loading
         }
     }
 
-    var isResettingScroll by remember { mutableStateOf(false) }
+    // Note: The parent key(query, sessionId) block ensures that this component
+    // starts with a fresh LazyListState at index 0 whenever a new search begins.
+    // The logic below handles scroll resets for standard paging events like pagination
+    // or manual refresh within the same query session.
+    LaunchedEffect(
+        sectionUiState.photos.loadState.refresh,
+        sectionUiState.photos.itemCount
+    ) {
+        val refreshState = sectionUiState.photos.loadState.refresh
+        val itemCount = sectionUiState.photos.itemCount
 
-    // When a refresh (e.g. new search) starts, mark that we should scroll to top
-    // once data arrives.
-    LaunchedEffect(photos.loadState.refresh) {
-        if (photos.loadState.refresh is LoadState.Loading) {
-            isResettingScroll = true
-        }
-    }
+        when (refreshState) {
+            is LoadState.Loading -> {
+                if (itemCount > 0) {
+                    sectionUiState.isResettingScroll = true
+                }
+            }
 
-    // Reset scroll position to 0 safely only when initial page data load completes
-    // successfully and we have items. We use a combination of NotLoading and itemCount
-    // to ensure we don't scroll while the list is still empty or showing old data.
-    LaunchedEffect(photos.loadState.refresh, photos.itemCount) {
-        if (isResettingScroll && photos.loadState.refresh is LoadState.NotLoading && photos.itemCount > 0) {
-            lazyListState.scrollToItem(0)
-            isResettingScroll = false
+            is LoadState.NotLoading -> {
+                sectionUiState.resetScrollIfNeeded(itemCount)
+            }
+
+            else -> Unit
         }
     }
 
     PagingLoadStateEffect(
-        pagingItems = photos,
-        onLoadingStarted = { sectionUiState.setLoadingStarted() },
-        onLoadingDone = { sectionUiState.setLoadingDone() },
-        onLoadResult = actions.onLoadResult,
-        onRefreshTransition = { manualRefreshing = it },
-        onPaginationReached = { Timber.d("Loaded all photos") },
+        pagingItems = sectionUiState.photos,
+        callbacks = remember(sectionUiState, callbacks) {
+            PagingLoadStateCallbacks(
+                onLoadingStarted = { sectionUiState.loadingDone = false },
+                onLoadingDone = { sectionUiState.loadingDone = true },
+                onLoadResult = callbacks.onLoadResult,
+                onRefreshTransition = { sectionUiState.manualRefreshing = it },
+                onPaginationReached = { Timber.d("Loaded all photos") }
+            )
+        },
         logTag = "SearchPhotosSection"
     )
 
     // derivedStateOf: only triggers recomposition when the boolean actually flips,
     // not on every scroll tick.
-    val isScrolledPastThreshold = lazyListState.rememberIsScrolledPastThreshold()
+    val isScrolledPastThreshold = sectionUiState.lazyListState.rememberIsScrolledPastThreshold()
 
     // Propagate scroll signal to parent — only when isScrollInProgress changes,
     // not on every pixel of scrolling.
-    lazyListState.ScrollSignalEffect(onScroll)
+    sectionUiState.lazyListState.ScrollSignalEffect(callbacks.onScroll)
 
     // Nav3-stable Material 3 PullToRefreshBox replaces the deprecated
     // androidx.compose.material.pullrefresh.* APIs. The container handles the
@@ -156,7 +145,7 @@ fun SearchPhotosSectionContent(
         modifier = modifier.clip(RoundedCornerShape(2.dp)),
         isRefreshing = isRefreshing,
         onRefresh = {
-            manualRefreshing = true
+            sectionUiState.manualRefreshing = true
             onRefresh()
         }
     ) {
@@ -177,7 +166,7 @@ fun SearchPhotosSectionContent(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(skyBlueBackground),
-                state = lazyListState,
+                state = sectionUiState.lazyListState,
                 contentPadding = PaddingValues(
                     start = paddingValues.calculateStartPadding(layoutDirection).coerceAtLeast(0.dp),
                     top = paddingValues.calculateTopPadding().coerceAtLeast(0.dp),
@@ -186,12 +175,11 @@ fun SearchPhotosSectionContent(
                 )
             ) {
                 renderLoadState(
-                    photos = photos,
                     sectionUiState = sectionUiState,
-                    actions = actions,
+                    callbacks = callbacks,
                     isPhotoBookmarked = isPhotoBookmarked,
                     isInspectionMode = isInspectionMode,
-                    isResettingScroll = isResettingScroll
+                    isResettingScroll = sectionUiState.isResettingScroll
                 )
             }
 
@@ -206,9 +194,7 @@ fun SearchPhotosSectionContent(
                     ),
                 visible = isScrolledPastThreshold,
                 onClick = {
-                    sectionUiState.scope.launch {
-                        lazyListState.animateScrollToItem(0)
-                    }
+                    sectionUiState.scrollToTop()
                 }
             )
         }
@@ -216,28 +202,27 @@ fun SearchPhotosSectionContent(
 }
 
 /**
- * Dispatches the current [LoadState] of [photos] into the appropriate sub-renderer.
+ * Dispatches the current [LoadState] of [SearchPhotosSectionUiState.photos] into the appropriate sub-renderer.
  * Kept as a LazyListScope extension so each sub-renderer can emit `item {}` / `items {}`
  * directly without re-wrapping.
  */
 @OptIn(ExperimentalFoundationApi::class)
 private fun LazyListScope.renderLoadState(
-    photos: LazyPagingItems<Photo>,
     sectionUiState: SearchPhotosSectionUiState,
-    actions: SearchPhotosActions,
+    callbacks: SearchPhotosCallbacks,
     isPhotoBookmarked: (String) -> Boolean,
     isInspectionMode: Boolean,
     isResettingScroll: Boolean
 ) {
-    val isInitiallyLoading = photos.loadState.refresh is LoadState.Loading
+    val isInitiallyLoading = sectionUiState.photos.loadState.refresh is LoadState.Loading
     val suppressAnimation = isInitiallyLoading || isInspectionMode || isResettingScroll
 
     renderPagingLoadState(
-        items = photos,
+        items = sectionUiState.photos,
         loadingDone = sectionUiState.loadingDone,
         content = {
             contentItems(
-                items = photos,
+                items = sectionUiState.photos,
                 key = { _, photo -> photo.id },
                 content = { padding, index, photo ->
                     PhotoItem(
@@ -247,20 +232,18 @@ private fun LazyListScope.renderLoadState(
                                 if (suppressAnimation) Modifier else Modifier.animateItem(tween(durationMillis = 200))
                             ),
                         state = rememberPhotoItemUiState(
-                            index = rememberSaveable { mutableIntStateOf(index) },
-                            photo = rememberSaveable { mutableStateOf(photo) },
-                            visibleViewButton = rememberSaveable { mutableStateOf(true) },
-                            bookmarked = rememberSaveable {
-                                mutableStateOf(isPhotoBookmarked(photo.id))
-                            }
+                            photo = photo,
+                            index = index,
+                            initialVisibleViewButton = true,
+                            initialBookmarked = isPhotoBookmarked(photo.id)
                         ),
-                        isFollowed = actions.isUserFollowed(photo.user),
-                        actions = remember(actions) {
-                            PhotoItemActions(
-                                onFollowClick = actions.onToggleFollow,
-                                onShowUserInfo = actions.onShowUserInfo,
-                                onItemClicked = { p, _ -> actions.onItemClicked(p.id) },
-                                onViewPhotos = actions.onViewPhotos
+                        isFollowed = callbacks.isUserFollowed(photo.user),
+                        callbacks = remember(callbacks) {
+                            PhotoItemCallbacks(
+                                onFollowClick = callbacks.onToggleFollow,
+                                onShowUserInfo = callbacks.onShowUserInfo,
+                                onItemClicked = { p, _ -> callbacks.onItemClicked(p.id) },
+                                onViewPhotos = callbacks.onViewPhotos
                             )
                         }
                     )
@@ -313,19 +296,22 @@ fun SearchPhotosSectionPreview() {
 
     PhogalTheme {
         SearchPhotosSectionContent(
+            modifier = Modifier.fillMaxSize(),
             paddingValues = PaddingValues(all = 0.dp),
-            photos = photos,
-            actions = SearchPhotosActions(
+            sectionUiState = rememberSearchPhotosSectionUiState(photos),
+            callbacks = SearchPhotosCallbacks(
                 onPerformSearch = { _, _ -> },
                 isUserFollowed = { false },
                 onToggleFollow = {},
                 onShowUserInfo = {},
                 onItemClicked = {},
                 onViewPhotos = { _, _, _, _ -> },
-                onLoadResult = {}
+                onLoadResult = {},
+                onScroll = {},
+                onMenuClick = {},
+                onFavoriteClick = {}
             ),
             isPhotoBookmarked = { false },
-            onScroll = {},
             onRefresh = {}
         )
     }

@@ -3,15 +3,19 @@ package com.goforer.phogal.presentation.stateholder.uistate.home.common.photo
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.Stable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.Saver
+import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import com.goforer.phogal.data.model.remote.response.gallery.common.photo.Photo
 import com.goforer.phogal.data.model.remote.response.gallery.common.user.User
 
 @Stable
-data class PhotoItemActions(
+data class PhotoItemCallbacks(
     val onFollowClick: (User) -> Unit,
     val onShowUserInfo: (User) -> Unit,
     val onItemClicked: (item: Photo, index: Int) -> Unit,
@@ -19,53 +23,52 @@ data class PhotoItemActions(
 )
 
 @Stable
-class PhotoItemUiState internal constructor(
-    private val _index: MutableState<Int>,
-    private val _photo: MutableState<Photo>,
-    private val _visibleViewButton: MutableState<Boolean>,
-    private val _clicked: MutableState<Boolean>,
-    private val _bookmarked: MutableState<Boolean>
+class PhotoItemUiState(
+    val index: Int = 0,
+    val photo: Photo = Photo.empty(),
+    initialVisibleViewButton: Boolean = false,
+    initialClicked: Boolean = false,
+    initialBookmarked: Boolean = false
 ) {
-    val index: Int get() = _index.value
-    val photo: Photo get() = _photo.value
-    val visibleViewButton: Boolean get() = _visibleViewButton.value
-    val clicked: Boolean get() = _clicked.value
-    val bookmarked: Boolean get() = _bookmarked.value
-
-    fun setIndex(index: Int) {
-        _index.value = index
-    }
-
-    fun setPhoto(photo: Photo) {
-        _photo.value = photo
-    }
-
-    fun setClicked(clicked: Boolean) {
-        _clicked.value = clicked
-    }
-
-    fun setVisibleViewButton(visibleViewButton: Boolean) {
-        _visibleViewButton.value = visibleViewButton
-    }
-
-    fun setBookmark(bookmarked: Boolean) {
-        _bookmarked.value = bookmarked
+    var visibleViewButton: Boolean by mutableStateOf(initialVisibleViewButton)
+    var clicked: Boolean by mutableStateOf(initialClicked)
+    var bookmarked: Boolean by mutableStateOf(initialBookmarked)
+    companion object {
+        fun Saver(photo: Photo): Saver<PhotoItemUiState, *> = listSaver(
+            save = {
+                listOf(it.index, it.visibleViewButton, it.clicked, it.bookmarked)
+            },
+            restore = {
+                PhotoItemUiState(
+                    index = it[0] as Int,
+                    photo = photo,
+                    initialVisibleViewButton = it[1] as Boolean,
+                    initialClicked = it[2] as Boolean,
+                    initialBookmarked = it[3] as Boolean
+                )
+            }
+        )
     }
 }
 
 @Composable
 fun rememberPhotoItemUiState(
-    index: MutableState<Int> = rememberSaveable { mutableIntStateOf(0) },
-    photo: MutableState<Photo> = remember { mutableStateOf(Photo.empty()) },
-    visibleViewButton: MutableState<Boolean> = rememberSaveable() { mutableStateOf(false) },
-    clicked: MutableState<Boolean> = rememberSaveable { mutableStateOf(false) },
-    bookmarked: MutableState<Boolean> = rememberSaveable { mutableStateOf(false) }
-): PhotoItemUiState = remember(index, photo, visibleViewButton, clicked, bookmarked) {
+    index: Int = 0,
+    photo: Photo = Photo.empty(),
+    initialVisibleViewButton: Boolean = false,
+    initialClicked: Boolean = false,
+    initialBookmarked: Boolean = false
+): PhotoItemUiState {
+    return rememberSaveable(
+        photo,
+        saver = PhotoItemUiState.Saver(photo)
+    ) {
         PhotoItemUiState(
-            _index = index,
-            _photo = photo,
-            _visibleViewButton = visibleViewButton,
-            _clicked = clicked,
-            _bookmarked = bookmarked
+            index = index,
+            photo = photo,
+            initialVisibleViewButton = initialVisibleViewButton,
+            initialClicked = initialClicked,
+            initialBookmarked = initialBookmarked
         )
     }
+}

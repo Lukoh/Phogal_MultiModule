@@ -42,6 +42,12 @@ class GalleryViewModel @Inject constructor(
     private val _query = MutableStateFlow("")
     val query: StateFlow<String> = _query.asStateFlow()
 
+    private val _searchingQuery = MutableStateFlow("")
+    val searchingQuery: StateFlow<String> = _searchingQuery.asStateFlow()
+
+    private val _searchSessionId = MutableStateFlow(0)
+    val searchSessionId: StateFlow<Int> = _searchSessionId.asStateFlow()
+
     private val _queryTrigger = MutableSharedFlow<QueryUpdate>(replay = 0, extraBufferCapacity = 1)
 
     /**
@@ -68,11 +74,19 @@ class GalleryViewModel @Inject constructor(
             if (update is QueryUpdate.Typing) {
                 delay(DEBOUNCE_MS.milliseconds)
             }
+
+            if (update.query.isNotBlank()) {
+                _searchingQuery.value = update.query
+                _searchSessionId.value++
+            }
+
             emit(update.query)
         }
         .distinctUntilChanged()
         .filter { it.isNotBlank() }
-        .flatMapLatest { query -> photosRepository.search(query, PAGE_SIZE) }
+        .flatMapLatest { query ->
+            photosRepository.search(query, PAGE_SIZE)
+        }
         .cachedIn(viewModelScope)
         .stateIn(
             scope = viewModelScope,

@@ -1,8 +1,10 @@
-package com.goforer.phogal.data.datasource.network
+ package com.goforer.phogal.data.datasource.network
 
+import kotlinx.serialization.InternalSerializationApi
 import kotlinx.serialization.Serializable
 
 @Serializable
+@InternalSerializationApi
 data class NetworkError(val detail: List<ErrorBody>) {
 
     /**

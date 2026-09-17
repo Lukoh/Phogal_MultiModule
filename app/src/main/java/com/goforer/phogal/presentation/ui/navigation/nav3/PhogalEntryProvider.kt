@@ -36,18 +36,18 @@ import com.goforer.phogal.presentation.stateholder.business.home.popularphotos.P
 import com.goforer.phogal.presentation.stateholder.business.home.setting.bookmark.BookmarkViewModel
 import com.goforer.phogal.presentation.stateholder.business.home.setting.follow.FollowViewModel
 import com.goforer.phogal.presentation.stateholder.uistate.UiState
-import com.goforer.phogal.presentation.stateholder.uistate.home.common.photo.PictureViewerScreenActions
-import com.goforer.phogal.presentation.stateholder.uistate.home.common.photo.rememberPhotoContentUiState
-import com.goforer.phogal.presentation.stateholder.uistate.home.common.user.photos.rememberUserPhotosContentUiState
-import com.goforer.phogal.presentation.stateholder.uistate.home.common.user.photos.UserPhotosScreenActions
-import com.goforer.phogal.presentation.stateholder.uistate.home.gallery.rememberSearchPhotosContentUiState
-import com.goforer.phogal.presentation.stateholder.uistate.home.gallery.SearchPhotosScreenActions
-import com.goforer.phogal.presentation.stateholder.uistate.home.popularphotos.PopularPhotosScreenActions
-import com.goforer.phogal.presentation.stateholder.uistate.home.popularphotos.rememberPopularPhotosContentUiState
-import com.goforer.phogal.presentation.stateholder.uistate.home.bookmark.BookmarkScreenActions
+import com.goforer.phogal.presentation.stateholder.uistate.home.bookmark.BookmarkScreenCallbacks
 import com.goforer.phogal.presentation.stateholder.uistate.home.bookmark.rememberBookmarkContentUiState
-import com.goforer.phogal.presentation.stateholder.uistate.home.following.FollowingUserScreenActions
+import com.goforer.phogal.presentation.stateholder.uistate.home.common.photo.PictureViewerScreenCallbacks
+import com.goforer.phogal.presentation.stateholder.uistate.home.common.photo.rememberPhotoContentUiState
+import com.goforer.phogal.presentation.stateholder.uistate.home.common.user.photos.UserPhotosScreenCallbacks
+import com.goforer.phogal.presentation.stateholder.uistate.home.common.user.photos.rememberUserPhotosContentUiState
+import com.goforer.phogal.presentation.stateholder.uistate.home.following.FollowingUserScreenCallbacks
 import com.goforer.phogal.presentation.stateholder.uistate.home.following.rememberFollowingUserContentUiState
+import com.goforer.phogal.presentation.stateholder.uistate.home.gallery.SearchPhotosScreenCallbacks
+import com.goforer.phogal.presentation.stateholder.uistate.home.gallery.rememberSearchPhotosContentUiState
+import com.goforer.phogal.presentation.stateholder.uistate.home.popularphotos.PopularPhotosScreenCallbacks
+import com.goforer.phogal.presentation.stateholder.uistate.home.popularphotos.rememberPopularPhotosContentUiState
 import com.goforer.phogal.presentation.stateholder.uistate.rememberBaseUiState
 import com.goforer.phogal.presentation.ui.compose.screen.home.common.photo.viewer.PictureViewerScreen
 import com.goforer.phogal.presentation.ui.compose.screen.home.common.user.userphotos.UserPhotosScreen
@@ -90,7 +90,7 @@ private fun EntryProviderScope<NavKey>.galleryTabEntries(navState: NavigationSta
 
         SearchPhotosScreen(
             contentUiState = contentUiState,
-            actions = SearchPhotosScreenActions(
+            callbacks = SearchPhotosScreenCallbacks(
                 isUserFollowed = { user ->
                     followingUsers.any { it.id == user.id }
                 },
@@ -123,18 +123,16 @@ private fun EntryProviderScope<NavKey>.galleryTabEntries(navState: NavigationSta
             pictureViewModel = pictureViewModel,
             bookmarkViewModel = bookmarkViewModel,
             photoDownloadViewModel = photoDownloadViewModel,
-            id = rememberSaveable { mutableStateOf(key.id) },
-            visibleViewButton = rememberSaveable {
-                mutableStateOf(key.showViewPhotosButton)
-            }
+            id = key.id,
+            initialVisibleViewButton = key.showViewPhotosButton
         )
 
         val currentPicture = (contentUiState.pictureState as? UiState.Success)?.data
 
-        contentUiState.setEnabledBookmark(enabledBookmark = bookmarkedPictures.any { it.id == currentPicture?.id })
+        contentUiState.enabledBookmark = (bookmarkedPictures.any { it.id == currentPicture?.id })
         PictureViewerScreen(
             contentUiState = contentUiState,
-            actions = PictureViewerScreenActions(
+            callbacks = PictureViewerScreenCallbacks(
                 isUserFollowed = { user ->
                     followingUsers.any { it.id == user.id }
                 },
@@ -159,13 +157,13 @@ private fun EntryProviderScope<NavKey>.galleryTabEntries(navState: NavigationSta
         val contentUiState = rememberUserPhotosContentUiState(
             baseUiState = rememberBaseUiState(),
             userPhotosViewModel = userPhotosViewModel,
-            name = rememberSaveable { mutableStateOf(key.name) },
-            firstName = rememberSaveable { mutableStateOf(key.firstName) }
+            name = key.name,
+            firstName = key.firstName
         )
 
         UserPhotosScreen(
             contentUiState = contentUiState,
-            actions = UserPhotosScreenActions(
+            callbacks = UserPhotosScreenCallbacks(
                 isUserFollowed = { user ->
                     followingUsers.any { it.id == user.id }
                 },
@@ -217,7 +215,7 @@ private fun EntryProviderScope<NavKey>.popularTabEntries(navState: NavigationSta
 
         PopularPhotosScreen(
             contentUiState = contentUiState,
-            actions = PopularPhotosScreenActions(
+            callbacks = PopularPhotosScreenCallbacks(
                 isUserFollowed = { user ->
                     followingUsers.any { it.id == user.id }
                 },
@@ -284,12 +282,12 @@ private fun EntryProviderScope<NavKey>.settingTabEntries(navState: NavigationSta
         val followingUsers by followViewModel.users.collectAsStateWithLifecycle()
         val contentUiState = rememberBookmarkContentUiState(
             bookmarkViewModel = bookmarkViewModel,
-            enabledLoadPhotos = rememberSaveable { mutableStateOf(true) }
+            initialEnabledLoadPhotos = true
         )
 
         BookmarkedPhotosScreen(
             contentUiState = contentUiState,
-            actions = BookmarkScreenActions(
+            callbacks = BookmarkScreenCallbacks(
                 onItemClicked = { picture, _ ->
                     navState.push(Routes.PictureRoute(id = picture.id, showViewPhotosButton = false))
                 },
@@ -318,12 +316,12 @@ private fun EntryProviderScope<NavKey>.settingTabEntries(navState: NavigationSta
         val followViewModel: FollowViewModel = hiltViewModel()
         val contentUiState = rememberFollowingUserContentUiState(
             followViewModel = followViewModel,
-            enabledLoadPhotos = rememberSaveable { mutableStateOf(true) }
+            initialEnabledLoadPhotos = true
         )
 
         FollowingUsersScreen(
             contentUiState = contentUiState,
-            actions = FollowingUserScreenActions(
+            callbacks = FollowingUserScreenCallbacks(
                 onBackPressed = { navState.pop() },
                 onViewPhotos = { name, first, last, user ->
                     navState.push(Routes.UserPhotosRoute(name, first, last, user))

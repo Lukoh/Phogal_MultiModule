@@ -17,9 +17,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -39,11 +37,9 @@ import com.goforer.designsystem.component.dialog.ErrorDialog
 import com.goforer.designsystem.theme.ColorBgSecondary
 import com.goforer.designsystem.theme.PhogalTheme
 import com.goforer.phogal.core.ui.R
-import com.goforer.phogal.presentation.stateholder.uistate.PagingResult
-import com.goforer.phogal.presentation.stateholder.uistate.home.bookmark.BookmarkActions
 import com.goforer.phogal.presentation.stateholder.uistate.home.bookmark.BookmarkContentUiState
-import com.goforer.phogal.presentation.stateholder.uistate.home.bookmark.BookmarkScreenActions
-import com.goforer.phogal.presentation.stateholder.uistate.home.bookmark.rememberBookmarkInternalActions
+import com.goforer.phogal.presentation.stateholder.uistate.home.bookmark.BookmarkScreenCallbacks
+import com.goforer.phogal.presentation.stateholder.uistate.home.bookmark.rememberBookmarkInternalCallbacks
 import com.goforer.phogal.presentation.ui.compose.screen.home.common.user.UserInfoBottomSheet
 import kotlinx.coroutines.launch
 
@@ -52,25 +48,25 @@ import kotlinx.coroutines.launch
 fun BookmarkedPhotosScreen(
     modifier: Modifier = Modifier,
     contentUiState: BookmarkContentUiState,
-    actions: BookmarkScreenActions
+    callbacks: BookmarkScreenCallbacks
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
 
-    val internalActions = rememberBookmarkInternalActions(
+    val internalCallbacks = rememberBookmarkInternalCallbacks(
         contentUiState = contentUiState,
-        screenActions = actions
+        screenCallbacks = callbacks
     )
 
     BackHandler(enabled = true) {
-        actions.onBackPressed()
+        callbacks.onBackPressed()
     }
 
     DisposableEffect(contentUiState.baseUiState.lifecycle) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_START) {
-                actions.onStart()
+                callbacks.onStart()
             } else if (event == Lifecycle.Event.ON_STOP) {
-                actions.onStop()
+                callbacks.onStop()
             }
         }
         contentUiState.baseUiState.lifecycle.addObserver(observer)
@@ -104,8 +100,8 @@ fun BookmarkedPhotosScreen(
                 navigationIcon = {
                     IconButton(
                         onClick = {
-                            contentUiState.setEnabledLoadPhotos(false)
-                            actions.onBackPressed()
+                            contentUiState.enabledLoadPhotos = false
+                            callbacks.onBackPressed()
                         }
                     ) {
                         Icon(
@@ -120,9 +116,9 @@ fun BookmarkedPhotosScreen(
                 BookmarkedPhotosContent(
                     modifier = modifier,
                     paddingValues = paddingValues,
-                    bookmarkedPictures = contentUiState.bookmarkedPictures,
+                    photos = contentUiState.photos,
                     enabledLoadPhotos = contentUiState.enabledLoadPhotos,
-                    actions = internalActions.actions
+                    callbacks = internalCallbacks.callbacks
                 )
             }
 
@@ -130,7 +126,7 @@ fun BookmarkedPhotosScreen(
                 ErrorDialog(
                     title = stringResource(id = R.string.error_dialog_title),
                     text = error.message,
-                    onDismiss = { contentUiState.setError(null) }
+                    onDismiss = { contentUiState.error = null }
                 )
             }
 
@@ -142,7 +138,7 @@ fun BookmarkedPhotosScreen(
                         contentUiState.selectedUser = null
                         if (isPortfolioClicked) {
                             user.portfolioUrl?.let {
-                                actions.onOpenWebView(user.firstName, it)
+                                callbacks.onOpenWebView(user.firstName, it)
                             } ?: run {
                                 contentUiState.baseUiState.scope.launch {
                                     val text = contentUiState.baseUiState.context.getString(R.string.user_info_has_no_portfolio)

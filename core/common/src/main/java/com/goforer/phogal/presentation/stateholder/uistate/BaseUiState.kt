@@ -2,11 +2,12 @@ package com.goforer.phogal.presentation.stateholder.uistate
 
 import android.content.Context
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.Stable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -22,9 +23,10 @@ class BaseUiState(
     val scope: CoroutineScope,
     val lifecycle: Lifecycle,
     val keyboardController: SoftwareKeyboardController?,
-
-    private val isOnline: MutableState<Boolean>
-)
+    initialIsOnline: Boolean
+) {
+    var isOnline: Boolean by mutableStateOf(initialIsOnline)
+}
 
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
@@ -33,13 +35,13 @@ fun rememberBaseUiState(
     scope: CoroutineScope = rememberCoroutineScope(),
     lifecycle: Lifecycle = LocalLifecycleOwner.current.lifecycle,
     keyboardController: SoftwareKeyboardController? = LocalSoftwareKeyboardController.current,
-    isOnline: MutableState<Boolean> = remember { mutableStateOf(true) }
+    initialIsOnline: Boolean = true
 ): BaseUiState = remember(context, scope, lifecycle, keyboardController) {
     BaseUiState(
         context = context,
         scope = scope,
         lifecycle = lifecycle,
         keyboardController = keyboardController,
-        isOnline = isOnline
+        initialIsOnline = initialIsOnline
     )
 }

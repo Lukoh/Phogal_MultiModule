@@ -1,5 +1,6 @@
-package com.goforer.phogal.presentation.stateholder.uistate.home.bookmark
+package com.goforer.phogal.presentation.stateholder.uistate.home.common.user.photos
 
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
@@ -12,9 +13,9 @@ import androidx.compose.runtime.setValue
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItems
 import com.goforer.base.extension.toUser
+import com.goforer.phogal.data.model.remote.response.gallery.common.photo.Photo
 import com.goforer.phogal.data.model.remote.response.gallery.common.user.User
-import com.goforer.phogal.data.model.remote.response.gallery.photo.photoinfo.Picture
-import com.goforer.phogal.presentation.stateholder.business.home.setting.bookmark.BookmarkViewModel
+import com.goforer.phogal.presentation.stateholder.business.home.common.user.UserPhotosViewModel
 import com.goforer.phogal.presentation.stateholder.uistate.BaseUiState
 import com.goforer.phogal.presentation.stateholder.uistate.ErrorEntity
 import com.goforer.phogal.presentation.stateholder.uistate.PagingResult
@@ -22,47 +23,54 @@ import com.goforer.phogal.presentation.stateholder.uistate.rememberBaseUiState
 import com.goforer.phogal.presentation.stateholder.uistate.home.common.base.BasePhotoContentUiState
 
 @Stable
-data class BookmarkCallbacks(
+data class UserPhotosCallbacks(
     val isUserFollowed: (User) -> Boolean,
     val onToggleFollow: (User) -> Unit,
     val onShowUserInfo: (User) -> Unit,
-    val onItemClicked: (item: Picture, index: Int) -> Unit,
+    val onItemClicked: (id: String) -> Unit,
     val onViewPhotos: (name: String, firstName: String, lastName: String, username: String) -> Unit,
     val onLoadResult: (PagingResult) -> Unit
 )
 
 @Stable
-data class BookmarkScreenCallbacks(
-    val onItemClicked: (item: Picture, index: Int) -> Unit,
-    val onBackPressed: () -> Unit,
-    val onViewPhotos: (name: String, firstName: String, lastName: String, username: String) -> Unit,
-    val onOpenWebView: (firstName: String, url: String) -> Unit,
+data class UserPhotosScreenCallbacks(
     val isUserFollowed: (User) -> Boolean,
     val onToggleFollow: (User) -> Unit,
+    val onItemClicked: (id: String) -> Unit,
+    val onViewPhotos: (name: String, firstName: String, lastName: String, username: String) -> Unit = { _, _, _, _ -> },
+    val onOpenWebView: (firstName: String, url: String) -> Unit,
+    val onBackPressed: () -> Unit,
     val onStart: () -> Unit = {},
     val onStop: () -> Unit = {}
 )
 
 @Stable
-class BookmarkContentUiState internal constructor(
+class UserPhotoContentUiState internal constructor(
     override val baseUiState: BaseUiState,
-    val photos: LazyPagingItems<Picture>,
-    initialEnabledLoadPhotos: Boolean,
+    val userPhotosViewModel: UserPhotosViewModel,
+    val photos: LazyPagingItems<Photo>,
+    val name: String,
+    val firstName: String,
+    initialVisible: Boolean,
     initialError: ErrorEntity?,
     initialSelectedUser: User?,
 ) : BasePhotoContentUiState(
     baseUiState = baseUiState,
-    initialVisible = false,
+    initialVisible = initialVisible,
     initialError = initialError,
     initialSelectedUser = initialSelectedUser,
 ) {
-    var enabledLoadPhotos: Boolean by mutableStateOf(initialEnabledLoadPhotos)
-
     companion object {
-        fun Saver(baseUiState: BaseUiState, bookmarkedPictures: LazyPagingItems<Picture>): Saver<BookmarkContentUiState, *> = Saver(
+        fun Saver(
+            baseUiState: BaseUiState,
+            userPhotosViewModel: UserPhotosViewModel,
+            photos: LazyPagingItems<Photo>
+        ): Saver<UserPhotoContentUiState, *> = Saver(
             save = {
                 listOf(
-                    it.enabledLoadPhotos,
+                    it.name,
+                    it.firstName,
+                    it.visible,
                     it.error?.let { err ->
                         mapOf(
                             "type" to err::class.simpleName,
@@ -74,9 +82,11 @@ class BookmarkContentUiState internal constructor(
                 )
             },
             restore = {
-                val enabledLoadPhotos = it[0] as Boolean
-                val errorMap = it[1] as? Map<*, *>
-                val selectedUserStr = it[2] as? String
+                val name = it[0] as String
+                val firstName = it[1] as String
+                val visible = it[2] as Boolean
+                val errorMap = it[3] as? Map<*, *>
+                val selectedUserStr = it[4] as? String
                 val error = errorMap?.let { map ->
                     val type = map["type"] as? String
                     val message = map["message"] as? String ?: ""
@@ -89,10 +99,13 @@ class BookmarkContentUiState internal constructor(
                         else -> null
                     }
                 }
-                BookmarkContentUiState(
+                UserPhotoContentUiState(
                     baseUiState = baseUiState,
-                    photos = bookmarkedPictures,
-                    initialEnabledLoadPhotos = enabledLoadPhotos,
+                    userPhotosViewModel = userPhotosViewModel,
+                    photos = photos,
+                    name = name,
+                    firstName = firstName,
+                    initialVisible = visible,
                     initialError = error,
                     initialSelectedUser = selectedUserStr?.toUser()
                 )
@@ -102,23 +115,28 @@ class BookmarkContentUiState internal constructor(
 }
 
 @Composable
-fun rememberBookmarkContentUiState(
-    bookmarkViewModel: BookmarkViewModel,
+fun rememberUserPhotosContentUiState(
+    userPhotosViewModel: UserPhotosViewModel,
     baseUiState: BaseUiState = rememberBaseUiState(),
-    initialEnabledLoadPhotos: Boolean = true,
+    name: String = "",
+    firstName: String = "",
+    initialVisible: Boolean = false,
     initialError: ErrorEntity? = null,
     initialSelectedUser: User? = null
-): BookmarkContentUiState {
-    val photos = bookmarkViewModel.bookmarkedPictures.collectAsLazyPagingItems()
+): UserPhotoContentUiState  {
+    val photos = userPhotosViewModel.photos.collectAsLazyPagingItems()
 
     return rememberSaveable(
-        baseUiState, photos,
-        saver = BookmarkContentUiState.Saver(baseUiState, photos)
+        baseUiState, userPhotosViewModel, photos,
+        saver = UserPhotoContentUiState.Saver(baseUiState, userPhotosViewModel, photos)
     ) {
-        BookmarkContentUiState(
+        UserPhotoContentUiState(
             baseUiState = baseUiState,
+            userPhotosViewModel = userPhotosViewModel,
             photos = photos,
-            initialEnabledLoadPhotos = initialEnabledLoadPhotos,
+            name = name,
+            firstName = firstName,
+            initialVisible = initialVisible,
             initialError = initialError,
             initialSelectedUser = initialSelectedUser
         )
@@ -129,38 +147,35 @@ fun rememberBookmarkContentUiState(
  * A helper structure to hold internal UI logic and stable callbacks.
  */
 @Stable
-class BookmarkInternalCallbacks internal constructor(
-    val callbacks: BookmarkCallbacks
+class UserPhotosInternalCallbacks internal constructor(
+    val callbacks: UserPhotosCallbacks
 )
 
 @Composable
-fun rememberBookmarkInternalCallbacks(
-    contentUiState: BookmarkContentUiState,
-    screenCallbacks: BookmarkScreenCallbacks
-): BookmarkInternalCallbacks {
+fun rememberUserPhotosInternalCallbacks(
+    contentUiState: UserPhotoContentUiState,
+    screenCallbacks: UserPhotosScreenCallbacks,
+    snackbarHostState: SnackbarHostState
+): UserPhotosInternalCallbacks {
     val currentCallbacks by rememberUpdatedState(screenCallbacks)
 
-    return remember(contentUiState) {
+    return remember(contentUiState, snackbarHostState) {
         val onLoadResultStable: (PagingResult) -> Unit = { result ->
-            when (result) {
-                is PagingResult.Success -> {
-                    contentUiState.enabledLoadPhotos = true
-                }
-                is PagingResult.Error -> {
-                    contentUiState.enabledLoadPhotos = false
-                    contentUiState.error = result.error
-                }
-                else -> {}
+            if (result is PagingResult.Success || result is PagingResult.Error) {
+                contentUiState.visible = result is PagingResult.Success
+            }
+            if (result is PagingResult.Error) {
+                contentUiState.error = result.error
             }
         }
 
-        BookmarkInternalCallbacks(
-            callbacks = BookmarkCallbacks(
+        UserPhotosInternalCallbacks(
+            callbacks = UserPhotosCallbacks(
                 isUserFollowed = { currentCallbacks.isUserFollowed(it) },
                 onToggleFollow = { currentCallbacks.onToggleFollow(it) },
                 onShowUserInfo = { contentUiState.selectedUser = it },
-                onItemClicked = { item, index -> currentCallbacks.onItemClicked(item, index) },
-                onViewPhotos = { name, first, last, user -> currentCallbacks.onViewPhotos(name, first, last, user) },
+                onItemClicked = { currentCallbacks.onItemClicked(it) },
+                onViewPhotos = { _, _, _, _ -> },
                 onLoadResult = onLoadResultStable
             )
         )

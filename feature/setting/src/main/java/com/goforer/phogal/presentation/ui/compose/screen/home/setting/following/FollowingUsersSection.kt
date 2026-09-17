@@ -17,7 +17,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -33,6 +32,7 @@ import androidx.compose.ui.unit.dp
 import androidx.paging.LoadState
 import androidx.paging.compose.LazyPagingItems
 import com.goforer.designsystem.component.EmptyStatePlaceholder
+import com.goforer.designsystem.component.paging.PagingLoadStateCallbacks
 import com.goforer.designsystem.component.paging.PagingLoadStateEffect
 import com.goforer.designsystem.component.paging.contentItems
 import com.goforer.designsystem.component.paging.rememberLazyListState
@@ -41,11 +41,10 @@ import com.goforer.designsystem.theme.Blue15
 import com.goforer.designsystem.theme.Blue95
 import com.goforer.phogal.core.ui.R
 import com.goforer.phogal.data.model.remote.response.gallery.common.user.User
-import com.goforer.phogal.presentation.stateholder.uistate.PagingResult
 import com.goforer.phogal.presentation.stateholder.uistate.UIConstants.SCROLL_OFFSET_SIGNAL
 import com.goforer.phogal.presentation.stateholder.uistate.UIConstants.UP_BUTTON_THRESHOLD
-import com.goforer.phogal.presentation.stateholder.uistate.home.following.FollowingUserActions
-import com.goforer.phogal.presentation.stateholder.uistate.home.following.FollowingUserItemActions
+import com.goforer.phogal.presentation.stateholder.uistate.home.following.FollowingUserCallbacks
+import com.goforer.phogal.presentation.stateholder.uistate.home.following.FollowingUserItemCallbacks
 import com.goforer.phogal.presentation.stateholder.uistate.home.following.FollowingUserSectionUiState
 import com.goforer.phogal.presentation.stateholder.uistate.home.following.rememberFollowingUserItemUiState
 import com.goforer.phogal.presentation.stateholder.uistate.home.following.rememberFollowingUserSectionUiState
@@ -59,28 +58,22 @@ import timber.log.Timber
 fun FollowingUsersSection(
     modifier: Modifier = Modifier,
     paddingValues: PaddingValues,
-    sectionUiState: FollowingUserSectionUiState = rememberFollowingUserSectionUiState(),
-    users: LazyPagingItems<User>,
-    actions: FollowingUserActions
+    sectionUiState: FollowingUserSectionUiState,
+    callbacks: FollowingUserCallbacks
 ) {
-    val lazyListState = users.rememberLazyListState()
-    val scope = rememberCoroutineScope()
-    var manualRefreshing by remember { mutableStateOf(false) }
-    var isResettingScroll by remember { mutableStateOf(false) }
-
     // When a refresh starts, mark that we should scroll to top once data arrives.
-    LaunchedEffect(users.loadState.refresh) {
-        if (users.loadState.refresh is LoadState.Loading) {
-            isResettingScroll = true
+    LaunchedEffect(sectionUiState.users.loadState.refresh) {
+        if (sectionUiState.users.loadState.refresh is LoadState.Loading) {
+            sectionUiState.isResettingScroll = true
         }
     }
 
     // Reset scroll position to 0 safely only when initial page data load completes
     // successfully and we have items.
-    LaunchedEffect(users.loadState.refresh, users.itemCount) {
-        if (isResettingScroll && users.loadState.refresh is LoadState.NotLoading && users.itemCount > 0) {
-            lazyListState.scrollToItem(0)
-            isResettingScroll = false
+    LaunchedEffect(sectionUiState.users.loadState.refresh, sectionUiState.users.itemCount) {
+        if (sectionUiState.isResettingScroll && sectionUiState.users.loadState.refresh is LoadState.NotLoading && sectionUiState.users.itemCount > 0) {
+            sectionUiState.lazyListState.scrollToItem(0)
+            sectionUiState.isResettingScroll = false
         }
     }
 
@@ -95,21 +88,25 @@ fun FollowingUsersSection(
      */
 
     PagingLoadStateEffect(
-        pagingItems = users,
-        onLoadingStarted = { sectionUiState.setLoadingStarted() },
-        onLoadingDone = { sectionUiState.setLoadingDone() },
-        onLoadResult = actions.onLoadResult,
-        onRefreshTransition = { manualRefreshing = it },
-        onPaginationReached = { Timber.d("Loaded all photos") },
+        pagingItems = sectionUiState.users,
+        callbacks = remember(sectionUiState, callbacks) {
+            PagingLoadStateCallbacks(
+                onLoadingStarted = { sectionUiState.loadingDone = false },
+                onLoadingDone = { sectionUiState.loadingDone = true },
+                onLoadResult = callbacks.onLoadResult,
+                onRefreshTransition = { sectionUiState.manualRefreshing = it },
+                onPaginationReached = { Timber.d("Loaded all photos") }
+            )
+        },
         logTag = "FollowingUsersSection"
     )
 
     // derivedStateOf: only triggers recomposition when the boolean actually flips,
     // not on every scroll tick.
-    val isScrolledPastThreshold by remember(lazyListState) {
+    val isScrolledPastThreshold by remember(sectionUiState.lazyListState) {
         derivedStateOf {
-            !lazyListState.isScrollInProgress && lazyListState.firstVisibleItemIndex > UP_BUTTON_THRESHOLD &&
-                    lazyListState.firstVisibleItemScrollOffset > SCROLL_OFFSET_SIGNAL
+            !sectionUiState.lazyListState.isScrollInProgress && sectionUiState.lazyListState.firstVisibleItemIndex > UP_BUTTON_THRESHOLD &&
+                    sectionUiState.lazyListState.firstVisibleItemScrollOffset > SCROLL_OFFSET_SIGNAL
         }
     }
 
@@ -117,8 +114,8 @@ fun FollowingUsersSection(
         modifier = modifier.clip(RoundedCornerShape(2.dp)),
         isRefreshing = false, //isRefreshing :Uncomment the code below to improve the Following feature using Room.
         onRefresh = {
-            manualRefreshing = true
-            users.refresh()
+            sectionUiState.manualRefreshing = true
+            sectionUiState.users.refresh()
         }
     ) {
         Box(
@@ -139,7 +136,7 @@ fun FollowingUsersSection(
                     .fillMaxWidth()
                     .fillMaxHeight()
                     .background(skyBlueBackground),
-                state = lazyListState,
+                state = sectionUiState.lazyListState,
                 contentPadding = PaddingValues(
                     start = paddingValues.calculateLeftPadding(layoutDirection),
                     top = 0.dp,
@@ -148,11 +145,11 @@ fun FollowingUsersSection(
                 )
             ) {
                 renderLoadState(
-                    users = users,
+                    users = sectionUiState.users,
                     sectionUiState = sectionUiState,
-                    actions = actions,
+                    callbacks = callbacks,
                     isInspectionMode = isInspectionMode,
-                    isResettingScroll = isResettingScroll
+                    isResettingScroll = sectionUiState.isResettingScroll
                 )
             }
         }
@@ -166,9 +163,9 @@ fun FollowingUsersSection(
                 ),
             visible = isScrolledPastThreshold,
             onClick = {
-                scope.launch {
-                    lazyListState.animateScrollToItem (0)
-                    sectionUiState.setVisibleUpButton(false)
+                sectionUiState.scope.launch {
+                    sectionUiState.lazyListState.animateScrollToItem (0)
+                    sectionUiState.visibleUpButton = false
                 }
             }
         )
@@ -184,7 +181,7 @@ fun FollowingUsersSection(
 private fun LazyListScope.renderLoadState(
     users: LazyPagingItems<User>,
     sectionUiState: FollowingUserSectionUiState,
-    actions: FollowingUserActions,
+    callbacks: FollowingUserCallbacks,
     isInspectionMode: Boolean,
     isResettingScroll: Boolean
 ) {
@@ -206,16 +203,16 @@ private fun LazyListScope.renderLoadState(
                                 if (suppressAnimation) Modifier else Modifier.animateItem(tween(durationMillis = 250))
                             ),
                         followingUserItemUiState = rememberFollowingUserItemUiState(
-                            index = rememberSaveable { mutableIntStateOf(index) },
-                            user = rememberSaveable { mutableStateOf(user.toString()) },
-                            visibleViewButton = rememberSaveable { mutableStateOf(true) },
-                            followed = rememberSaveable { mutableStateOf(true) }
+                            userData = user.toString(),
+                            index = index,
+                            initialVisibleViewButton = true,
+                            initialFollowed = true
                         ),
-                        actions = remember(actions) {
-                            FollowingUserItemActions(
-                                onViewPhotos = actions.onViewPhotos,
-                                onOpenWebView = actions.onOpenWebView,
-                                onFollow = { actions.onFollow(it) }
+                        callbacks = remember(callbacks) {
+                            FollowingUserItemCallbacks(
+                                onViewPhotos = callbacks.onViewPhotos,
+                                onOpenWebView = callbacks.onOpenWebView,
+                                onFollow = { callbacks.onFollow(it) }
                             )
                         }
                     )
