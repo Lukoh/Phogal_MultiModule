@@ -170,8 +170,7 @@ private fun ColumnScope.PhotosOrInitScreen(
                     .weight(1f),
                 paddingValues = paddingValues,
                 sectionUiState = rememberSearchPhotosSectionUiState(photos),
-                callbacks = callbacks,
-                isPhotoBookmarked = { false }
+                callbacks = callbacks
             )
         }
     } else {

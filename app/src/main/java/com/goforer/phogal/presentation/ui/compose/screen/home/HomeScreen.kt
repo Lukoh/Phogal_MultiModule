@@ -33,7 +33,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
@@ -44,10 +43,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
-import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.scene.DialogSceneStrategy
 import androidx.navigation3.scene.Scene
 import androidx.navigation3.scene.SinglePaneSceneStrategy
@@ -78,12 +75,6 @@ fun HomeScreen(
         )
     }
 
-    val stateHolderDecorator = rememberSaveableStateHolderNavEntryDecorator<NavKey>()
-    val viewModelStoreDecorator = rememberViewModelStoreNavEntryDecorator<NavKey>()
-    val entryDecorators = remember(stateHolderDecorator, viewModelStoreDecorator) {
-        listOf(stateHolderDecorator, viewModelStoreDecorator)
-    }
-
     Scaffold(
         modifier = modifier,
         containerColor = ColorBgSecondary,
@@ -110,22 +101,23 @@ fun HomeScreen(
             ) {
                 SharedTransitionLayout {
                     CompositionLocalProvider(LocalSharedTransitionScope provides this) {
-                        val currentTab = navigationState.currentRoute
-                        val currentBackStack = navigationState.backStackForCurrentRoute
-
                         Box(modifier = Modifier.fillMaxSize()) {
-                            key(currentTab) {
-                                NavDisplay(
-                                    backStack = currentBackStack,
-                                    onBack = { navigationState.pop() },
-                                    sceneStrategies = sceneStrategies,
-                                    entryDecorators = entryDecorators,
-                                    transitionSpec = DefaultTransitions.push,
-                                    popTransitionSpec = DefaultTransitions.pop,
-                                    predictivePopTransitionSpec = DefaultTransitions.predictivePop,
+                            NavDisplay(
+                                entries = navigationState.toDecoratedEntries(
                                     entryProvider = entryProvider { phogalEntries(navigationState) }
-                                )
-                            }
+                                ),
+                                onBack = {
+                                    if (!navigationState.pop()) {
+                                        if (navigationState.currentRoute != BottomNavRoute.Gallery) {
+                                            navigationState.selectRoute(BottomNavRoute.Gallery)
+                                        }
+                                    }
+                                },
+                                sceneStrategies = sceneStrategies,
+                                transitionSpec = DefaultTransitions.push,
+                                popTransitionSpec = DefaultTransitions.pop,
+                                predictivePopTransitionSpec = DefaultTransitions.predictivePop
+                            )
                         }
                     }
                 }

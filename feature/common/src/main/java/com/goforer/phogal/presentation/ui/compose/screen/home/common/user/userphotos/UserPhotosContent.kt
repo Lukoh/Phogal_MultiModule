@@ -41,8 +41,7 @@ fun UserPhotosContent(
             modifier = modifier,
             paddingValues = paddingValues,
             sectionUiState = rememberUserPhotosSectionUiState(photos),
-            callbacks = callbacks,
-            isPhotoBookmarked = { false }
+            callbacks = callbacks
         )
     } else {
         InitScreen(

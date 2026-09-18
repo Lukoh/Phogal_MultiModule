@@ -10,8 +10,12 @@ import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.navigation3.runtime.NavBackStack
+import androidx.navigation3.runtime.NavEntry
 import androidx.navigation3.runtime.NavKey
+import androidx.navigation3.runtime.rememberDecoratedNavEntries
 import androidx.navigation3.runtime.rememberNavBackStack
+import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
+import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import com.goforer.phogal.presentation.ui.navigation.BottomNavRoute
 import com.goforer.phogal.presentation.ui.navigation.Routes
 
@@ -31,6 +35,38 @@ class NavigationState internal constructor(
     /** True iff the current tab's back stack has more than just its root. */
     val canPopInCurrentRoute: Boolean
         get() = backStackForCurrentRoute.size > 1
+
+    /**
+     * Convert the navigation state into `NavEntry`s that have been decorated with a
+     * `SaveableStateHolder` and `ViewModelStore` per tab. This ensures that the state and
+     * ViewModels of each tab are preserved even when switching between tabs.
+     */
+    @Composable
+    fun toDecoratedEntries(entryProvider: (NavKey) -> NavEntry<NavKey>): List<NavEntry<NavKey>> {
+        val decoratedEntries = stacks.mapValues { (_, stack) ->
+            val decorators = listOf(
+                rememberSaveableStateHolderNavEntryDecorator(),
+                rememberViewModelStoreNavEntryDecorator<NavKey>()
+            )
+
+            rememberDecoratedNavEntries(
+                backStack = stack,
+                entryDecorators = decorators,
+                entryProvider = entryProvider
+            )
+        }
+
+        val result = mutableListOf<NavEntry<NavKey>>()
+
+        stacks.keys.forEach { tab ->
+            if (tab != currentRoute) {
+                result.addAll(decoratedEntries.getValue(tab))
+            }
+        }
+        result.addAll(decoratedEntries.getValue(currentRoute))
+
+        return result
+    }
 
     // ─────────────────────────── Tab switching ───────────────────────────
 

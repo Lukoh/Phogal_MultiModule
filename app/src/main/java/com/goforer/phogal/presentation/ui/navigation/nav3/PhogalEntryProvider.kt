@@ -85,7 +85,9 @@ private fun EntryProviderScope<NavKey>.galleryTabEntries(navState: NavigationSta
     ) {
         val galleryViewModel: GalleryViewModel = hiltViewModel()
         val followViewModel: FollowViewModel = hiltViewModel()
+        val bookmarkViewModel: BookmarkViewModel = hiltViewModel()
         val followingUsers by followViewModel.users.collectAsStateWithLifecycle()
+        val bookmarkedPhotos by bookmarkViewModel.photos.collectAsStateWithLifecycle()
         val contentUiState = rememberSearchPhotosContentUiState(galleryViewModel)
 
         SearchPhotosScreen(
@@ -93,6 +95,9 @@ private fun EntryProviderScope<NavKey>.galleryTabEntries(navState: NavigationSta
             callbacks = SearchPhotosScreenCallbacks(
                 isUserFollowed = { user ->
                     followingUsers.any { it.id == user.id }
+                },
+                isPhotoBookmarked = { id ->
+                    bookmarkedPhotos.any { it.id == id }
                 },
                 onToggleFollow = { user ->
                     followViewModel.setUserFollow(user)
@@ -153,7 +158,9 @@ private fun EntryProviderScope<NavKey>.galleryTabEntries(navState: NavigationSta
     entry<Routes.UserPhotosRoute> { key ->
         val userPhotosViewModel: UserPhotosViewModel = hiltViewModel()
         val followViewModel: FollowViewModel = hiltViewModel()
+        val bookmarkViewModel: BookmarkViewModel = hiltViewModel()
         val followingUsers by followViewModel.users.collectAsStateWithLifecycle()
+        val bookmarkedPhotos by bookmarkViewModel.photos.collectAsStateWithLifecycle()
         val contentUiState = rememberUserPhotosContentUiState(
             baseUiState = rememberBaseUiState(),
             userPhotosViewModel = userPhotosViewModel,
@@ -166,6 +173,9 @@ private fun EntryProviderScope<NavKey>.galleryTabEntries(navState: NavigationSta
             callbacks = UserPhotosScreenCallbacks(
                 isUserFollowed = { user ->
                     followingUsers.any { it.id == user.id }
+                },
+                isPhotoBookmarked = { id ->
+                    bookmarkedPhotos.any { it.id == id }
                 },
                 onToggleFollow = { user ->
                     followViewModel.setUserFollow(user)
@@ -210,7 +220,9 @@ private fun EntryProviderScope<NavKey>.popularTabEntries(navState: NavigationSta
     ) {
         val popularPhotosViewModel: PopularPhotosViewModel = hiltViewModel()
         val followViewModel: FollowViewModel = hiltViewModel()
+        val bookmarkViewModel: BookmarkViewModel = hiltViewModel()
         val followingUsers by followViewModel.users.collectAsStateWithLifecycle()
+        val bookmarkedPhotos by bookmarkViewModel.photos.collectAsStateWithLifecycle()
         val contentUiState = rememberPopularPhotosContentUiState(popularPhotosViewModel)
 
         PopularPhotosScreen(
@@ -218,6 +230,9 @@ private fun EntryProviderScope<NavKey>.popularTabEntries(navState: NavigationSta
             callbacks = PopularPhotosScreenCallbacks(
                 isUserFollowed = { user ->
                     followingUsers.any { it.id == user.id }
+                },
+                isPhotoBookmarked = { id ->
+                    bookmarkedPhotos.any { it.id == id }
                 },
                 onToggleFollow = { user ->
                     followViewModel.setUserFollow(user)

@@ -30,8 +30,7 @@ fun PopularPhotosContent(
         modifier = modifier,
         paddingValues = paddingValues,
         sectionUiState = rememberPopularPhotosSectionUiState(photos),
-        callbacks = callbacks,
-        isPhotoBookmarked = { false }
+        callbacks = callbacks
     )
 }
 

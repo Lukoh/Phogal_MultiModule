@@ -66,15 +66,13 @@ fun UserPhotosSection(
     modifier: Modifier = Modifier,
     paddingValues: PaddingValues,
     sectionUiState: UserPhotosSectionUiState,
-    callbacks: UserPhotosCallbacks,
-    isPhotoBookmarked: (String) -> Boolean
+    callbacks: UserPhotosCallbacks
 ) {
     UserPhotosSectionContent(
         modifier = modifier,
         paddingValues = paddingValues,
         sectionUiState = sectionUiState,
         callbacks = callbacks,
-        isPhotoBookmarked = isPhotoBookmarked,
         onRefresh = sectionUiState.photos::refresh
     )
 }
@@ -86,7 +84,6 @@ fun UserPhotosSectionContent(
     paddingValues: PaddingValues,
     sectionUiState: UserPhotosSectionUiState,
     callbacks: UserPhotosCallbacks,
-    isPhotoBookmarked: (String) -> Boolean,
     onRefresh: () -> Unit
 ) {
     val isRefreshing by remember(sectionUiState.photos.loadState.refresh, sectionUiState.manualRefreshing) {
@@ -173,7 +170,6 @@ fun UserPhotosSectionContent(
                 renderLoadState(
                     sectionUiState = sectionUiState,
                     callbacks = callbacks,
-                    isPhotoBookmarked = isPhotoBookmarked,
                     isInspectionMode = isInspectionMode,
                     isResettingScroll = sectionUiState.isResettingScroll
                 )
@@ -206,7 +202,6 @@ fun UserPhotosSectionContent(
 private fun LazyListScope.renderLoadState(
     sectionUiState: UserPhotosSectionUiState,
     callbacks: UserPhotosCallbacks,
-    isPhotoBookmarked: (String) -> Boolean,
     isInspectionMode: Boolean,
     isResettingScroll: Boolean
 ) {
@@ -231,7 +226,7 @@ private fun LazyListScope.renderLoadState(
                             photo = photo,
                             index = index,
                             initialVisibleViewButton = true,
-                            initialBookmarked = isPhotoBookmarked(photo.id)
+                            initialBookmarked = callbacks.isPhotoBookmarked(photo.id)
                         ),
                         isFollowed = callbacks.isUserFollowed(photo.user),
                         callbacks = remember(callbacks) {
@@ -296,13 +291,13 @@ fun UserPhotosSectionPreview() {
             sectionUiState = rememberUserPhotosSectionUiState(photos),
             callbacks = UserPhotosCallbacks(
                 isUserFollowed = { false },
+                isPhotoBookmarked = { false },
                 onToggleFollow = {},
                 onShowUserInfo = {},
                 onItemClicked = {},
                 onViewPhotos = { _, _, _, _ -> },
                 onLoadResult = { }
             ),
-            isPhotoBookmarked = { false },
             onRefresh = {}
         )
     }

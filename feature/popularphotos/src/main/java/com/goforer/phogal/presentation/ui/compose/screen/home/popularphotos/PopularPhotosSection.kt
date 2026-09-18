@@ -69,16 +69,13 @@ fun PopularPhotosSection(
     modifier: Modifier = Modifier,
     paddingValues: PaddingValues,
     sectionUiState: PopularPhotosSectionUiState,
-    callbacks: PopularPhotosCallbacks,
-    isPhotoBookmarked: (String) -> Boolean
+    callbacks: PopularPhotosCallbacks
 ) {
     PopularPhotosSectionContent(
         modifier = modifier,
         paddingValues = paddingValues,
         sectionUiState = sectionUiState,
-        callbacks = callbacks,
-        isPhotoBookmarked = isPhotoBookmarked,
-        onRefresh = sectionUiState.photos::refresh
+        callbacks = callbacks
     )
 }
 
@@ -88,9 +85,7 @@ fun PopularPhotosSectionContent(
     modifier: Modifier = Modifier,
     paddingValues: PaddingValues,
     sectionUiState: PopularPhotosSectionUiState,
-    callbacks: PopularPhotosCallbacks,
-    isPhotoBookmarked: (String) -> Boolean,
-    onRefresh: () -> Unit
+    callbacks: PopularPhotosCallbacks
 ) {
     val isRefreshing by remember(sectionUiState.photos.loadState.refresh, sectionUiState.manualRefreshing) {
         derivedStateOf {
@@ -144,7 +139,7 @@ fun PopularPhotosSectionContent(
         isRefreshing = isRefreshing,
         onRefresh = {
             sectionUiState.manualRefreshing = true
-            onRefresh()
+            sectionUiState.photos.refresh()
         }
     ) {
         val isDark = isSystemInDarkTheme()
@@ -174,7 +169,6 @@ fun PopularPhotosSectionContent(
                 renderLoadState(
                     sectionUiState = sectionUiState,
                     callbacks = callbacks,
-                    isPhotoBookmarked = isPhotoBookmarked,
                     isInspectionMode = isInspectionMode,
                     isResettingScroll = sectionUiState.isResettingScroll
                 )
@@ -207,7 +201,6 @@ fun PopularPhotosSectionContent(
 private fun LazyListScope.renderLoadState(
     sectionUiState: PopularPhotosSectionUiState,
     callbacks: PopularPhotosCallbacks,
-    isPhotoBookmarked: (String) -> Boolean,
     isInspectionMode: Boolean,
     isResettingScroll: Boolean
 ) {
@@ -232,7 +225,7 @@ private fun LazyListScope.renderLoadState(
                             photo = photo,
                             index = index,
                             initialVisibleViewButton = true,
-                            initialBookmarked = isPhotoBookmarked(photo.id)
+                            initialBookmarked = callbacks.isPhotoBookmarked(photo.id)
                         ),
                         isFollowed = callbacks.isUserFollowed(photo.user),
                         callbacks = remember(callbacks) {
@@ -297,15 +290,14 @@ fun PopularPhotosSectionPreview() {
             sectionUiState = rememberPopularPhotosSectionUiState(photos),
             callbacks = PopularPhotosCallbacks(
                 isUserFollowed = { false },
+                isPhotoBookmarked = { false },
                 onToggleFollow = {},
                 onShowUserInfo = {},
                 onItemClicked = { _, _ -> },
                 onViewPhotos = { _, _, _, _ -> },
                 onLoadResult = { },
                 onLoadedPhotos = {}
-            ),
-            isPhotoBookmarked = { false },
-            onRefresh = {}
+            )
         )
     }
 }

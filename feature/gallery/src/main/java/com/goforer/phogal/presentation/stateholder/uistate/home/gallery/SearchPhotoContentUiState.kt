@@ -24,6 +24,7 @@ import com.goforer.phogal.presentation.stateholder.uistate.home.common.base.Base
 data class SearchPhotosCallbacks(
     val onPerformSearch: (keyword: String, isFromChip: Boolean) -> Unit,
     val isUserFollowed: (User) -> Boolean,
+    val isPhotoBookmarked: (String) -> Boolean,
     val onToggleFollow: (User) -> Unit,
     val onShowUserInfo: (User) -> Unit,
     val onItemClicked: (id: String) -> Unit,
@@ -37,6 +38,7 @@ data class SearchPhotosCallbacks(
 @Stable
 data class SearchPhotosScreenCallbacks(
     val isUserFollowed: (User) -> Boolean,
+    val isPhotoBookmarked: (String) -> Boolean,
     val onToggleFollow: (User) -> Unit,
     val onItemClicked: (id: String) -> Unit,
     val onViewPhotos: (name: String, firstName: String, lastName: String, username: String) -> Unit,
@@ -269,6 +271,7 @@ fun rememberSearchPhotosInternalCallbacks(
             callbacks = SearchPhotosCallbacks(
                 onPerformSearch = onPerformSearch,
                 isUserFollowed = { currentCallbacks.isUserFollowed(it) },
+                isPhotoBookmarked = { currentCallbacks.isPhotoBookmarked(it) },
                 onToggleFollow = { currentCallbacks.onToggleFollow(it) },
                 onShowUserInfo = { contentUiState.selectedUser = it },
                 onItemClicked = { currentCallbacks.onItemClicked(it) },

@@ -61,16 +61,13 @@ fun SearchPhotosSection(
     modifier: Modifier = Modifier,
     paddingValues: PaddingValues,
     sectionUiState: SearchPhotosSectionUiState,
-    callbacks: SearchPhotosCallbacks,
-    isPhotoBookmarked: (String) -> Boolean
+    callbacks: SearchPhotosCallbacks
 ) {
     SearchPhotosSectionContent(
         modifier = modifier,
         paddingValues = paddingValues,
         sectionUiState = sectionUiState,
-        callbacks = callbacks,
-        isPhotoBookmarked = isPhotoBookmarked,
-        onRefresh = sectionUiState.photos::refresh
+        callbacks = callbacks
     )
 }
 
@@ -80,9 +77,7 @@ fun SearchPhotosSectionContent(
     modifier: Modifier = Modifier,
     paddingValues: PaddingValues,
     sectionUiState: SearchPhotosSectionUiState,
-    callbacks: SearchPhotosCallbacks,
-    isPhotoBookmarked: (String) -> Boolean,
-    onRefresh: () -> Unit
+    callbacks: SearchPhotosCallbacks
 ) {
     val isRefreshing by remember(sectionUiState.photos.loadState.refresh, sectionUiState.manualRefreshing) {
         derivedStateOf {
@@ -146,7 +141,7 @@ fun SearchPhotosSectionContent(
         isRefreshing = isRefreshing,
         onRefresh = {
             sectionUiState.manualRefreshing = true
-            onRefresh()
+            sectionUiState.photos.refresh()
         }
     ) {
         val layoutDirection = LocalLayoutDirection.current
@@ -177,7 +172,6 @@ fun SearchPhotosSectionContent(
                 renderLoadState(
                     sectionUiState = sectionUiState,
                     callbacks = callbacks,
-                    isPhotoBookmarked = isPhotoBookmarked,
                     isInspectionMode = isInspectionMode,
                     isResettingScroll = sectionUiState.isResettingScroll
                 )
@@ -210,7 +204,6 @@ fun SearchPhotosSectionContent(
 private fun LazyListScope.renderLoadState(
     sectionUiState: SearchPhotosSectionUiState,
     callbacks: SearchPhotosCallbacks,
-    isPhotoBookmarked: (String) -> Boolean,
     isInspectionMode: Boolean,
     isResettingScroll: Boolean
 ) {
@@ -235,7 +228,7 @@ private fun LazyListScope.renderLoadState(
                             photo = photo,
                             index = index,
                             initialVisibleViewButton = true,
-                            initialBookmarked = isPhotoBookmarked(photo.id)
+                            initialBookmarked = callbacks.isPhotoBookmarked(photo.id)
                         ),
                         isFollowed = callbacks.isUserFollowed(photo.user),
                         callbacks = remember(callbacks) {
@@ -302,6 +295,7 @@ fun SearchPhotosSectionPreview() {
             callbacks = SearchPhotosCallbacks(
                 onPerformSearch = { _, _ -> },
                 isUserFollowed = { false },
+                isPhotoBookmarked = { false },
                 onToggleFollow = {},
                 onShowUserInfo = {},
                 onItemClicked = {},
@@ -310,9 +304,7 @@ fun SearchPhotosSectionPreview() {
                 onScroll = {},
                 onMenuClick = {},
                 onFavoriteClick = {}
-            ),
-            isPhotoBookmarked = { false },
-            onRefresh = {}
+            )
         )
     }
 }
