@@ -23,7 +23,10 @@ import com.goforer.phogal.presentation.stateholder.uistate.home.common.base.Base
 
 @Stable
 data class BookmarkCallbacks(
+    // Query
     val isUserFollowed: (User) -> Boolean,
+
+    // Action
     val onToggleFollow: (User) -> Unit,
     val onShowUserInfo: (User) -> Unit,
     val onItemClicked: (item: Picture, index: Int) -> Unit,
@@ -33,11 +36,14 @@ data class BookmarkCallbacks(
 
 @Stable
 data class BookmarkScreenCallbacks(
+    // Query
+    val isUserFollowed: (User) -> Boolean,
+
+    // Action
     val onItemClicked: (item: Picture, index: Int) -> Unit,
     val onBackPressed: () -> Unit,
     val onViewPhotos: (name: String, firstName: String, lastName: String, username: String) -> Unit,
     val onOpenWebView: (firstName: String, url: String) -> Unit,
-    val isUserFollowed: (User) -> Boolean,
     val onToggleFollow: (User) -> Unit,
     val onStart: () -> Unit = {},
     val onStop: () -> Unit = {}

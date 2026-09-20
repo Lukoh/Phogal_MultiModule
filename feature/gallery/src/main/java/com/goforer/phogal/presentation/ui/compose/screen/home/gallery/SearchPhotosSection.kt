@@ -230,7 +230,7 @@ private fun LazyListScope.renderLoadState(
                             initialVisibleViewButton = true,
                             initialBookmarked = callbacks.isPhotoBookmarked(photo.id)
                         ),
-                        isFollowed = callbacks.isUserFollowed(photo.user),
+                        isFollowed = callbacks.isUserFollowed(photo.user.id),
                         callbacks = remember(callbacks) {
                             PhotoItemCallbacks(
                                 onFollowClick = callbacks.onToggleFollow,

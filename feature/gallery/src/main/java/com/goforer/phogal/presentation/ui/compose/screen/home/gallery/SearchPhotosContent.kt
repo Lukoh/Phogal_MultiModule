@@ -75,7 +75,7 @@ fun SearchPhotosContent(
             recentWords = recentWords.asReversed(),
             isScrolling = contentUiState.scrolling,
             triggered = contentUiState.triggered,
-            onTriggeredConsumed = contentUiState::consumeSearchTrigger,
+            onTriggeredConsumed = { contentUiState.triggered = false },
             onChipClicked = { keyword ->
                 sectionUiState.editableInputState.textState = keyword
                 sectionUiState.wordChanged = true
@@ -93,10 +93,20 @@ fun SearchPhotosContent(
         permissions = contentUiState.permissions,
         permissionVisible = contentUiState.permissionVisible,
         rationaleText = contentUiState.rationaleText,
-        onPermissionGranted = contentUiState::onPermissionGranted,
-        onPermissionDenied = contentUiState::onPermissionDenied,
-        onDialogDismissed = contentUiState::onPermissionDialogDismissed,
-        onDialogConfirmed = contentUiState::onPermissionDialogConfirmed
+        onPermissionGranted = {
+            contentUiState.enabled = true
+            contentUiState.permissionVisible = false
+        },
+        onPermissionDenied = {
+            contentUiState.rationaleText = it
+            contentUiState.enabled = false
+            contentUiState.permissionVisible = true
+        },
+        onDialogDismissed = {
+            contentUiState.enabled = false
+            contentUiState.permissionVisible = false
+        },
+        onDialogConfirmed = { contentUiState.permissionVisible = false }
     )
 }
 

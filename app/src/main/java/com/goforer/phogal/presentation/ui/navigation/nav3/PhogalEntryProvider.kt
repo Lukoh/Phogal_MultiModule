@@ -93,8 +93,8 @@ private fun EntryProviderScope<NavKey>.galleryTabEntries(navState: NavigationSta
         SearchPhotosScreen(
             contentUiState = contentUiState,
             callbacks = SearchPhotosScreenCallbacks(
-                isUserFollowed = { user ->
-                    followingUsers.any { it.id == user.id }
+                isUserFollowed = { id ->
+                    followingUsers.any { it.id == id }
                 },
                 isPhotoBookmarked = { id ->
                     bookmarkedPhotos.any { it.id == id }
@@ -171,8 +171,8 @@ private fun EntryProviderScope<NavKey>.galleryTabEntries(navState: NavigationSta
         UserPhotosScreen(
             contentUiState = contentUiState,
             callbacks = UserPhotosScreenCallbacks(
-                isUserFollowed = { user ->
-                    followingUsers.any { it.id == user.id }
+                isUserFollowed = { id ->
+                    followingUsers.any { it.id == id }
                 },
                 isPhotoBookmarked = { id ->
                     bookmarkedPhotos.any { it.id == id }
@@ -228,8 +228,8 @@ private fun EntryProviderScope<NavKey>.popularTabEntries(navState: NavigationSta
         PopularPhotosScreen(
             contentUiState = contentUiState,
             callbacks = PopularPhotosScreenCallbacks(
-                isUserFollowed = { user ->
-                    followingUsers.any { it.id == user.id }
+                isUserFollowed = { id ->
+                    followingUsers.any { it.id == id }
                 },
                 isPhotoBookmarked = { id ->
                     bookmarkedPhotos.any { it.id == id }

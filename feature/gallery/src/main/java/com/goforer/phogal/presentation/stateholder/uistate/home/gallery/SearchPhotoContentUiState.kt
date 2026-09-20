@@ -22,9 +22,12 @@ import com.goforer.phogal.presentation.stateholder.uistate.home.common.base.Base
 
 @Stable
 data class SearchPhotosCallbacks(
-    val onPerformSearch: (keyword: String, isFromChip: Boolean) -> Unit,
-    val isUserFollowed: (User) -> Boolean,
+    // Query
+    val isUserFollowed: (String) -> Boolean,
     val isPhotoBookmarked: (String) -> Boolean,
+
+    // Action
+    val onPerformSearch: (keyword: String, isFromChip: Boolean) -> Unit,
     val onToggleFollow: (User) -> Unit,
     val onShowUserInfo: (User) -> Unit,
     val onItemClicked: (id: String) -> Unit,
@@ -37,8 +40,11 @@ data class SearchPhotosCallbacks(
 
 @Stable
 data class SearchPhotosScreenCallbacks(
-    val isUserFollowed: (User) -> Boolean,
+    // Query
+    val isUserFollowed: (String) -> Boolean,
     val isPhotoBookmarked: (String) -> Boolean,
+
+    // Action
     val onToggleFollow: (User) -> Unit,
     val onItemClicked: (id: String) -> Unit,
     val onViewPhotos: (name: String, firstName: String, lastName: String, username: String) -> Unit,
@@ -70,55 +76,6 @@ class SearchPhotoContentUiState(
     var permissionVisible: Boolean by mutableStateOf(initialPermissionVisible)
     var rationaleText: String by mutableStateOf(initialRationaleText)
     var scrolling: Boolean by mutableStateOf(initialScrolling)
-
-    /**
-     * Transitions to the permission-granted state.
-     *
-     * Because this changes multiple states simultaneously, it is not a simple
-     * setter but a meaningful state-transition function in the State Holder.
-     */
-    fun onPermissionGranted() {
-        enabled = true
-        permissionVisible = false
-    }
-
-    /**
-     * Transitions to the permission-denied state.
-     */
-    fun onPermissionDenied(rationale: String) {
-        rationaleText = rationale
-        enabled = false
-        permissionVisible = true
-    }
-
-    /**
-     * Transitions to the state where the permission dialog is dismissed.
-     */
-    fun onPermissionDialogDismissed() {
-        enabled = false
-        permissionVisible = false
-    }
-
-    /**
-     * Transitions to the state where the permission dialog is confirmed.
-     */
-    fun onPermissionDialogConfirmed() {
-        permissionVisible = false
-    }
-
-    /**
-     * Consumes the search trigger.
-     */
-    fun consumeSearchTrigger() {
-        triggered = false
-    }
-
-    /**
-     * Changes the trigger state to execute a search.
-     */
-    fun triggerSearch() {
-        triggered = true
-    }
 
     val permissions = listOf(
         Manifest.permission.ACCESS_FINE_LOCATION,
@@ -246,7 +203,7 @@ fun rememberSearchPhotosInternalCallbacks(
                 contentUiState.baseUiState.keyboardController?.hide()
                 contentUiState.galleryViewModel.commitSearch(keyword)
                 if (shouldTrigger) {
-                    contentUiState.triggerSearch()
+                    contentUiState.triggered = true
                 }
             }
         }

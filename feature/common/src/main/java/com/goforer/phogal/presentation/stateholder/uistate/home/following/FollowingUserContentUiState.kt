@@ -26,6 +26,7 @@ import kotlinx.coroutines.launch
 
 @Stable
 data class FollowingUserCallbacks(
+    // Action
     val onViewPhotos: (name: String, firstName: String, lastName: String, username: String) -> Unit,
     val onOpenWebView: (firstName: String, url: String?) -> Unit,
     val onFollow: (User) -> Unit,

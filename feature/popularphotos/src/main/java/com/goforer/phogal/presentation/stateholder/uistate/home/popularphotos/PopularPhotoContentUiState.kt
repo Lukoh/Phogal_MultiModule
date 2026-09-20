@@ -24,7 +24,7 @@ import com.goforer.phogal.presentation.stateholder.uistate.home.common.base.Base
 @Stable
 data class PopularPhotosCallbacks(
     // Query
-    val isUserFollowed: (User) -> Boolean,
+    val isUserFollowed: (String) -> Boolean,
     val isPhotoBookmarked: (String) -> Boolean,
 
     // Action
@@ -39,7 +39,7 @@ data class PopularPhotosCallbacks(
 @Stable
 data class PopularPhotosScreenCallbacks(
     // Query
-    val isUserFollowed: (User) -> Boolean,
+    val isUserFollowed: (String) -> Boolean,
     val isPhotoBookmarked: (String) -> Boolean,
 
     // Action
