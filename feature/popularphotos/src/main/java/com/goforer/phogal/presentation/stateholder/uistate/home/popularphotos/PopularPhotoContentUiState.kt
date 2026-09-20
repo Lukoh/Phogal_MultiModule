@@ -54,6 +54,7 @@ data class PopularPhotosScreenCallbacks(
 @Stable
 class PopularPhotoContentUiState internal constructor(
     override val baseUiState: BaseUiState,
+    val popularPhotosViewModel: PopularPhotosViewModel,
     val photos: LazyPagingItems<Photo>,
     initialVisible: Boolean,
     initialLoadedPhotos: Boolean,
@@ -70,6 +71,7 @@ class PopularPhotoContentUiState internal constructor(
     companion object {
         fun Saver(
             baseUiState: BaseUiState,
+            popularPhotosViewModel: PopularPhotosViewModel,
             photos: LazyPagingItems<Photo>
         ): Saver<PopularPhotoContentUiState, *> = Saver(
             save = {
@@ -105,6 +107,7 @@ class PopularPhotoContentUiState internal constructor(
                 }
                 PopularPhotoContentUiState(
                     baseUiState = baseUiState,
+                    popularPhotosViewModel = popularPhotosViewModel,
                     photos = photos,
                     initialVisible = visible,
                     initialLoadedPhotos = loadedPhotos,
@@ -128,11 +131,12 @@ fun rememberPopularPhotosContentUiState(
     val photos = popularPhotosViewModel.photos.collectAsLazyPagingItems()
 
     return rememberSaveable(
-        baseUiState, photos,
-        saver = PopularPhotoContentUiState.Saver(baseUiState, photos)
+        baseUiState, photos, popularPhotosViewModel,
+        saver = PopularPhotoContentUiState.Saver(baseUiState, popularPhotosViewModel, photos)
     ) {
         PopularPhotoContentUiState(
             baseUiState = baseUiState,
+            popularPhotosViewModel = popularPhotosViewModel,
             photos = photos,
             initialVisible = initialVisible,
             initialLoadedPhotos = initialLoadedPhotos,

@@ -12,7 +12,10 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
@@ -54,6 +57,9 @@ fun PopularPhotosScreen(
             contentUiState = contentUiState,
             screenCallbacks = callbacks
         )
+
+        val orderBy by contentUiState.popularPhotosViewModel.orderBy.collectAsStateWithLifecycle()
+        val sessionId by contentUiState.popularPhotosViewModel.orderSessionId.collectAsStateWithLifecycle()
 
         BackHandler(enabled = true) {
             (contentUiState.baseUiState.context as Activity).finish()
@@ -101,17 +107,19 @@ fun PopularPhotosScreen(
                 )
             }, content = { paddingValues ->
                 ScaffoldContent(topInterval = paddingValues.calculateTopPadding()) {
-                    PopularPhotosContent(
-                        modifier = modifier,
-                        paddingValues= PaddingValues(
-                            start = paddingValues.calculateStartPadding(layoutDirection),
-                            top = 0.dp,
-                            end = paddingValues.calculateEndPadding(layoutDirection),
-                            bottom = paddingValues.calculateBottomPadding()
-                        ),
-                        photos = contentUiState.photos,
-                        callbacks = internalCallbacks.callbacks
-                    )
+                    key(orderBy, sessionId) {
+                        PopularPhotosContent(
+                            modifier = modifier,
+                            paddingValues = PaddingValues(
+                                start = paddingValues.calculateStartPadding(layoutDirection),
+                                top = 0.dp,
+                                end = paddingValues.calculateEndPadding(layoutDirection),
+                                bottom = paddingValues.calculateBottomPadding()
+                            ),
+                            photos = contentUiState.photos,
+                            callbacks = internalCallbacks.callbacks
+                        )
+                    }
                 }
 
                 contentUiState.error?.let { error ->

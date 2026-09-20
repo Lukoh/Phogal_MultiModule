@@ -7,6 +7,7 @@ import androidx.paging.cachedIn
 import com.goforer.phogal.data.model.remote.response.gallery.common.photo.Photo
 import com.goforer.phogal.data.repository.gallery.PhotosRepository
 import com.goforer.phogal.di.dispatcher.IoDispatcher
+import com.goforer.phogal.presentation.stateholder.business.home.gallery.GalleryViewModel.Companion.MAX_HISTORY_SIZE
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -20,13 +21,10 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.filter
-import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
@@ -61,38 +59,48 @@ class GalleryViewModel @Inject constructor(
             initialValue = emptyList()
         )
 
+    private val _photos = MutableStateFlow<PagingData<Photo>>(PagingData.empty())
+
     /**
-     * Stream of paged photos. Switches every time [query] changes (debounced, distinct).
-     * Blank queries are filtered out so the UI's empty state doesn't burn a request.
+     * Stream of paged photos.
+     * Managed manually to ensure PagingData is cleared immediately when a new
+     * search begins, preventing stale data from flashing on screen.
      */
-    val photos: StateFlow<PagingData<Photo>> = _queryTrigger
-        .onStart {
-            val initial = _query.value
-            if (initial.isNotBlank()) emit(QueryUpdate.Direct(initial))
-        }
-        .transformLatest { update ->
-            if (update is QueryUpdate.Typing) {
-                delay(DEBOUNCE_MS.milliseconds)
-            }
+    val photos: StateFlow<PagingData<Photo>> = _photos.asStateFlow()
 
-            if (update.query.isNotBlank()) {
-                _searchingQuery.value = update.query
-                _searchSessionId.value++
-            }
+    init {
+        viewModelScope.launch {
+            _queryTrigger
+                .onStart {
+                    val initial = _query.value
+                    if (initial.isNotBlank()) emit(QueryUpdate.Direct(initial))
+                }
+                .collectLatest { update ->
+                    if (update is QueryUpdate.Typing) {
+                        delay(DEBOUNCE_MS.milliseconds)
+                    }
 
-            emit(update.query)
+                    val trimmedQuery = update.query.trim()
+                    if (trimmedQuery.isNotBlank()) {
+                        // 1. Clear current photos IMMEDIATELY to prevent flickering
+                        _photos.value = PagingData.empty()
+
+                        // 2. Update session state to trigger UI resets (LazyListState, etc.)
+                        _searchingQuery.value = trimmedQuery
+                        _searchSessionId.value++
+
+                        // 3. Start a new search stream
+                        photosRepository.search(trimmedQuery, PAGE_SIZE)
+                            .cachedIn(viewModelScope)
+                            .collect { pagingData ->
+                                _photos.value = pagingData
+                            }
+                    } else {
+                        _photos.value = PagingData.empty()
+                    }
+                }
         }
-        .distinctUntilChanged()
-        .filter { it.isNotBlank() }
-        .flatMapLatest { query ->
-            photosRepository.search(query, PAGE_SIZE)
-        }
-        .cachedIn(viewModelScope)
-        .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS),
-            initialValue = PagingData.empty()
-        )
+    }
 
     private val _events = MutableSharedFlow<GalleryUiEvent>(
         replay = 0,

@@ -54,7 +54,13 @@ class PhotoFeedRemoteMediator(
         val isCacheFresh = key != null &&
                 (System.currentTimeMillis() - key.lastRefreshedAt) < cacheTimeoutMs
 
-        return if (cachedCount > 0 && isCacheFresh) {
+        // For search and popular feeds, we force a refresh to ensure the user
+        // always sees the latest results and to avoid any stale cache artifacts
+        // from previous sessions.
+        val isSearch = feedKey.startsWith("search/")
+        val isPopular = feedKey.startsWith("popular/")
+
+        return if (cachedCount > 0 && isCacheFresh && !isSearch && !isPopular) {
             // Serve straight from Room; no network round-trip on entry.
             InitializeAction.SKIP_INITIAL_REFRESH
         } else {

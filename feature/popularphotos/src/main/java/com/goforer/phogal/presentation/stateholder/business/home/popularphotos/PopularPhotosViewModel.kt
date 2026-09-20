@@ -13,8 +13,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
@@ -24,17 +24,36 @@ class PopularPhotosViewModel @Inject constructor(
     private val _orderBy = MutableStateFlow(POPULAR)
     val orderBy: StateFlow<String> = _orderBy.asStateFlow()
 
-    @OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
-    val photos: StateFlow<PagingData<Photo>> = _orderBy
-        .flatMapLatest { order ->
-            popularPhotosRepository.popularPhotos(orderBy = order, pageSize = PAGE_SIZE)
+    private val _orderSessionId = MutableStateFlow(0)
+    val orderSessionId: StateFlow<Int> = _orderSessionId.asStateFlow()
+
+    private val _photos = MutableStateFlow<PagingData<Photo>>(PagingData.empty())
+
+    /**
+     * Stream of paged photos.
+     * Managed manually to ensure PagingData is cleared immediately when the
+     * sort order changes, preventing stale data from flashing on screen.
+     */
+    val photos: StateFlow<PagingData<Photo>> = _photos.asStateFlow()
+
+    init {
+        viewModelScope.launch {
+            _orderBy.collectLatest { order ->
+                // 1. Clear current photos IMMEDIATELY to prevent flickering
+                _photos.value = PagingData.empty()
+
+                // 2. Update session state to trigger UI resets (LazyListState, etc.)
+                _orderSessionId.value++
+
+                // 3. Start a new paged stream
+                popularPhotosRepository.popularPhotos(orderBy = order, pageSize = PAGE_SIZE)
+                    .cachedIn(viewModelScope)
+                    .collect { pagingData ->
+                        _photos.value = pagingData
+                    }
+            }
         }
-        .cachedIn(viewModelScope)
-        .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS),
-            initialValue = PagingData.empty()
-        )
+    }
 
     fun onOrderChanged(newOrder: String) {
         if (_orderBy.value != newOrder) {
