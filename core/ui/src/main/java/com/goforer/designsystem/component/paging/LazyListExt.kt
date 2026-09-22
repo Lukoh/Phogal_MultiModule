@@ -152,7 +152,7 @@ fun <T : Any> LazyListScope.contentItems(
         count = items.itemCount,
         key = key?.let { k ->
             { index ->
-                items[index]?.let { item -> k(index, item) } ?: index
+                items.peek(index)?.let { item -> k(index, item) } ?: index
             }
         },
         contentType = items.itemContentType()

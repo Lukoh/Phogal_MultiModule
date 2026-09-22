@@ -35,7 +35,7 @@ import com.goforer.phogal.data.datasource.local.room.entity.RemoteKeyEntity
         PictureEntity::class,
         RemoteKeyEntity::class
     ],
-    version = 1,
+    version = 3,
     exportSchema = false
 )
 @TypeConverters(PhogalTypeConverters::class)

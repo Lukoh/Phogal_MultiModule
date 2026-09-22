@@ -2,8 +2,6 @@ package com.goforer.phogal.data.datasource.local.room.entity
 
 import androidx.room.ColumnInfo
 import androidx.room.Entity
-import androidx.room.Index
-import androidx.room.PrimaryKey
 import com.goforer.phogal.data.model.remote.response.gallery.common.photo.Photo
 
 /**
@@ -27,17 +25,13 @@ import com.goforer.phogal.data.model.remote.response.gallery.common.photo.Photo
  */
 @Entity(
     tableName = "photo_feed",
-    indices = [
-        Index(value = ["feed_key", "photo_id"], unique = true),
-        Index(value = ["feed_key"])
-    ]
+    primaryKeys = ["feed_key", "photo_id"]
 )
 data class PhotoFeedEntity(
-    @PrimaryKey(autoGenerate = true)
-    @ColumnInfo(name = "local_id") val localId: Long = 0L,
     @ColumnInfo(name = "feed_key") val feedKey: String,
     @ColumnInfo(name = "photo_id") val photoId: String,
     @ColumnInfo(name = "photo") val photo: Photo,
+    @ColumnInfo(name = "position") val position: Int,
     @ColumnInfo(name = "cached_at") val cachedAt: Long
 ) {
     companion object {
@@ -45,11 +39,12 @@ data class PhotoFeedEntity(
         fun popularFeedKey(orderBy: String) = "popular/$orderBy"
         fun userFeedKey(username: String) = "user/$username"
 
-        fun of(feedKey: String, photo: Photo, cachedAt: Long = System.currentTimeMillis()) =
+        fun of(feedKey: String, photo: Photo, position: Int, cachedAt: Long = System.currentTimeMillis()) =
             PhotoFeedEntity(
                 feedKey = feedKey,
                 photoId = photo.id,
                 photo = photo,
+                position = position,
                 cachedAt = cachedAt
             )
     }

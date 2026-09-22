@@ -14,6 +14,7 @@ import kotlinx.coroutines.CoroutineScope
 @Stable
 class PopularPhotosSectionUiState internal constructor(
     val photos: LazyPagingItems<Photo>,
+    val sessionId: Int,
     override val scope: CoroutineScope,
     override val lazyListState: LazyListState,
 ) : BaseSectionUiState(
@@ -24,12 +25,14 @@ class PopularPhotosSectionUiState internal constructor(
 @Composable
 fun rememberPopularPhotosSectionUiState(
     photos: LazyPagingItems<Photo>,
+    sessionId: Int,
     scope: CoroutineScope = rememberCoroutineScope(),
     lazyListState: LazyListState = photos.rememberLazyListState(),
 ): PopularPhotosSectionUiState {
-    return remember(photos, scope, lazyListState,) {
+    return remember(photos, sessionId, scope, lazyListState) {
         PopularPhotosSectionUiState(
             photos = photos,
+            sessionId = sessionId,
             scope = scope,
             lazyListState = lazyListState,
         )

@@ -24,4 +24,9 @@ interface PhotosRepository {
      * @param words  th keyword list (non-blank)
      */
     suspend fun setSearchWords(words: List<String>)
+
+    /**
+     * Clears the local cache for a specific search query.
+     */
+    suspend fun clearCache(query: String)
 }

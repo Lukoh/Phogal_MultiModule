@@ -5,6 +5,7 @@ import androidx.paging.Pager
 import androidx.paging.PagingConfig
 import androidx.paging.PagingData
 import androidx.paging.map
+import androidx.room.withTransaction
 import com.goforer.phogal.data.datasource.local.room.PhogalDatabase
 import com.goforer.phogal.data.datasource.local.room.entity.PhotoFeedEntity
 import com.goforer.phogal.data.datasource.local.room.mediator.PhotoFeedRemoteMediator
@@ -38,14 +39,15 @@ class PopularPhotosRepositoryImpl @Inject constructor(
         return Pager(
             config = PagingConfig(
                 pageSize = pageSize,
-                initialLoadSize = pageSize * 2,
+                initialLoadSize = pageSize,
                 prefetchDistance = 10,
                 enablePlaceholders = false
             ),
             remoteMediator = PhotoFeedRemoteMediator(
                 feedKey = feedKey,
                 pageSize = pageSize,
-                database = database
+                database = database,
+                forceRefresh = true
             ) { page, perPage ->
                 safeApiCall {
                     api.getPopularPhotos(orderBy = orderBy, page = page, perPage = perPage)
@@ -56,5 +58,13 @@ class PopularPhotosRepositoryImpl @Inject constructor(
             },
             pagingSourceFactory = { database.photoFeedDao().pagingSource(feedKey) }
         ).flow.map { pagingData -> pagingData.map { entity -> entity.photo } }
+    }
+
+    override suspend fun clearCache(orderBy: String) {
+        val feedKey = PhotoFeedEntity.popularFeedKey(orderBy)
+        database.withTransaction {
+            database.photoFeedDao().clearFeed(feedKey)
+            database.remoteKeyDao().delete(feedKey)
+        }
     }
 }

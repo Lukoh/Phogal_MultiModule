@@ -5,6 +5,7 @@ import androidx.paging.Pager
 import androidx.paging.PagingConfig
 import androidx.paging.PagingData
 import androidx.paging.map
+import androidx.room.withTransaction
 import com.goforer.phogal.data.datasource.local.LocalDataSource
 import com.goforer.phogal.data.datasource.local.room.PhogalDatabase
 import com.goforer.phogal.data.datasource.local.room.entity.PhotoFeedEntity
@@ -47,14 +48,15 @@ class PhotosRepositoryImpl @Inject constructor(
         return Pager(
             config = PagingConfig(
                 pageSize = pageSize,
-                initialLoadSize = pageSize * 2,
-                prefetchDistance = 10,
+                initialLoadSize = pageSize,
+                prefetchDistance = 5,
                 enablePlaceholders = false
             ),
             remoteMediator = PhotoFeedRemoteMediator(
                 feedKey = feedKey,
                 pageSize = pageSize,
-                database = database
+                database = database,
+                forceRefresh = true
             ) { page, perPage ->
                 safeApiCall {
                     api.getPhotos(keyword = query, page = page, perPage = perPage)
@@ -70,4 +72,12 @@ class PhotosRepositoryImpl @Inject constructor(
     }
 
     override suspend fun setSearchWords(words: List<String>) = localDataSource.setSearchWords(words)
+
+    override suspend fun clearCache(query: String) {
+        val feedKey = PhotoFeedEntity.searchFeedKey(query)
+        database.withTransaction {
+            database.photoFeedDao().clearFeed(feedKey)
+            database.remoteKeyDao().delete(feedKey)
+        }
+    }
 }

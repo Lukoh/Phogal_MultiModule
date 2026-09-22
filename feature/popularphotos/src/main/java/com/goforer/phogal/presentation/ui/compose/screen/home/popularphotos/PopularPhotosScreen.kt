@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import androidx.paging.compose.collectAsLazyPagingItems
 import com.goforer.base.utils.connect.ConnectionUtils
 import com.goforer.designsystem.component.CardSnackBar
 import com.goforer.designsystem.component.CustomCenterAlignedTopAppBar
@@ -57,9 +58,6 @@ fun PopularPhotosScreen(
             contentUiState = contentUiState,
             screenCallbacks = callbacks
         )
-
-        val orderBy by contentUiState.popularPhotosViewModel.orderBy.collectAsStateWithLifecycle()
-        val sessionId by contentUiState.popularPhotosViewModel.orderSessionId.collectAsStateWithLifecycle()
 
         BackHandler(enabled = true) {
             (contentUiState.baseUiState.context as Activity).finish()
@@ -107,7 +105,11 @@ fun PopularPhotosScreen(
                 )
             }, content = { paddingValues ->
                 ScaffoldContent(topInterval = paddingValues.calculateTopPadding()) {
+                    val orderBy by contentUiState.popularPhotosViewModel.orderBy.collectAsStateWithLifecycle()
+                    val sessionId by contentUiState.popularPhotosViewModel.orderSessionId.collectAsStateWithLifecycle()
+
                     key(orderBy, sessionId) {
+                        val photos = contentUiState.popularPhotosViewModel.photos.collectAsLazyPagingItems()
                         PopularPhotosContent(
                             modifier = modifier,
                             paddingValues = PaddingValues(
@@ -116,7 +118,8 @@ fun PopularPhotosScreen(
                                 end = paddingValues.calculateEndPadding(layoutDirection),
                                 bottom = paddingValues.calculateBottomPadding()
                             ),
-                            photos = contentUiState.photos,
+                            popularPhotosViewModel = contentUiState.popularPhotosViewModel,
+                            photos = photos,
                             callbacks = internalCallbacks.callbacks
                         )
                     }

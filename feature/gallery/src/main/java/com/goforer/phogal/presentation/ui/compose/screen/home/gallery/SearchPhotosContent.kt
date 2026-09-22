@@ -166,11 +166,10 @@ private fun ColumnScope.PhotosOrInitScreen(
     contentUiState: SearchPhotoContentUiState,
     callbacks: SearchPhotosCallbacks
 ) {
-    val currentQuery by contentUiState.galleryViewModel.query.collectAsStateWithLifecycle()
     val searchingQuery by contentUiState.galleryViewModel.searchingQuery.collectAsStateWithLifecycle()
     val sessionId by contentUiState.galleryViewModel.searchSessionId.collectAsStateWithLifecycle()
 
-    if (currentQuery.isNotBlank()) {
+    if (searchingQuery.isNotBlank()) {
         key(searchingQuery, sessionId) {
             val photos = contentUiState.galleryViewModel.photos.collectAsLazyPagingItems()
 
@@ -179,7 +178,7 @@ private fun ColumnScope.PhotosOrInitScreen(
                     .padding(top = 0.5.dp)
                     .weight(1f),
                 paddingValues = paddingValues,
-                sectionUiState = rememberSearchPhotosSectionUiState(photos),
+                sectionUiState = rememberSearchPhotosSectionUiState(photos, sessionId),
                 callbacks = callbacks
             )
         }

@@ -9,7 +9,6 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItems
 import com.goforer.base.extension.toUser
 import com.goforer.phogal.data.model.remote.response.gallery.common.photo.Photo
@@ -55,7 +54,6 @@ data class PopularPhotosScreenCallbacks(
 class PopularPhotoContentUiState internal constructor(
     override val baseUiState: BaseUiState,
     val popularPhotosViewModel: PopularPhotosViewModel,
-    val photos: LazyPagingItems<Photo>,
     initialVisible: Boolean,
     initialLoadedPhotos: Boolean,
     initialError: ErrorEntity?,
@@ -71,8 +69,7 @@ class PopularPhotoContentUiState internal constructor(
     companion object {
         fun Saver(
             baseUiState: BaseUiState,
-            popularPhotosViewModel: PopularPhotosViewModel,
-            photos: LazyPagingItems<Photo>
+            popularPhotosViewModel: PopularPhotosViewModel
         ): Saver<PopularPhotoContentUiState, *> = Saver(
             save = {
                 listOf(
@@ -108,7 +105,6 @@ class PopularPhotoContentUiState internal constructor(
                 PopularPhotoContentUiState(
                     baseUiState = baseUiState,
                     popularPhotosViewModel = popularPhotosViewModel,
-                    photos = photos,
                     initialVisible = visible,
                     initialLoadedPhotos = loadedPhotos,
                     initialError = error,
@@ -128,16 +124,13 @@ fun rememberPopularPhotosContentUiState(
     initialError: ErrorEntity? = null,
     initialSelectedUser: User? = null
 ): PopularPhotoContentUiState {
-    val photos = popularPhotosViewModel.photos.collectAsLazyPagingItems()
-
     return rememberSaveable(
-        baseUiState, photos, popularPhotosViewModel,
-        saver = PopularPhotoContentUiState.Saver(baseUiState, popularPhotosViewModel, photos)
+        baseUiState, popularPhotosViewModel,
+        saver = PopularPhotoContentUiState.Saver(baseUiState, popularPhotosViewModel)
     ) {
         PopularPhotoContentUiState(
             baseUiState = baseUiState,
             popularPhotosViewModel = popularPhotosViewModel,
-            photos = photos,
             initialVisible = initialVisible,
             initialLoadedPhotos = initialLoadedPhotos,
             initialError = initialError,

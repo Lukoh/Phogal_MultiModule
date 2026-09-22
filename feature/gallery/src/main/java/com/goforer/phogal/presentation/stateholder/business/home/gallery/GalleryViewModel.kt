@@ -22,9 +22,10 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
@@ -37,14 +38,20 @@ class GalleryViewModel @Inject constructor(
     @IoDispatcher
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
 ) : ViewModel() {
+    private data class SearchRequest(val query: String, val sessionId: Int)
+
     private val _query = MutableStateFlow("")
     val query: StateFlow<String> = _query.asStateFlow()
 
-    private val _searchingQuery = MutableStateFlow("")
-    val searchingQuery: StateFlow<String> = _searchingQuery.asStateFlow()
+    private val _searchRequest = MutableStateFlow(SearchRequest("", 0))
 
-    private val _searchSessionId = MutableStateFlow(0)
-    val searchSessionId: StateFlow<Int> = _searchSessionId.asStateFlow()
+    val searchingQuery: StateFlow<String> = _searchRequest
+        .map { it.query }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, "")
+
+    val searchSessionId: StateFlow<Int> = _searchRequest
+        .map { it.sessionId }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, 0)
 
     private val _queryTrigger = MutableSharedFlow<QueryUpdate>(replay = 0, extraBufferCapacity = 1)
 
@@ -59,22 +66,32 @@ class GalleryViewModel @Inject constructor(
             initialValue = emptyList()
         )
 
-    private val _photos = MutableStateFlow<PagingData<Photo>>(PagingData.empty())
-
     /**
-     * Stream of paged photos.
-     * Managed manually to ensure PagingData is cleared immediately when a new
-     * search begins, preventing stale data from flashing on screen.
+     * Stream of paged photos. Switches every time [searchingQuery] or [searchSessionId] changes.
+     * Atomically observes [_searchRequest] to prevent race conditions or double triggers.
      */
-    val photos: StateFlow<PagingData<Photo>> = _photos.asStateFlow()
+    @OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
+    val photos: StateFlow<PagingData<Photo>> = _searchRequest
+        .filter { it.query.isNotBlank() }
+        .transformLatest { request ->
+            // Clear stale PagingData immediately so UI doesn't briefly display
+            // previous search results while new query is fetching.
+            emit(PagingData.empty())
+            photosRepository.clearCache(request.query)
+            photosRepository.search(request.query, PAGE_SIZE).collect { pagingData ->
+                emit(pagingData)
+            }
+        }
+        .cachedIn(viewModelScope)
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS),
+            initialValue = PagingData.empty()
+        )
 
     init {
         viewModelScope.launch {
             _queryTrigger
-                .onStart {
-                    val initial = _query.value
-                    if (initial.isNotBlank()) emit(QueryUpdate.Direct(initial))
-                }
                 .collectLatest { update ->
                     if (update is QueryUpdate.Typing) {
                         delay(DEBOUNCE_MS.milliseconds)
@@ -82,21 +99,10 @@ class GalleryViewModel @Inject constructor(
 
                     val trimmedQuery = update.query.trim()
                     if (trimmedQuery.isNotBlank()) {
-                        // 1. Clear current photos IMMEDIATELY to prevent flickering
-                        _photos.value = PagingData.empty()
-
-                        // 2. Update session state to trigger UI resets (LazyListState, etc.)
-                        _searchingQuery.value = trimmedQuery
-                        _searchSessionId.value++
-
-                        // 3. Start a new search stream
-                        photosRepository.search(trimmedQuery, PAGE_SIZE)
-                            .cachedIn(viewModelScope)
-                            .collect { pagingData ->
-                                _photos.value = pagingData
-                            }
-                    } else {
-                        _photos.value = PagingData.empty()
+                        _searchRequest.value = SearchRequest(
+                            query = trimmedQuery,
+                            sessionId = _searchRequest.value.sessionId + 1
+                        )
                     }
                 }
         }

@@ -25,11 +25,11 @@ import kotlinx.coroutines.flow.Flow
 interface PhotoFeedDao {
 
     /** Paged, DB-backed source of a feed — ordered exactly as the server returned it. */
-    @Query("SELECT * FROM photo_feed WHERE feed_key = :feedKey ORDER BY local_id ASC")
+    @Query("SELECT * FROM photo_feed WHERE feed_key = :feedKey ORDER BY position ASC")
     fun pagingSource(feedKey: String): PagingSource<Int, PhotoFeedEntity>
 
     /** Observable snapshot of a whole feed (non-paged consumers, widgets, tests). */
-    @Query("SELECT * FROM photo_feed WHERE feed_key = :feedKey ORDER BY local_id ASC")
+    @Query("SELECT * FROM photo_feed WHERE feed_key = :feedKey ORDER BY position ASC")
     fun observeFeed(feedKey: String): Flow<List<PhotoFeedEntity>>
 
     /**
@@ -50,7 +50,7 @@ interface PhotoFeedDao {
     @Query("DELETE FROM photo_feed WHERE feed_key LIKE :prefix || '%'")
     suspend fun clearFeedsByPrefix(prefix: String)
 
-    @Query("SELECT COUNT(local_id) FROM photo_feed WHERE feed_key = :feedKey")
+    @Query("SELECT COUNT(photo_id) FROM photo_feed WHERE feed_key = :feedKey")
     suspend fun countFeed(feedKey: String): Int
 
     @Query("DELETE FROM photo_feed")

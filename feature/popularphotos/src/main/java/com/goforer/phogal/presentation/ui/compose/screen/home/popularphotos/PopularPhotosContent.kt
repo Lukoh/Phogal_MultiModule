@@ -12,8 +12,11 @@ import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.runtime.getValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.paging.compose.LazyPagingItems
 import com.goforer.phogal.data.model.remote.response.gallery.common.photo.Photo
+import com.goforer.phogal.presentation.stateholder.business.home.popularphotos.PopularPhotosViewModel
 import com.goforer.phogal.presentation.stateholder.uistate.home.popularphotos.PopularPhotosCallbacks
 import com.goforer.designsystem.theme.PhogalTheme
 import com.goforer.phogal.presentation.stateholder.uistate.home.popularphotos.rememberPopularPhotosSectionUiState
@@ -23,13 +26,16 @@ import com.goforer.phogal.presentation.stateholder.uistate.home.popularphotos.re
 fun PopularPhotosContent(
     modifier: Modifier = Modifier,
     paddingValues: PaddingValues,
+    popularPhotosViewModel: PopularPhotosViewModel,
     photos: LazyPagingItems<Photo>,
     callbacks: PopularPhotosCallbacks
 ) {
+    val sessionId by popularPhotosViewModel.orderSessionId.collectAsStateWithLifecycle()
+
     PopularPhotosSection(
         modifier = modifier,
         paddingValues = paddingValues,
-        sectionUiState = rememberPopularPhotosSectionUiState(photos),
+        sectionUiState = rememberPopularPhotosSectionUiState(photos, sessionId),
         callbacks = callbacks
     )
 }

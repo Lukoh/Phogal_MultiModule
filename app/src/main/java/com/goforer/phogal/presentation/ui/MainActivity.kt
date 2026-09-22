@@ -35,14 +35,14 @@ class MainActivity : ComponentActivity() {
     @OptIn(ExperimentalMaterial3WindowSizeClassApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         val splashScreen = installSplashScreen()
-        var keepOnSplash = false
+        var keepOnSplash = true
 
         super.onCreate(savedInstanceState)
 
         lifecycleScope.launch {
             lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 delay(SPLASH_WAIT_TIME.milliseconds)
-                keepOnSplash = true
+                keepOnSplash = false
             }
         }
 

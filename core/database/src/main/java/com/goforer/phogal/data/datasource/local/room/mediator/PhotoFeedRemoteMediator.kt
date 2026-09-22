@@ -11,6 +11,7 @@ import com.goforer.phogal.data.datasource.local.room.entity.RemoteKeyEntity
 import com.goforer.phogal.data.model.BackendException
 import com.goforer.phogal.data.datasource.network.NetworkResult
 import com.goforer.phogal.data.model.remote.response.gallery.common.photo.Photo
+import kotlinx.coroutines.yield
 import timber.log.Timber
 import java.util.concurrent.TimeUnit
 
@@ -41,6 +42,7 @@ class PhotoFeedRemoteMediator(
     private val feedKey: String,
     private val pageSize: Int,
     private val database: PhogalDatabase,
+    private val forceRefresh: Boolean = false,
     private val cacheTimeoutMs: Long = TimeUnit.MINUTES.toMillis(30),
     private val fetchPage: suspend (page: Int, perPage: Int) -> NetworkResult<Pair<List<Photo>, Boolean>>
 ) : RemoteMediator<Int, PhotoFeedEntity>() {
@@ -49,6 +51,10 @@ class PhotoFeedRemoteMediator(
     private val remoteKeyDao = database.remoteKeyDao()
 
     override suspend fun initialize(): InitializeAction {
+        if (forceRefresh) {
+            return InitializeAction.LAUNCH_INITIAL_REFRESH
+        }
+
         val key = remoteKeyDao.remoteKey(feedKey)
         val cachedCount = photoFeedDao.countFeed(feedKey)
         val isCacheFresh = key != null &&
@@ -73,7 +79,20 @@ class PhotoFeedRemoteMediator(
         state: PagingState<Int, PhotoFeedEntity>
     ): MediatorResult {
         val page = when (loadType) {
-            LoadType.REFRESH -> STARTING_PAGE
+            LoadType.REFRESH -> {
+                // Pre-emptive clear: remove stale data BEFORE the network call
+                // to ensure the Pager observes an empty state during latency.
+                // Critical Fix: Only clear the exact specific feedKey instead of wiping the entire prefix.
+                // Wiping by prefix destroys parallel/subsequent page streams and ruins autoIncrement sequence alignments.
+                database.withTransaction {
+                    photoFeedDao.clearFeed(feedKey)
+                    remoteKeyDao.delete(feedKey)
+                }
+                // Yield thread execution to allow Room's InvalidationTracker to dispatch
+                // empty table signals immediately to any active observers before network calls block.
+                yield()
+                STARTING_PAGE
+            }
             // Unsplash list endpoints are forward-only; nothing to prepend.
             LoadType.PREPEND -> return MediatorResult.Success(endOfPaginationReached = true)
             LoadType.APPEND -> {
@@ -89,18 +108,15 @@ class PhotoFeedRemoteMediator(
 
                 // Atomic swap: readers never observe a half-written feed.
                 database.withTransaction {
-                    if (loadType == LoadType.REFRESH) {
-                        val prefix = feedKey.substringBefore('/') + "/"
-
-                        // Clear the existing cache for this prefix BEFORE inserting new data.
-                        // This ensures that new items (page 1) are the only ones in the DB
-                        // for this feed, preventing old page 2+ items from appearing first
-                        // due to auto-generated ID ordering.
-                        photoFeedDao.clearFeedsByPrefix(prefix)
-                        remoteKeyDao.clearByPrefix(prefix)
-                    }
-
-                    photoFeedDao.insertAll(photos.map { PhotoFeedEntity.of(feedKey, it, now) })
+                    // No need to clear here as it was cleared at the start of REFRESH
+                    photoFeedDao.insertAll(photos.mapIndexed { index, photo ->
+                        PhotoFeedEntity.of(
+                            feedKey = feedKey,
+                            photo = photo,
+                            position = (page - 1) * pageSize + index,
+                            cachedAt = now
+                        )
+                    })
 
                     val previous = remoteKeyDao.remoteKey(feedKey)
                     remoteKeyDao.upsert(

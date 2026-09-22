@@ -25,14 +25,16 @@ data class PhotoItemCallbacks(
 @Stable
 class PhotoItemUiState(
     val index: Int = 0,
-    val photo: Photo = Photo.empty(),
+    photo: Photo = Photo.empty(),
     initialVisibleViewButton: Boolean = false,
     initialClicked: Boolean = false,
     initialBookmarked: Boolean = false
 ) {
+    var photo: Photo by mutableStateOf(photo)
     var visibleViewButton: Boolean by mutableStateOf(initialVisibleViewButton)
     var clicked: Boolean by mutableStateOf(initialClicked)
     var bookmarked: Boolean by mutableStateOf(initialBookmarked)
+
     companion object {
         fun Saver(photo: Photo): Saver<PhotoItemUiState, *> = listSaver(
             save = {
@@ -59,8 +61,8 @@ fun rememberPhotoItemUiState(
     initialClicked: Boolean = false,
     initialBookmarked: Boolean = false
 ): PhotoItemUiState {
-    return rememberSaveable(
-        photo,
+    val uiState = rememberSaveable(
+        photo.id,
         saver = PhotoItemUiState.Saver(photo)
     ) {
         PhotoItemUiState(
@@ -71,4 +73,7 @@ fun rememberPhotoItemUiState(
             initialBookmarked = initialBookmarked
         )
     }
+    uiState.photo = photo
+    uiState.bookmarked = initialBookmarked
+    return uiState
 }

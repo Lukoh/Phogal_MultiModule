@@ -93,6 +93,13 @@ fun PopularPhotosSectionContent(
         }
     }
 
+    // Explicitly watch for sessionId changes to reset scroll position.
+    // This replaces the unreliable 'key()' based reset and ensures the list
+    // always starts at index 0 for every new sort session.
+    LaunchedEffect(sectionUiState.sessionId) {
+        sectionUiState.lazyListState.scrollToItem(0)
+    }
+
     LaunchedEffect(
         sectionUiState.photos.loadState.refresh,
         sectionUiState.photos.itemCount
@@ -205,15 +212,17 @@ private fun LazyListScope.renderLoadState(
     isResettingScroll: Boolean
 ) {
     val isInitiallyLoading = sectionUiState.photos.loadState.refresh is LoadState.Loading
-    val suppressAnimation = isInitiallyLoading || isInspectionMode || isResettingScroll
+    val isPopulatingInitial = sectionUiState.photos.itemCount < 20 // PAGE_SIZE
+    val suppressAnimation = isInitiallyLoading || isInspectionMode || isResettingScroll || isPopulatingInitial
 
     renderPagingLoadState(
         items = sectionUiState.photos,
         loadingDone = sectionUiState.loadingDone,
+        isInitialRefresh = !sectionUiState.manualRefreshing,
         content = {
             contentItems(
                 items = sectionUiState.photos,
-                key = { _, photo -> photo.id },
+                key = { _, photo -> "${sectionUiState.sessionId}_${photo.id}" },
                 content = { padding, index, photo ->
                     PhotoItem(
                         modifier = Modifier
@@ -287,7 +296,7 @@ fun PopularPhotosSectionPreview() {
     PhogalTheme {
         PopularPhotosSectionContent(
             paddingValues = PaddingValues(all = 0.dp),
-            sectionUiState = rememberPopularPhotosSectionUiState(photos),
+            sectionUiState = rememberPopularPhotosSectionUiState(photos, sessionId = 0),
             callbacks = PopularPhotosCallbacks(
                 isUserFollowed = { false },
                 isPhotoBookmarked = { false },

@@ -14,4 +14,9 @@ interface PopularPhotosRepository {
      * @param pageSize  page size for [androidx.paging.PagingConfig]
      */
     fun popularPhotos(orderBy: String, pageSize: Int): Flow<PagingData<Photo>>
+
+    /**
+     * Clears the local cache for a specific sort order.
+     */
+    suspend fun clearCache(orderBy: String)
 }

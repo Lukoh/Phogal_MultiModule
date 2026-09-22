@@ -54,7 +54,7 @@ fun <T : Any> PagingLoadStateEffect(
                 callbacks.onLoadResult(PagingResult.Error(append.error.toErrorEntity()))
             }
 
-            refresh is LoadState.Loading || append is LoadState.Loading -> {
+            refresh is LoadState.Loading -> {
                 hasStartedLoading = true
                 callbacks.onLoadingStarted()
                 callbacks.onLoadResult(PagingResult.Loading)
@@ -93,6 +93,7 @@ fun <T : Any> PagingLoadStateEffect(
  *
  * @param items The [LazyPagingItems] to render.
  * @param loadingDone Flag indicating if initial loading is considered complete by the UI state holder.
+ * @param isInitialRefresh Flag indicating if the current refresh is the first one for a new search/sort session.
  * @param content The primary content to render when items are available.
  * @param loadingPlaceholder UI shown when the list is empty and loading.
  * @param emptyState UI shown when the list is empty and not loading.
@@ -103,6 +104,7 @@ fun <T : Any> PagingLoadStateEffect(
 fun <T : Any> LazyListScope.renderPagingLoadState(
     items: LazyPagingItems<T>,
     loadingDone: Boolean,
+    isInitialRefresh: Boolean = false,
     content: LazyListScope.() -> Unit,
     loadingPlaceholder: LazyListScope.() -> Unit,
     emptyState: LazyListScope.() -> Unit = { item { EmptyStatePlaceholder() } },
@@ -116,14 +118,11 @@ fun <T : Any> LazyListScope.renderPagingLoadState(
     val isRefreshing = refresh is LoadState.Loading ||
             items.loadState.mediator?.refresh is LoadState.Loading
 
-    if (items.itemCount == 0) {
+    if (items.itemCount == 0 || (isInitialRefresh && (refresh is LoadState.Loading || items.loadState.mediator?.refresh is LoadState.Loading))) {
         when {
             isRefreshing -> loadingPlaceholder()
             refresh is LoadState.Error -> errorState(refresh.error)
             else -> {
-                // When a new stream arrives, the loadState could be briefly NotLoading
-                // before it flips to Loading or right before itemCount is dispatched.
-                // We should only show empty state if we've actually completed loading and confirmed there is zero items.
                 if (loadingDone && append.endOfPaginationReached) {
                     emptyState()
                 } else {
