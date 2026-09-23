@@ -116,7 +116,6 @@ fun rememberFollowingUserContentUiState(
     val users = followViewModel.followedUsers.collectAsLazyPagingItems()
 
     return rememberSaveable(
-        followViewModel, users, baseUiState,
         saver = FollowingUserContentUiState.Saver(followViewModel, users, baseUiState)
     ) {
         FollowingUserContentUiState(

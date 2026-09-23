@@ -9,19 +9,10 @@ import com.goforer.phogal.data.datasource.network.NetworkResult
  * as its payload — callers for endpoints that can legitimately return empty bodies
  * (e.g. HTTP 204 on a `POST .../like`) should use this overload. For endpoints that
  * must always return a body (e.g. `GET .../photos/{id}`), prefer the non-null mapper.
- */
-fun <T> NetworkResult<T>.toUiState(): UiState<T?> = when (this) {
-    is NetworkResult.Success -> UiState.Success(data)
-    is NetworkResult.Empty      -> UiState.Success(null)
-    is NetworkResult.Error   -> UiState.Error(ErrorEntity.Network(code, message))
-    is NetworkResult.Exception -> UiState.Error(throwable.toErrorEntity())
-}
-
-/**
  * Non-null variant: use when an [NetworkResult.Empty] should be treated as an error
  * (the server broke its contract by returning an empty body).
  */
-fun <T : Any> NetworkResult<T>.toUiStateStrict(): UiState<T> = when (this) {
+fun <T> NetworkResult<T>.toUiState(): UiState<T> = when (this) {
     is NetworkResult.Success -> UiState.Success(data)
     is NetworkResult.Empty      -> UiState.Error(ErrorEntity.Network(204, "Empty response body"))
     is NetworkResult.Error   -> UiState.Error(ErrorEntity.Network(code, message))

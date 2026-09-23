@@ -34,6 +34,8 @@ import androidx.paging.PagingData
 import androidx.paging.compose.collectAsLazyPagingItems
 import com.goforer.designsystem.component.paging.PagingLoadStateCallbacks
 import com.goforer.designsystem.component.paging.PagingLoadStateEffect
+import com.goforer.designsystem.component.paging.PagingRenderCallbacks
+import com.goforer.designsystem.component.paging.PagingRenderState
 import com.goforer.designsystem.component.paging.ScrollSignalEffect
 import com.goforer.designsystem.component.paging.contentItems
 import com.goforer.designsystem.component.paging.rememberIsScrolledPastThreshold
@@ -85,38 +87,7 @@ fun SearchPhotosSectionContent(
         }
     }
 
-    // Note: The parent key(query, sessionId) block ensures that this component
-    // starts with a fresh LazyListState at index 0 whenever a new search begins.
-    // The logic below handles scroll resets for standard paging events like pagination
-    // or manual refresh within the same query session.
-    // Explicitly watch for sessionId changes to reset scroll position.
-    // This replaces the unreliable 'key()' based reset and ensures the list
-    // always starts at index 0 for every new search session.
-    LaunchedEffect(sectionUiState.sessionId) {
-        sectionUiState.lazyListState.scrollToItem(0)
-    }
 
-    LaunchedEffect(
-        sectionUiState.photos.loadState.refresh,
-        sectionUiState.photos.itemCount
-    ) {
-        val refreshState = sectionUiState.photos.loadState.refresh
-        val itemCount = sectionUiState.photos.itemCount
-
-        when (refreshState) {
-            is LoadState.Loading -> {
-                if (itemCount > 0) {
-                    sectionUiState.isResettingScroll = true
-                }
-            }
-
-            is LoadState.NotLoading -> {
-                sectionUiState.resetScrollIfNeeded(itemCount)
-            }
-
-            else -> Unit
-        }
-    }
 
     PagingLoadStateEffect(
         pagingItems = sectionUiState.photos,
@@ -177,6 +148,7 @@ fun SearchPhotosSectionContent(
                 )
             ) {
                 renderLoadState(
+                    modifier = modifier,
                     sectionUiState = sectionUiState,
                     callbacks = callbacks,
                     isInspectionMode = isInspectionMode,
@@ -209,6 +181,7 @@ fun SearchPhotosSectionContent(
  */
 @OptIn(ExperimentalFoundationApi::class)
 private fun LazyListScope.renderLoadState(
+    modifier: Modifier = Modifier,
     sectionUiState: SearchPhotosSectionUiState,
     callbacks: SearchPhotosCallbacks,
     isInspectionMode: Boolean,
@@ -219,9 +192,12 @@ private fun LazyListScope.renderLoadState(
     val suppressAnimation = isInitiallyLoading || isAppendLoading || isInspectionMode || isResettingScroll
 
     renderPagingLoadState(
-        items = sectionUiState.photos,
-        loadingDone = sectionUiState.loadingDone,
-        isInitialRefresh = !sectionUiState.manualRefreshing,
+        state = PagingRenderState(
+            items = sectionUiState.photos,
+            loadingDone = sectionUiState.loadingDone,
+            isInitialRefresh = !sectionUiState.manualRefreshing
+        ),
+        modifier = modifier,
         content = {
             contentItems(
                 items = sectionUiState.photos,
@@ -252,24 +228,26 @@ private fun LazyListScope.renderLoadState(
                 }
             )
         },
-        loadingPlaceholder = {
-            items(5) { index ->
-                val padding = if (index == 0)
-                    2.dp
-                else
-                    0.5.dp
+        callbacks = PagingRenderCallbacks(
+            loadingPlaceholder = {
+                items(5) { index ->
+                    val padding = if (index == 0)
+                        2.dp
+                    else
+                        0.5.dp
 
-                LoadingPicture(
-                    modifier = Modifier
-                        .padding(top = padding)
-                        .fillMaxWidth(),
-                    enableLoadIndicator = index == 0
-                )
+                    LoadingPicture(
+                        modifier = Modifier
+                            .padding(top = padding)
+                            .fillMaxWidth(),
+                        enableLoadIndicator = index == 0
+                    )
+                }
+            },
+            appendLoading = {
+                item { LoadingPicture() }
             }
-        },
-        appendLoading = {
-            item { LoadingPicture() }
-        }
+        ),
     )
 }
 

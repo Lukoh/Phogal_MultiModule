@@ -43,7 +43,13 @@ fun ErrorStatePlaceholder(
     onRetry: () -> Unit
 ) {
     Column(
-        modifier = if (isFullMaxSize) modifier.fillMaxSize() else modifier.fillMaxWidth(),
+        modifier = if (isFullMaxSize) {
+            modifier.fillMaxSize()
+        } else {
+            modifier
+                .fillMaxWidth()
+                .padding(vertical = 32.dp)
+        },
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {

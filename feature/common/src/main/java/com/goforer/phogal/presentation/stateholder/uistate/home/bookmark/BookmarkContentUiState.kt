@@ -118,7 +118,6 @@ fun rememberBookmarkContentUiState(
     val photos = bookmarkViewModel.bookmarkedPictures.collectAsLazyPagingItems()
 
     return rememberSaveable(
-        baseUiState, photos,
         saver = BookmarkContentUiState.Saver(baseUiState, photos)
     ) {
         BookmarkContentUiState(

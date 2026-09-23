@@ -135,7 +135,6 @@ fun rememberUserPhotosContentUiState(
     val photos = userPhotosViewModel.photos.collectAsLazyPagingItems()
 
     return rememberSaveable(
-        baseUiState, userPhotosViewModel, photos,
         saver = UserPhotoContentUiState.Saver(baseUiState, userPhotosViewModel, photos)
     ) {
         UserPhotoContentUiState(

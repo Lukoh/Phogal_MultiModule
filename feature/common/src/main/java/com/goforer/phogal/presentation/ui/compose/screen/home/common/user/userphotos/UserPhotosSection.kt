@@ -39,6 +39,8 @@ import androidx.paging.PagingData
 import androidx.paging.compose.collectAsLazyPagingItems
 import com.goforer.designsystem.component.paging.PagingLoadStateCallbacks
 import com.goforer.designsystem.component.paging.PagingLoadStateEffect
+import com.goforer.designsystem.component.paging.PagingRenderCallbacks
+import com.goforer.designsystem.component.paging.PagingRenderState
 import com.goforer.designsystem.component.paging.contentItems
 import com.goforer.designsystem.component.paging.rememberIsScrolledPastThreshold
 import com.goforer.designsystem.component.paging.renderPagingLoadState
@@ -93,26 +95,7 @@ fun UserPhotosSectionContent(
     }
 
 
-    LaunchedEffect(
-        sectionUiState.photos.loadState.refresh,
-        sectionUiState.photos.itemCount
-    ) {
-        val refreshState = sectionUiState.photos.loadState.refresh
-        val itemCount = sectionUiState.photos.itemCount
 
-        when (refreshState) {
-            // Mark scroll reset as pending when a refresh starts.
-            is LoadState.Loading -> sectionUiState.isResettingScroll = true
-
-            // Reset scroll to top when initial loading completes, a reset is pending,
-            // and there is at least one item.
-            is LoadState.NotLoading -> {
-                sectionUiState.resetScrollIfNeeded(itemCount)
-            }
-
-            else -> Unit
-        }
-    }
 
     PagingLoadStateEffect(
         pagingItems = sectionUiState.photos,
@@ -168,6 +151,7 @@ fun UserPhotosSectionContent(
                 )
             ) {
                 renderLoadState(
+                    modifier = modifier,
                     sectionUiState = sectionUiState,
                     callbacks = callbacks,
                     isInspectionMode = isInspectionMode,
@@ -200,6 +184,7 @@ fun UserPhotosSectionContent(
 */
 @OptIn(ExperimentalFoundationApi::class)
 private fun LazyListScope.renderLoadState(
+    modifier: Modifier = Modifier,
     sectionUiState: UserPhotosSectionUiState,
     callbacks: UserPhotosCallbacks,
     isInspectionMode: Boolean,
@@ -209,8 +194,11 @@ private fun LazyListScope.renderLoadState(
     val suppressAnimation = isInitiallyLoading || isInspectionMode || isResettingScroll
 
     renderPagingLoadState(
-        items = sectionUiState.photos,
-        loadingDone = sectionUiState.loadingDone,
+        state = PagingRenderState(
+            items = sectionUiState.photos,
+            loadingDone = sectionUiState.loadingDone
+        ),
+        modifier = modifier,
         content = {
             contentItems(
                 items = sectionUiState.photos,
@@ -241,24 +229,26 @@ private fun LazyListScope.renderLoadState(
                 }
             )
         },
-        loadingPlaceholder = {
-            items(5) { index ->
-                val padding = if (index == 0)
-                    2.dp
-                else
-                    0.5.dp
+        callbacks = PagingRenderCallbacks(
+            loadingPlaceholder = {
+                items(5) { index ->
+                    val padding = if (index == 0)
+                        2.dp
+                    else
+                        0.5.dp
 
-                LoadingPicture(
-                    modifier = Modifier
-                        .padding(top = padding)
-                        .fillMaxWidth(),
-                    enableLoadIndicator = index == 0
-                )
+                    LoadingPicture(
+                        modifier = Modifier
+                            .padding(top = padding)
+                            .fillMaxWidth(),
+                        enableLoadIndicator = index == 0
+                    )
+                }
+            },
+            appendLoading = {
+                item { LoadingPicture() }
             }
-        },
-        appendLoading = {
-            item { LoadingPicture() }
-        }
+        )
     )
 }
 

@@ -8,6 +8,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.ui.Modifier
 import androidx.paging.LoadState
 import androidx.paging.compose.LazyPagingItems
 import com.goforer.designsystem.component.EmptyStatePlaceholder
@@ -87,60 +89,69 @@ fun <T : Any> PagingLoadStateEffect(
     }
 }
 
+data class PagingRenderState<T : Any>(
+    val items: LazyPagingItems<T>,
+    val loadingDone: Boolean,
+    val isInitialRefresh: Boolean = false
+)
+
+data class PagingRenderCallbacks(
+    val loadingPlaceholder: LazyListScope.() -> Unit,
+    val appendLoading: LazyListScope.() -> Unit,
+    val emptyState: LazyListScope.() -> Unit = { item { EmptyStatePlaceholder() } },
+    val errorState: (LazyListScope.(Throwable) -> Unit)? = null
+)
+
 /**
  * A unified renderer for [LazyPagingItems] load states.
  * Dispatches the current [LoadState] into the appropriate sub-renderer.
  *
- * @param items The [LazyPagingItems] to render.
- * @param loadingDone Flag indicating if initial loading is considered complete by the UI state holder.
- * @param isInitialRefresh Flag indicating if the current refresh is the first one for a new search/sort session.
+ * @param state The [PagingRenderState] containing paging items and state flags.
+ * @param callbacks The [PagingRenderCallbacks] containing slots for various load states.
+ * @param modifier Modifier for styling rendering layout.
  * @param content The primary content to render when items are available.
- * @param loadingPlaceholder UI shown when the list is empty and loading.
- * @param emptyState UI shown when the list is empty and not loading.
- * @param errorState UI shown for error states, either as a full-screen state or a list item.
- * @param appendLoading UI shown at the end of the list when loading more items.
  */
 @OptIn(ExperimentalFoundationApi::class)
 fun <T : Any> LazyListScope.renderPagingLoadState(
-    items: LazyPagingItems<T>,
-    loadingDone: Boolean,
-    isInitialRefresh: Boolean = false,
+    state: PagingRenderState<T>,
+    modifier: Modifier = Modifier,
     content: LazyListScope.() -> Unit,
-    loadingPlaceholder: LazyListScope.() -> Unit,
-    emptyState: LazyListScope.() -> Unit = { item { EmptyStatePlaceholder() } },
-    errorState: LazyListScope.(Throwable) -> Unit = { error ->
-        item { ErrorStateHost(throwable = error, onRetry = { items.retry() }) }
-    },
-    appendLoading: LazyListScope.() -> Unit
+    callbacks: PagingRenderCallbacks,
 ) {
+    val items = state.items
     val refresh = items.loadState.refresh
     val append = items.loadState.append
-    val isRefreshing = refresh is LoadState.Loading ||
-            items.loadState.mediator?.refresh is LoadState.Loading
+    val isRefreshing = refresh is LoadState.Loading || items.loadState.mediator?.refresh is LoadState.Loading
+    val isEmpty = items.itemCount == 0
 
-    if (items.itemCount == 0 || (isInitialRefresh && (refresh is LoadState.Loading || items.loadState.mediator?.refresh is LoadState.Loading))) {
+    val actualErrorState = callbacks.errorState ?: { error ->
+        item {
+            ErrorStateHost(
+                modifier = if (isEmpty) modifier.fillParentMaxSize() else modifier.fillMaxWidth(),
+                isFullMaxSize = isEmpty,
+                throwable = error,
+                onRetry = items::retry
+            )
+        }
+    }
+
+    if (isEmpty || (state.isInitialRefresh && isRefreshing)) {
         when {
-            isRefreshing -> loadingPlaceholder()
-            refresh is LoadState.Error -> errorState(refresh.error)
-            else -> {
-                if (loadingDone && append.endOfPaginationReached) {
-                    emptyState()
-                } else {
-                    loadingPlaceholder()
-                }
-            }
+            refresh is LoadState.Error -> actualErrorState(refresh.error)
+            state.loadingDone && append.endOfPaginationReached -> callbacks.emptyState(this)
+            else -> callbacks.loadingPlaceholder(this)
         }
     } else {
         content()
 
         if (refresh is LoadState.Error) {
-            errorState(refresh.error)
+            actualErrorState(refresh.error)
         }
 
         when (append) {
-            is LoadState.Loading -> appendLoading()
-            is LoadState.Error -> errorState(append.error)
-            is LoadState.NotLoading -> Unit
+            is LoadState.Loading -> callbacks.appendLoading(this)
+            is LoadState.Error -> actualErrorState(append.error)
+            else -> Unit
         }
     }
 }

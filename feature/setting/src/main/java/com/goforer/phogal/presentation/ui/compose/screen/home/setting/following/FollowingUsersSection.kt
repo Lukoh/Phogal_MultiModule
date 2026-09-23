@@ -34,6 +34,8 @@ import androidx.paging.compose.LazyPagingItems
 import com.goforer.designsystem.component.EmptyStatePlaceholder
 import com.goforer.designsystem.component.paging.PagingLoadStateCallbacks
 import com.goforer.designsystem.component.paging.PagingLoadStateEffect
+import com.goforer.designsystem.component.paging.PagingRenderCallbacks
+import com.goforer.designsystem.component.paging.PagingRenderState
 import com.goforer.designsystem.component.paging.contentItems
 import com.goforer.designsystem.component.paging.rememberLazyListState
 import com.goforer.designsystem.component.paging.renderPagingLoadState
@@ -61,21 +63,7 @@ fun FollowingUsersSection(
     sectionUiState: FollowingUserSectionUiState,
     callbacks: FollowingUserCallbacks
 ) {
-    // When a refresh starts, mark that we should scroll to top once data arrives.
-    LaunchedEffect(sectionUiState.users.loadState.refresh) {
-        if (sectionUiState.users.loadState.refresh is LoadState.Loading) {
-            sectionUiState.isResettingScroll = true
-        }
-    }
 
-    // Reset scroll position to 0 safely only when initial page data load completes
-    // successfully and we have items.
-    LaunchedEffect(sectionUiState.users.loadState.refresh, sectionUiState.users.itemCount) {
-        if (sectionUiState.isResettingScroll && sectionUiState.users.loadState.refresh is LoadState.NotLoading && sectionUiState.users.itemCount > 0) {
-            sectionUiState.lazyListState.scrollToItem(0)
-            sectionUiState.isResettingScroll = false
-        }
-    }
 
     // Uncomment the code below to improve the Following feature using Room.
     /*
@@ -145,6 +133,7 @@ fun FollowingUsersSection(
                 )
             ) {
                 renderLoadState(
+                    modifier = modifier,
                     users = sectionUiState.users,
                     sectionUiState = sectionUiState,
                     callbacks = callbacks,
@@ -179,6 +168,7 @@ fun FollowingUsersSection(
  */
 @OptIn(ExperimentalFoundationApi::class)
 private fun LazyListScope.renderLoadState(
+    modifier: Modifier = Modifier,
     users: LazyPagingItems<User>,
     sectionUiState: FollowingUserSectionUiState,
     callbacks: FollowingUserCallbacks,
@@ -189,8 +179,11 @@ private fun LazyListScope.renderLoadState(
     val suppressAnimation = isInitiallyLoading || isInspectionMode || isResettingScroll
 
     renderPagingLoadState(
-        items = users,
-        loadingDone = sectionUiState.loadingDone,
+        state = PagingRenderState(
+            items = users,
+            loadingDone = sectionUiState.loadingDone
+        ),
+        modifier = modifier,
         content = {
             contentItems(
                 items = users,
@@ -219,24 +212,26 @@ private fun LazyListScope.renderLoadState(
                 }
             )
         },
-        loadingPlaceholder = {
-            items(5) {
-                LoadingUser(
-                    modifier = Modifier
-                        .padding(horizontal = 16.dp, vertical = 8.dp)
-                        .fillMaxWidth()
-                )
+        callbacks = PagingRenderCallbacks(
+            loadingPlaceholder = {
+                items(5) {
+                    LoadingUser(
+                        modifier = Modifier
+                            .padding(horizontal = 16.dp, vertical = 8.dp)
+                            .fillMaxWidth()
+                    )
+                }
+            },
+            appendLoading = {
+                item { LoadingPicture() }
+            },
+            emptyState = {
+                item {
+                    EmptyStatePlaceholder(
+                        text = stringResource(id = R.string.setting_no_following)
+                    )
+                }
             }
-        },
-        appendLoading = {
-            item { LoadingPicture() }
-        },
-        emptyState = {
-            item {
-                EmptyStatePlaceholder(
-                    text = stringResource(id = R.string.setting_no_following)
-                )
-            }
-        }
+        ),
     )
 }

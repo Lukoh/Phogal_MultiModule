@@ -19,9 +19,10 @@ import com.goforer.phogal.core.ui.R
 
 @Composable
 fun ErrorStateHost(
+    modifier: Modifier = Modifier,
+    isFullMaxSize: Boolean = true,
     throwable: Throwable,
-    onRetry: () -> Unit,
-    modifier: Modifier = Modifier
+    onRetry: () -> Unit
 ) {
     AnimatedVisibility(
         visible = true,
@@ -32,6 +33,7 @@ fun ErrorStateHost(
                 shrinkOut(shrinkTowards = Alignment.TopStart)
     ) {
         ErrorStatePlaceholder(
+            isFullMaxSize = isFullMaxSize,
             title = stringResource(id = R.string.error_dialog_title),
             message = throwable.message ?: stringResource(id = R.string.error_dialog_content),
             onRetry = onRetry

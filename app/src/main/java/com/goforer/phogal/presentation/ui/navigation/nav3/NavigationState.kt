@@ -43,12 +43,13 @@ class NavigationState internal constructor(
      */
     @Composable
     fun toDecoratedEntries(entryProvider: (NavKey) -> NavEntry<NavKey>): List<NavEntry<NavKey>> {
-        val decoratedEntries = stacks.mapValues { (_, stack) ->
-            val decorators = listOf(
-                rememberSaveableStateHolderNavEntryDecorator(),
-                rememberViewModelStoreNavEntryDecorator<NavKey>()
-            )
+        val stateHolderDecorator = rememberSaveableStateHolderNavEntryDecorator<NavKey>()
+        val viewModelStoreDecorator = rememberViewModelStoreNavEntryDecorator<NavKey>()
+        val decorators = remember(stateHolderDecorator, viewModelStoreDecorator) {
+            listOf(stateHolderDecorator, viewModelStoreDecorator)
+        }
 
+        val decoratedEntries = stacks.mapValues { (_, stack) ->
             rememberDecoratedNavEntries(
                 backStack = stack,
                 entryDecorators = decorators,

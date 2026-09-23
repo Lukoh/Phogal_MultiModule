@@ -158,7 +158,6 @@ fun rememberSearchPhotosContentUiState(
     initialSelectedUser: User? = null
 ): SearchPhotoContentUiState {
     return rememberSaveable(
-        baseUiState, galleryViewModel,
         saver = SearchPhotoContentUiState.Saver(baseUiState, galleryViewModel)
     ) {
         SearchPhotoContentUiState(

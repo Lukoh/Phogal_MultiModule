@@ -125,7 +125,6 @@ fun rememberPopularPhotosContentUiState(
     initialSelectedUser: User? = null
 ): PopularPhotoContentUiState {
     return rememberSaveable(
-        baseUiState, popularPhotosViewModel,
         saver = PopularPhotoContentUiState.Saver(baseUiState, popularPhotosViewModel)
     ) {
         PopularPhotoContentUiState(

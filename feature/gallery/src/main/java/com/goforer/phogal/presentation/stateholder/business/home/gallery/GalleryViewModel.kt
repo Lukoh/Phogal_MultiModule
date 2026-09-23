@@ -85,7 +85,7 @@ class GalleryViewModel @Inject constructor(
         .cachedIn(viewModelScope)
         .stateIn(
             scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS),
+            started = SharingStarted.Lazily,
             initialValue = PagingData.empty()
         )
 

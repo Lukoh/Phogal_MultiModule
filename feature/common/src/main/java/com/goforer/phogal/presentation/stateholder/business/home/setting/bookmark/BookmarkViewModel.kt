@@ -30,7 +30,7 @@ class BookmarkViewModel @Inject constructor(
     val photos: StateFlow<List<Picture>> = bookmarkRepository.getBookmarkList()
         .stateIn(
             scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS),
+            started = SharingStarted.Lazily,
             initialValue = emptyList()
         )
 
@@ -42,7 +42,7 @@ class BookmarkViewModel @Inject constructor(
         .cachedIn(viewModelScope)
         .stateIn(
             scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS),
+            started = SharingStarted.Lazily,
             initialValue = PagingData.empty()
         )
 

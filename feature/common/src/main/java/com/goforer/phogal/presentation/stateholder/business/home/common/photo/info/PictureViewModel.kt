@@ -9,7 +9,7 @@ import com.goforer.phogal.data.repository.common.photo.like.PictureLikeRepositor
 import com.goforer.phogal.presentation.stateholder.uistate.ErrorEntity
 import com.goforer.phogal.presentation.stateholder.uistate.UiState
 import com.goforer.phogal.presentation.stateholder.uistate.toErrorEntity
-import com.goforer.phogal.presentation.stateholder.uistate.toUiStateStrict
+import com.goforer.phogal.presentation.stateholder.uistate.toUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -65,7 +65,7 @@ class PictureViewModel @Inject constructor(
         .filterNotNull()
         .flatMapLatest { request ->
             pictureRepository.getPictureStream(request.id)
-                .map<NetworkResult<Picture>, UiState<Picture>> { result -> result.toUiStateStrict() }
+                .map<NetworkResult<Picture>, UiState<Picture>> { result -> result.toUiState() }
                 .onStart { emit(UiState.Loading) }
         }
         .stateIn(

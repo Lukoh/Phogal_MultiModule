@@ -6,7 +6,7 @@ import com.goforer.base.utils.download.ImageDownloadManager
 import com.goforer.phogal.data.model.remote.response.gallery.photo.download.TrackDownload
 import com.goforer.phogal.data.repository.download.PhotoDownloadRepository
 import com.goforer.phogal.presentation.stateholder.uistate.UiState
-import com.goforer.phogal.presentation.stateholder.uistate.toUiStateStrict
+import com.goforer.phogal.presentation.stateholder.uistate.toUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
@@ -38,7 +38,7 @@ class PhotoDownloadViewModel @Inject constructor(
     fun getDownloadPhotoUrl(id: String) {
         viewModelScope.launch {
             _trackDownload.value = UiState.Loading
-            _trackDownload.value = photoDownloadRepository.getFinalDownloadUrl(id).toUiStateStrict()
+            _trackDownload.value = photoDownloadRepository.getFinalDownloadUrl(id).toUiState()
         }
     }
 
