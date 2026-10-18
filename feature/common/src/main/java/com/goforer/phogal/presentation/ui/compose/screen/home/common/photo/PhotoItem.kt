@@ -1,13 +1,24 @@
 package com.goforer.phogal.presentation.ui.compose.screen.home.common.photo
 
+import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
-import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ElevatedCard
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -19,6 +30,15 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import com.goforer.designsystem.animation.LocalNavAnimatedVisibilityScope
+import com.goforer.designsystem.animation.LocalSharedTransitionScope
+import com.goforer.designsystem.animation.photoSharedElementKey
+import com.goforer.designsystem.component.snsShimmer
+import com.goforer.designsystem.theme.Blue75
+import com.goforer.designsystem.theme.ColorSnowWhite
+import com.goforer.designsystem.theme.ColorSystemGray1
+import com.goforer.designsystem.theme.ColorSystemGray5
+import com.goforer.designsystem.theme.DarkGreen60
 import com.goforer.phogal.core.ui.R
 import com.goforer.phogal.data.model.remote.response.gallery.common.CurrentUserCollection
 import com.goforer.phogal.data.model.remote.response.gallery.common.ProfileImage
@@ -30,17 +50,12 @@ import com.goforer.phogal.data.model.remote.response.gallery.common.user.User
 import com.goforer.phogal.data.model.remote.response.gallery.common.user.UserLinks
 import com.goforer.phogal.presentation.stateholder.uistate.home.common.photo.PhotoItemCallbacks
 import com.goforer.phogal.presentation.stateholder.uistate.home.common.photo.PhotoItemUiState
+import com.goforer.phogal.presentation.stateholder.uistate.home.common.photo.UserContainerCallbacks
 import com.goforer.phogal.presentation.stateholder.uistate.home.common.photo.rememberPhotoItemUiState
 import com.goforer.phogal.presentation.stateholder.uistate.home.common.user.rememberUserContainerUiState
-import com.goforer.phogal.presentation.stateholder.uistate.home.common.photo.UserContainerCallbacks
 import com.goforer.phogal.presentation.ui.compose.screen.home.common.user.UserContainer
-import com.goforer.designsystem.component.snsShimmer
-import com.goforer.designsystem.theme.Blue75
-import com.goforer.designsystem.theme.ColorSnowWhite
-import com.goforer.designsystem.theme.ColorSystemGray1
-import com.goforer.designsystem.theme.ColorSystemGray5
-import com.goforer.designsystem.theme.DarkGreen60
 
+@OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 fun PhotoItem(
     modifier: Modifier = Modifier,
@@ -48,6 +63,18 @@ fun PhotoItem(
     isFollowed: Boolean,
     callbacks: PhotoItemCallbacks
 ) {
+    val sharedTransitionScope = LocalSharedTransitionScope.current
+    val animatedVisibilityScope = LocalNavAnimatedVisibilityScope.current
+
+    val imageModifier = if (sharedTransitionScope != null && animatedVisibilityScope != null && state.photo.id.isNotBlank()) {
+        with(sharedTransitionScope) {
+            Modifier.sharedElement(
+                sharedContentState = rememberSharedContentState(key = photoSharedElementKey(state.photo.id)),
+                animatedVisibilityScope = animatedVisibilityScope
+            )
+        }
+    } else Modifier
+
     ElevatedCard(
         modifier = modifier
             .fillMaxWidth()
@@ -81,6 +108,7 @@ fun PhotoItem(
                             state.photo.width.toFloat() / state.photo.height.toFloat()
                         else 4f / 3f
                     )
+                    .then(imageModifier)
                     .snsShimmer()
             ) {
                 AsyncImage(
@@ -148,7 +176,7 @@ fun PhotoItemPreview() {
         callbacks = PhotoItemCallbacks(
             onFollowClick = {},
             onShowUserInfo = {},
-            onItemClicked = { _, _ ->  },
+            onItemClicked = { _, _ -> },
             onViewPhotos = { _, _, _, _ -> }
         )
     )

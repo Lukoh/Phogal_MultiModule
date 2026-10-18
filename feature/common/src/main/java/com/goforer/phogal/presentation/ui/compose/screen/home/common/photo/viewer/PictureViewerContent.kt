@@ -2,6 +2,7 @@ package com.goforer.phogal.presentation.ui.compose.screen.home.common.photo.view
 
 import android.content.res.Configuration
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -81,6 +82,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImagePainter
 import coil.size.Size
+import com.goforer.designsystem.animation.LocalNavAnimatedVisibilityScope
+import com.goforer.designsystem.animation.LocalSharedTransitionScope
+import com.goforer.designsystem.animation.photoSharedElementKey
 import com.goforer.designsystem.component.DownloadIndicator
 import com.goforer.designsystem.component.dialog.AlertDialog
 import com.goforer.designsystem.component.dialog.AutoDismissDialog
@@ -424,6 +428,7 @@ fun BodyContent(
                             .clip(RoundedCornerShape(12.dp))
                     ) {
                         ImageContent(
+                            photoId = picture.id,
                             painter = painter,
                             onClick = { callbacks.onDownloadTriggered(picture.id) }
                         )
@@ -512,12 +517,26 @@ fun BodyContent(
     }
 }
 
+@OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 fun ImageContent(
     modifier: Modifier = Modifier,
+    photoId: String = "",
     painter: AsyncImagePainter,
     onClick: () -> Unit
 ) {
+    val sharedTransitionScope = LocalSharedTransitionScope.current
+    val animatedVisibilityScope = LocalNavAnimatedVisibilityScope.current
+
+    val sharedModifier = if (sharedTransitionScope != null && animatedVisibilityScope != null && photoId.isNotBlank()) {
+        with(sharedTransitionScope) {
+            Modifier.sharedElement(
+                sharedContentState = rememberSharedContentState(key = photoSharedElementKey(photoId)),
+                animatedVisibilityScope = animatedVisibilityScope
+            )
+        }
+    } else Modifier
+
     val transition by animateFloatAsState(
         targetValue = if (painter.state is AsyncImagePainter.State.Success) 1f else 0f,
         animationSpec = tween(durationMillis = 400)
@@ -528,6 +547,7 @@ fun ImageContent(
         contentDescription = null,
         contentScale = ContentScale.Crop,
         modifier = modifier
+            .then(sharedModifier)
             .then(
                 ((painter.state as? AsyncImagePainter.State.Success)
                     ?.painter

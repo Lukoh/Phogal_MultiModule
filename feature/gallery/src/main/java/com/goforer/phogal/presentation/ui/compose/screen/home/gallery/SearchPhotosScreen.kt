@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.res.Configuration
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
@@ -18,11 +19,13 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import com.goforer.designsystem.animation.LocalNavAnimatedVisibilityScope
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
@@ -92,66 +95,70 @@ fun SearchPhotosScreen(
 
         val layoutDirection = LocalLayoutDirection.current
 
-        Scaffold(
-            contentColor = ColorBgSecondary,
-            snackbarHost = {
-                SnackbarHost(
-                    snackbarHostState,
-                    snackbar = { CardSnackBar(modifier = Modifier, it) }
-                )
-            },
-            topBar = {
-                SearchTopBar(
-                    showFavoriteActionProvider = { contentUiState.visible },
-                    onMenuClick = internalCallbacks.onMenuClick,
-                    onFavoriteClick = internalCallbacks.onFavoriteClick
-                )
-            },
-            content = { paddingValues ->
-                ScaffoldContent(topInterval = paddingValues.calculateTopPadding()) {
-                    SearchPhotosContent(
-                        modifier = modifier,
-                        contentUiState = contentUiState,
-                        sectionUiState = sectionUiState,
-                        paddingValues = PaddingValues(
-                            start = paddingValues.calculateStartPadding(layoutDirection),
-                            top = 0.dp,
-                            end = paddingValues.calculateEndPadding(layoutDirection),
-                            bottom = paddingValues.calculateBottomPadding()
-                        ),
-                        callbacks = internalCallbacks.callbacks
-                    )
-                }
+        AnimatedVisibility(visible = true) {
+            CompositionLocalProvider(LocalNavAnimatedVisibilityScope provides this) {
+                Scaffold(
+                    contentColor = ColorBgSecondary,
+                    snackbarHost = {
+                        SnackbarHost(
+                            snackbarHostState,
+                            snackbar = { CardSnackBar(modifier = Modifier, it) }
+                        )
+                    },
+                    topBar = {
+                        SearchTopBar(
+                            showFavoriteActionProvider = { contentUiState.visible },
+                            onMenuClick = internalCallbacks.onMenuClick,
+                            onFavoriteClick = internalCallbacks.onFavoriteClick
+                        )
+                    },
+                    content = { paddingValues ->
+                        ScaffoldContent(topInterval = paddingValues.calculateTopPadding()) {
+                            SearchPhotosContent(
+                                modifier = modifier,
+                                contentUiState = contentUiState,
+                                sectionUiState = sectionUiState,
+                                paddingValues = PaddingValues(
+                                    start = paddingValues.calculateStartPadding(layoutDirection),
+                                    top = 0.dp,
+                                    end = paddingValues.calculateEndPadding(layoutDirection),
+                                    bottom = paddingValues.calculateBottomPadding()
+                                ),
+                                callbacks = internalCallbacks.callbacks
+                            )
+                        }
 
-                contentUiState.error?.let { error ->
-                    ErrorDialog(
-                        title = stringResource(id = R.string.error_dialog_title),
-                        text = error.message,
-                        onDismiss = { contentUiState.error = null }
-                    )
-                }
+                        contentUiState.error?.let { error ->
+                            ErrorDialog(
+                                title = stringResource(id = R.string.error_dialog_title),
+                                text = error.message,
+                                onDismiss = { contentUiState.error = null }
+                            )
+                        }
 
-                contentUiState.selectedUser?.let { user ->
-                    UserInfoBottomSheet(
-                        user = user,
-                        showUserInfoBottomSheet = true,
-                        onDismissedRequest = { isPortfolioClicked ->
-                            contentUiState.selectedUser = null
-                            if (isPortfolioClicked) {
-                                user.portfolioUrl?.let {
-                                    callbacks.onOpenWebView(user.firstName, it)
-                                } ?: run {
-                                    contentUiState.baseUiState.scope.launch {
-                                        val text = contentUiState.baseUiState.context.getString(R.string.user_info_has_no_portfolio)
-                                        snackbarHostState.showSnackbar("${user.firstName} $text")
+                        contentUiState.selectedUser?.let { user ->
+                            UserInfoBottomSheet(
+                                user = user,
+                                showUserInfoBottomSheet = true,
+                                onDismissedRequest = { isPortfolioClicked ->
+                                    contentUiState.selectedUser = null
+                                    if (isPortfolioClicked) {
+                                        user.portfolioUrl?.let {
+                                            callbacks.onOpenWebView(user.firstName, it)
+                                        } ?: run {
+                                            contentUiState.baseUiState.scope.launch {
+                                                val text = contentUiState.baseUiState.context.getString(R.string.user_info_has_no_portfolio)
+                                                snackbarHostState.showSnackbar("${user.firstName} $text")
+                                            }
+                                        }
                                     }
                                 }
-                            }
+                            )
                         }
-                    )
-                }
+                    }
+                )
             }
-        )
+        }
     }
 }
 

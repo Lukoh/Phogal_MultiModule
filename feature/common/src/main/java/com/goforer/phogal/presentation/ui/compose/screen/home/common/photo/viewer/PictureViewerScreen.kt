@@ -8,18 +8,31 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.shrinkOut
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
-import androidx.compose.material3.Scaffold
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -42,9 +55,9 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.goforer.designsystem.animation.LocalNavAnimatedVisibilityScope
 import com.goforer.designsystem.component.CardSnackBar
 import com.goforer.designsystem.component.CustomCenterAlignedTopAppBar
-import com.goforer.designsystem.component.ScaffoldContent
 import com.goforer.designsystem.component.dialog.ErrorDialog
 import com.goforer.designsystem.theme.Red60
 import com.goforer.phogal.core.ui.R
@@ -85,129 +98,159 @@ fun PictureViewerScreen(
         onDispose { contentUiState.baseUiState.lifecycle.removeObserver(observer) }
     }
 
-    // Kick off the load whenever the id changes
     LaunchedEffect(contentUiState.id) {
         contentUiState.pictureViewModel.loadPicture(contentUiState.id)
     }
 
-    // Top-bar icons read from the authoritative pictureUiState.
     val currentPicture = (contentUiState.pictureState as? UiState.Success)?.data
     val isLikedByUser = currentPicture?.likedByUser == true
 
-    // Observe like/unlike transient result so we can surface an error dialog.
     LikeActionHandle(pictureViewModel = contentUiState.pictureViewModel)
 
-    Scaffold(
-        contentColor = Color.White,
-        snackbarHost = {
-            SnackbarHost(
-                snackbarHostState,
-                modifier = Modifier.navigationBarsPadding(),
-                snackbar = { CardSnackBar(modifier = Modifier, it) }
-            )
-        },
-        topBar = {
-            CustomCenterAlignedTopAppBar(
-                title = {
-                    Text(
-                        stringResource(id = R.string.picture_title),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        fontFamily = FontFamily.SansSerif,
-                        fontSize = 20.sp,
-                        fontStyle = FontStyle.Normal,
-                        fontWeight = FontWeight.Bold
-                    )
-                },
-                navigationIcon = {
-                    IconButton(onClick = internalCallbacks.onBackPressed) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Picture"
-                        )
-                    }
-                },
-                actions = {
-                    if (contentUiState.visible && (currentPicture != null)) {
-                        IconButton(
-                            colors = IconButtonDefaults.iconButtonColors(
-                                contentColor = if (isLikedByUser) Red60 else Color.Black
-                            ),
-                            onClick = internalCallbacks.onLikedClick
+    AnimatedVisibility(visible = true) {
+        CompositionLocalProvider(LocalNavAnimatedVisibilityScope provides this) {
+            // Overlay background with semi-transparent black
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.5f))
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null
+                    ) {
+                        internalCallbacks.onBackPressed()
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                // Dialog-themed center card
+                Card(
+                    modifier = modifier
+                        .padding(top = 10.dp, bottom = 10.dp, start = 8.dp, end = 8.dp)
+                        .fillMaxWidth()
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null
                         ) {
-                            Icon(
-                                imageVector = if (isLikedByUser) {
-                                    ImageVector.vectorResource(id = R.drawable.ic_like_on)
-                                } else {
-                                    ImageVector.vectorResource(id = R.drawable.ic_like_off)
-                                },
-                                contentDescription = "Like"
-                            )
-                        }
-
-                        IconButton(
-                            colors = IconButtonDefaults.iconButtonColors(
-                                contentColor = if (contentUiState.enabledBookmark) {
-                                    Red60
-                                } else {
-                                    Color.Black
+                            // Prevents backdrop click dismissal when clicking inside card
+                        },
+                    shape = RoundedCornerShape(20.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        CustomCenterAlignedTopAppBar(
+                            title = {
+                                Text(
+                                    stringResource(id = R.string.picture_title),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    fontFamily = FontFamily.SansSerif,
+                                    fontSize = 20.sp,
+                                    fontStyle = FontStyle.Normal,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            },
+                            navigationIcon = {
+                                IconButton(onClick = internalCallbacks.onBackPressed) {
+                                    Icon(
+                                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                        contentDescription = "Back"
+                                    )
                                 }
-                            ),
-                            onClick = {
-                                internalCallbacks.onBookmarkClick(currentPicture)
+                            },
+                            actions = {
+                                if (contentUiState.visible && (currentPicture != null)) {
+                                    IconButton(
+                                        colors = IconButtonDefaults.iconButtonColors(
+                                            contentColor = if (isLikedByUser) Red60 else Color.Black
+                                        ),
+                                        onClick = internalCallbacks.onLikedClick
+                                    ) {
+                                        Icon(
+                                            imageVector = if (isLikedByUser) {
+                                                ImageVector.vectorResource(id = R.drawable.ic_like_on)
+                                            } else {
+                                                ImageVector.vectorResource(id = R.drawable.ic_like_off)
+                                            },
+                                            contentDescription = "Like"
+                                        )
+                                    }
+
+                                    IconButton(
+                                        colors = IconButtonDefaults.iconButtonColors(
+                                            contentColor = if (contentUiState.enabledBookmark) {
+                                                Red60
+                                            } else {
+                                                Color.Black
+                                            }
+                                        ),
+                                        onClick = {
+                                            internalCallbacks.onBookmarkClick(currentPicture)
+                                        }
+                                    ) {
+                                        Icon(
+                                            imageVector = if (contentUiState.enabledBookmark) {
+                                                ImageVector.vectorResource(id = R.drawable.ic_bookmark_on)
+                                            } else {
+                                                ImageVector.vectorResource(id = R.drawable.ic_bookmark_off)
+                                            },
+                                            contentDescription = "Bookmark"
+                                        )
+                                    }
+                                }
                             }
-                        ) {
-                            Icon(
-                                imageVector = if (contentUiState.enabledBookmark) {
-                                    ImageVector.vectorResource(id = R.drawable.ic_bookmark_on)
-                                } else {
-                                    ImageVector.vectorResource(id = R.drawable.ic_bookmark_off)
-                                },
-                                contentDescription = "Bookmark"
+                        )
+
+                        Box(modifier = Modifier.weight(1f, fill = false)) {
+                            val isFollowed = currentPicture?.let { callbacks.isUserFollowed(it.user) } ?: false
+
+                            PictureViewerContent(
+                                modifier = Modifier,
+                                contentPadding = PaddingValues(0.dp),
+                                pictureState = contentUiState.pictureState,
+                                trackDownloadState = contentUiState.trackDownloadState,
+                                showPopup = contentUiState.showPopup,
+                                dialogState = contentUiState.dialogState,
+                                visibleViewButton = contentUiState.visibleViewButton,
+                                isFollowed = isFollowed,
+                                callbacks = internalCallbacks.viewerCallbacks
                             )
                         }
                     }
                 }
-            )
-        },
-        content = { paddingValues ->
-            ScaffoldContent(0.dp) {
-                val isFollowed = currentPicture?.let { callbacks.isUserFollowed(it.user) } ?: false
 
-                PictureViewerContent(
-                    modifier = modifier,
-                    contentPadding = paddingValues,
-                    pictureState = contentUiState.pictureState,
-                    trackDownloadState = contentUiState.trackDownloadState,
-                    showPopup = contentUiState.showPopup,
-                    dialogState = contentUiState.dialogState,
-                    visibleViewButton = contentUiState.visibleViewButton,
-                    isFollowed = isFollowed,
-                    callbacks = internalCallbacks.viewerCallbacks
+                SnackbarHost(
+                    snackbarHostState,
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .navigationBarsPadding(),
+                    snackbar = { CardSnackBar(modifier = Modifier, it) }
                 )
-            }
 
-            contentUiState.selectedUser?.let { user ->
-                UserInfoBottomSheet(
-                    user = user,
-                    showUserInfoBottomSheet = true,
-                    onDismissedRequest = { isPortfolioClicked ->
-                        contentUiState.selectedUser = null
-                        if (isPortfolioClicked) {
-                            user.portfolioUrl?.let {
-                                callbacks.onOpenWebView(user.firstName, it)
-                            } ?: run {
-                                contentUiState.baseUiState.scope.launch {
-                                    val text = contentUiState.baseUiState.context.getString(R.string.user_info_has_no_portfolio)
-                                    snackbarHostState.showSnackbar("${user.firstName} $text")
+                contentUiState.selectedUser?.let { user ->
+                    UserInfoBottomSheet(
+                        user = user,
+                        showUserInfoBottomSheet = true,
+                        onDismissedRequest = { isPortfolioClicked ->
+                            contentUiState.selectedUser = null
+                            if (isPortfolioClicked) {
+                                user.portfolioUrl?.let {
+                                    callbacks.onOpenWebView(user.firstName, it)
+                                } ?: run {
+                                    contentUiState.baseUiState.scope.launch {
+                                        val text = contentUiState.baseUiState.context.getString(R.string.user_info_has_no_portfolio)
+                                        snackbarHostState.showSnackbar("${user.firstName} $text")
+                                    }
                                 }
                             }
                         }
-                    }
-                )
+                    )
+                }
             }
         }
-    )
+    }
 }
 
 /**
