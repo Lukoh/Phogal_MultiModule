@@ -15,8 +15,6 @@ import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.material3.adaptive.navigation3.ListDetailSceneStrategy
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -64,57 +62,20 @@ import com.goforer.phogal.presentation.ui.navigation.Routes
 /**
  * Main entry provider for Phogal's Navigation 3 graph.
  *
- * It delegates to tab-specific functions to keep the routing table organized.
+ * It delegates to common and tab-specific functions to keep the routing table organized.
  */
 fun EntryProviderScope<NavKey>.phogalEntries(navState: NavigationState) {
+    commonEntries(navState)
     galleryTabEntries(navState)
     popularTabEntries(navState)
     notificationTabEntries(navState)
     settingTabEntries(navState)
 }
 
-// ─────────────────────────────── Gallery Tab ───────────────────────────────
+// ─────────────────────────────── Common / Shared Entries ───────────────────────────────
 
 @OptIn(ExperimentalMaterial3AdaptiveApi::class)
-private fun EntryProviderScope<NavKey>.galleryTabEntries(navState: NavigationState) {
-
-    entry<Routes.SearchPhotosRoute>(
-        metadata = ListDetailSceneStrategy.listPane(
-            detailPlaceholder = { DetailPlaceholder() }
-        )
-    ) {
-        val galleryViewModel: GalleryViewModel = hiltViewModel()
-        val followViewModel: FollowViewModel = hiltViewModel()
-        val bookmarkViewModel: BookmarkViewModel = hiltViewModel()
-        val followingUsers by followViewModel.users.collectAsStateWithLifecycle()
-        val bookmarkedPhotos by bookmarkViewModel.photos.collectAsStateWithLifecycle()
-        val contentUiState = rememberSearchPhotosContentUiState(galleryViewModel)
-
-        SearchPhotosScreen(
-            contentUiState = contentUiState,
-            callbacks = SearchPhotosScreenCallbacks(
-                isUserFollowed = { id ->
-                    followingUsers.any { it.id == id }
-                },
-                isPhotoBookmarked = { id ->
-                    bookmarkedPhotos.any { it.id == id }
-                },
-                onToggleFollow = { user ->
-                    followViewModel.setUserFollow(user)
-                },
-                onItemClicked = { id ->
-                    navState.push(Routes.PictureRoute(id = id, showViewPhotosButton = true))
-                },
-                onViewPhotos = { name, first, last, user ->
-                    navState.push(Routes.UserPhotosRoute(name, first, last, user))
-                },
-                onOpenWebView = { first, url ->
-                    navState.push(Routes.WebViewRoute(first, url))
-                }
-            )
-        )
-    }
-
+private fun EntryProviderScope<NavKey>.commonEntries(navState: NavigationState) {
     entry<Routes.PictureRoute>(
         metadata = ListDetailSceneStrategy.detailPane()
     ) { key ->
@@ -205,6 +166,48 @@ private fun EntryProviderScope<NavKey>.galleryTabEntries(navState: NavigationSta
         PermissionDialogContent(
             onDismiss = { navState.pop() },
             onConfirm = { navState.pop() }
+        )
+    }
+}
+
+// ─────────────────────────────── Gallery Tab ───────────────────────────────
+
+@OptIn(ExperimentalMaterial3AdaptiveApi::class)
+private fun EntryProviderScope<NavKey>.galleryTabEntries(navState: NavigationState) {
+    entry<Routes.SearchPhotosRoute>(
+        metadata = ListDetailSceneStrategy.listPane(
+            detailPlaceholder = { DetailPlaceholder() }
+        )
+    ) {
+        val galleryViewModel: GalleryViewModel = hiltViewModel()
+        val followViewModel: FollowViewModel = hiltViewModel()
+        val bookmarkViewModel: BookmarkViewModel = hiltViewModel()
+        val followingUsers by followViewModel.users.collectAsStateWithLifecycle()
+        val bookmarkedPhotos by bookmarkViewModel.photos.collectAsStateWithLifecycle()
+        val contentUiState = rememberSearchPhotosContentUiState(galleryViewModel)
+
+        SearchPhotosScreen(
+            contentUiState = contentUiState,
+            callbacks = SearchPhotosScreenCallbacks(
+                isUserFollowed = { id ->
+                    followingUsers.any { it.id == id }
+                },
+                isPhotoBookmarked = { id ->
+                    bookmarkedPhotos.any { it.id == id }
+                },
+                onToggleFollow = { user ->
+                    followViewModel.setUserFollow(user)
+                },
+                onItemClicked = { id ->
+                    navState.push(Routes.PictureRoute(id = id, showViewPhotosButton = true))
+                },
+                onViewPhotos = { name, first, last, user ->
+                    navState.push(Routes.UserPhotosRoute(name, first, last, user))
+                },
+                onOpenWebView = { first, url ->
+                    navState.push(Routes.WebViewRoute(first, url))
+                }
+            )
         )
     }
 }
