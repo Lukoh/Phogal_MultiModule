@@ -60,6 +60,11 @@ android {
         coreLibraryDesugaringEnabled true
     }
 
+    composeCompiler {
+        metricsDestination = project.layout.buildDirectory.dir("compose_metrics")
+        reportsDestination = project.layout.buildDirectory.dir("compose_reports")
+    }
+
     // Kotlin 2.0.21: kotlin { ... } DSL 사용
     kotlin {
         jvmToolchain(17)

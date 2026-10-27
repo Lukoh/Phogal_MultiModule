@@ -121,7 +121,28 @@ override fun getPictureStream(id: String): Flow<NetworkResult<Picture>> = flow {
 
 ---
 
-## 3. Tech Stack
+## 3. Recent Architecture & Compose Enhancements
+
+Recent engineering reviews and bug fixes applied to Phogal:
+1. **Splash Screen Jank Monitor Fix**: Fixed `InteractionJankMonitor` crash (`IllegalArgumentException: Must pass in a valid surface control if only instrument surface`) by setting initial `keepOnSplash = true` in `MainActivity` and safely resolving Activity windows in `Theme.kt`.
+2. **Search Paging & Flickering Optimization**:
+   - Replaced `items[index]` (`get()`) with `items.peek(index)` in `LazyListExt` to prevent false viewport prefetch triggers and unwanted 2–3 page appends.
+   - Consolidated `_searchingQuery` and `_searchSessionId` into an atomic `SearchRequest` StateFlow in `GalleryViewModel` to eliminate double triggers.
+   - Emitted `PagingData.empty()` at the start of `transformLatest` to clear stale search results immediately.
+3. **Shared Element Transitions & Dialog Overlay**:
+   - Implemented Shared Element Transitions using `SharedTransitionLayout` and `Modifier.sharedElement()` (`photoSharedElementKey`) between list items and picture viewer.
+   - Redesigned `PictureViewerScreen` as a dialog-themed overlay with a semi-transparent dark backdrop (`Color.Black.copy(alpha = 0.5f)`), outside-click dismissal, and rounded corners (`RoundedCornerShape(20.dp)`).
+   - Centralized `LocalSharedTransitionScope` and `LocalNavAnimatedVisibilityScope` in `:core:ui`.
+4. **Compose Code Review Best Practices (P0 / P1 / P2)**:
+   - Eliminated composition-time side effects and mutations by moving callbacks into `LaunchedEffect` with `rememberUpdatedState`.
+   - Enforced model immutability on `Picture` and `Profile` models (`val` + `.copy()`).
+   - Refactored `ShowFollowButton` to strictly adhere to State Hoisting (stateless component).
+   - Optimized `SettingItem` with `@StringRes textRes` for proper locale/configuration change reactivity.
+   - Enabled official Compose Compiler Metrics and Reports (`composeCompiler` block in `app/build.gradle`).
+
+---
+
+## 4. Tech Stack
 
 | Area | Stack |
 | --- | --- |
@@ -137,7 +158,7 @@ override fun getPictureStream(id: String): Flow<NetworkResult<Picture>> = flow {
 
 ---
 
-## 4. Build & Run
+## 5. Build & Run
 
 ```bash
 git clone https://github.com/Lukoh/Phogal_MultiModule.git
@@ -153,11 +174,10 @@ cd Phogal_MultiModule
 * Offline smoke test: enable Airplane Mode → Popular tab renders cache → Detail renders
   cache → "Like" shows an error snackbar while preserving cached data.
 
-## 5. Project History
+## 6. Project History
 
 | Stage | Repository | Focus |
 | --- | --- | --- |
 | 1 | `Phogal` / `Phogal_Migrate` | Compose UI, refactored state holders, type-safe navigation |
 | 2 | [`Phogal_With_Room`](https://github.com/Lukoh/Phogal_With_Room) | Room as strict SSOT, `RemoteMediator` paging, offline-first streams |
 | 3 | **`Phogal_MultiModule`** (this repo) | 12-module split: 4 tab features + shared feature layer + 6 core modules, Nav3-only graph, package-preserving migration verified by static analysis (syntax 202/202, boundary violations 0, FQN duplicates 0, DI graph satisfied) |
-
