@@ -14,6 +14,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.material3.adaptive.navigation3.ListDetailSceneStrategy
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -95,7 +96,9 @@ private fun EntryProviderScope<NavKey>.commonEntries(navState: NavigationState) 
 
         val currentPicture = (contentUiState.pictureState as? UiState.Success)?.data
 
-        contentUiState.enabledBookmark = (bookmarkedPictures.any { it.id == currentPicture?.id })
+        LaunchedEffect(bookmarkedPictures, currentPicture) {
+            contentUiState.enabledBookmark = bookmarkedPictures.any { it.id == currentPicture?.id }
+        }
         PictureViewerScreen(
             contentUiState = contentUiState,
             callbacks = PictureViewerScreenCallbacks(

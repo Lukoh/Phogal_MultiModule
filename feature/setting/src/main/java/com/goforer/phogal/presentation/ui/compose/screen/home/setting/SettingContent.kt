@@ -26,42 +26,44 @@ import com.goforer.phogal.core.ui.R
 import com.goforer.phogal.data.model.local.home.setting.SettingItem
 import com.goforer.phogal.data.model.remote.response.setting.Profile
 
+private val accountItems = listOf(
+    SettingItem(textRes = R.string.setting_bookmark, drawable = R.drawable.ic_bookmark),
+    SettingItem(textRes = R.string.setting_follower, drawable = R.drawable.ic_followers),
+    SettingItem(textRes = R.string.setting_alarm, drawable = R.drawable.ic_notification)
+)
+private val appItems = listOf(
+    SettingItem(textRes = R.string.setting_privacy_policy, drawable = R.drawable.ic_privacy),
+    SettingItem(textRes = R.string.setting_app_info, drawable = R.drawable.ic_information)
+)
+private val supportItems = listOf(
+    SettingItem(textRes = R.string.setting_send_feedback, drawable = R.drawable.ic_bookmark),
+    SettingItem(textRes = R.string.setting_give_start, drawable = R.drawable.ic_rating_start),
+    SettingItem(textRes = R.string.setting_homepage, drawable = R.drawable.ic_homepage)
+)
+
+private val defaultProfileUiState = Profile(
+    id = 0,
+    name = "Lukoh",
+    sex = "남성",
+    favor = true,
+    followed = true,
+    email = "lukoh.nam@gmail.com",
+    profileImage = "https://avatars.githubusercontent.com/u/18302717?v=4",
+    personality = "sociable & gregarious",
+    cellphone = "+820101111-1111",
+    address = "",
+    birthday = "Mar, 04, 1999",
+    reputation = "Professional mobile SW engineer...",
+    deleted = false
+)
+
 @Composable
 fun SettingContent(
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(4.dp),
     onItemClicked: (index: Int) -> Unit
 ) {
-    val accountItems = listOf(
-        SettingItem(stringResource(id = R.string.setting_bookmark), R.drawable.ic_bookmark),
-        SettingItem(stringResource(id = R.string.setting_follower), R.drawable.ic_followers),
-        SettingItem(stringResource(id = R.string.setting_alarm), R.drawable.ic_notification)
-    )
-    val appItems = listOf(
-        SettingItem(stringResource(id = R.string.setting_privacy_policy), R.drawable.ic_privacy),
-        SettingItem(stringResource(id = R.string.setting_app_info), R.drawable.ic_information)
-    )
-    val supportItems = listOf(
-        SettingItem(stringResource(id = R.string.setting_send_feedback), R.drawable.ic_bookmark),
-        SettingItem(stringResource(id = R.string.setting_give_start), R.drawable.ic_rating_start),
-        SettingItem(stringResource(id = R.string.setting_homepage), R.drawable.ic_homepage)
-    )
-
-    val profileUiState = Profile(
-        id = 0,
-        name = "Lukoh",
-        sex = "남성",
-        favor = true,
-        followed = true,
-        email = "lukoh.nam@gmail.com",
-        profileImage = "https://avatars.githubusercontent.com/u/18302717?v=4",
-        personality = "sociable & gregarious",
-        cellphone = "+820101111-1111",
-        address = "",
-        birthday = "Mar, 04, 1999",
-        reputation = "Professional mobile SW engineer...",
-        deleted = false
-    )
+    val profileUiState = defaultProfileUiState
 
     Column(
         modifier = modifier
@@ -81,7 +83,7 @@ fun SettingContent(
         accountItems.forEachIndexed { index, item ->
             SetItem(
                 index = index,
-                text = item.text,
+                text = stringResource(id = item.textRes),
                 drawable = item.drawable,
                 onItemClicked = onItemClicked
             )
@@ -94,7 +96,7 @@ fun SettingContent(
         appItems.forEachIndexed { index, item ->
             SetItem(
                 index = index + accountItems.size,
-                text = item.text,
+                text = stringResource(id = item.textRes),
                 drawable = item.drawable,
                 onItemClicked = onItemClicked
             )
@@ -107,7 +109,7 @@ fun SettingContent(
         supportItems.forEachIndexed { index, item ->
             SetItem(
                 index = index + accountItems.size + appItems.size,
-                text = item.text,
+                text = stringResource(id = item.textRes),
                 drawable = item.drawable,
                 onItemClicked = onItemClicked
             )
@@ -180,4 +182,3 @@ fun SettingContentPreview() {
         SettingContent(onItemClicked = {})
     }
 }
-

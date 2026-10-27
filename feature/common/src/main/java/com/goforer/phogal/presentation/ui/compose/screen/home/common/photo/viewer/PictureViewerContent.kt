@@ -59,6 +59,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableDoubleStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -178,12 +179,25 @@ fun PictureBody(
     isFollowed: Boolean,
     callbacks: PictureViewerCallbacks
 ) {
+    val currentCallbacks by rememberUpdatedState(callbacks)
+
+    LaunchedEffect(pictureState) {
+        when (pictureState) {
+            is UiState.Success -> {
+                currentCallbacks.onSuccess(true)
+                currentCallbacks.onShownPhoto(pictureState.data)
+            }
+            is UiState.Error -> {
+                currentCallbacks.onSuccess(false)
+            }
+            UiState.Loading, UiState.Idle -> Unit
+        }
+    }
+
     when (pictureState) {
         is UiState.Success -> {
             val picture = pictureState.data
 
-            callbacks.onSuccess(true)
-            LaunchedEffect(picture.id) { callbacks.onShownPhoto(picture) }
             PictureBodyContent(
                 modifier = modifier,
                 contentPadding = contentPadding,
@@ -210,7 +224,6 @@ fun PictureBody(
             }
         }
         is UiState.Error -> {
-            callbacks.onSuccess(false)
             Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 AnimatedVisibility(
                     visible = true,
@@ -227,7 +240,7 @@ fun PictureBody(
                             stringResource(id = R.string.error_dialog_network_title)
                         else
                             stringResource(id = R.string.error_dialog_title),
-                        message = "${stringResource(id = R.string.error_get_picture)}${"\n\n"}${error.message}",
+                        message = "${stringResource(id = R.string.error_get_picture)}\n\n${error.message}",
                         onRetry = callbacks.onRetry
                     )
                 }
