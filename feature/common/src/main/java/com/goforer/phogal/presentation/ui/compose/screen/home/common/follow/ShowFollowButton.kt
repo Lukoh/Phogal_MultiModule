@@ -25,7 +25,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -44,17 +43,13 @@ fun ShowFollowButton(
     isUserFollowed: Boolean,
     onFollow: () -> Unit
 ) {
-    var isFollowed by rememberSaveable { mutableStateOf(isUserFollowed) }
     val color = remember { Animatable(Color.Transparent) }
 
-    LaunchedEffect(isFollowed) {
-        color.animateTo(if (isFollowed) Color.Transparent else Color.Transparent)
+    LaunchedEffect(isUserFollowed) {
+        color.animateTo(if (isUserFollowed) Color.Transparent else Color.Transparent)
     }
     Button(
-        onClick = {
-            isFollowed = !isFollowed
-            onFollow()
-        },
+        onClick = onFollow,
         modifier = modifier
             .widthIn(132.dp)
             .indication(
@@ -86,23 +81,20 @@ fun ShowFollowButton(
         ) {
             Icon(
                 modifier = Modifier.size(width = 28.dp, height = 28.dp),
-                imageVector = if (isFollowed)
+                imageVector = if (isUserFollowed)
                     Icons.Filled.Check
                 else
                     Icons.Filled.Add,
                 contentDescription = "F",
-                tint = if (isFollowed)
+                tint = if (isUserFollowed)
                     ColorText1
                 else
                     followColor
             )
             Spacer(modifier = Modifier.width(width = 3.dp))
             Text(
-                text = if (isFollowed)
-                    "F"
-                else
-                    "F",
-                color = if (isFollowed)
+                text = "F",
+                color = if (isUserFollowed)
                     ColorText1
                 else
                     followColor,
@@ -123,7 +115,7 @@ fun ShowFollowButton(
 @Composable
 fun ShowFollowButtonPreview(modifier: Modifier = Modifier) {
     PhogalTheme {
-        var isFollowed = false
+        var isFollowed by remember { mutableStateOf(false) }
         val color = remember { Animatable(Color.Transparent) }
 
         LaunchedEffect(isFollowed) {
@@ -176,10 +168,7 @@ fun ShowFollowButtonPreview(modifier: Modifier = Modifier) {
                 )
                 Spacer(modifier = Modifier.width(width = 3.dp))
                 Text(
-                    text = if (isFollowed)
-                        "F"
-                    else
-                        "F",
+                    text = "F",
                     color = if (isFollowed)
                         ColorText1
                     else
