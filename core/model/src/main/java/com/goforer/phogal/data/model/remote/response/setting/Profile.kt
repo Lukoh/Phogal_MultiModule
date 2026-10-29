@@ -10,8 +10,8 @@ data class Profile(
     val id: Int,
     val name: String,
     val sex: String,
-    var favor: Boolean,
-    var followed : Boolean = false,
+    val favor: Boolean,
+    val followed: Boolean = false,
     val email: String,
     val profileImage: String,
     val personality: String,
@@ -19,7 +19,7 @@ data class Profile(
     val address: String,
     val birthday: String,
     val reputation: String,
-    var deleted: Boolean
+    val deleted: Boolean
 ) : Parcelable {
     companion object {
         val EMPTY = Profile(

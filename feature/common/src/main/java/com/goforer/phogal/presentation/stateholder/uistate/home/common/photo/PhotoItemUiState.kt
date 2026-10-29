@@ -1,6 +1,7 @@
 package com.goforer.phogal.presentation.stateholder.uistate.home.common.photo
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
@@ -73,7 +74,9 @@ fun rememberPhotoItemUiState(
             initialBookmarked = initialBookmarked
         )
     }
-    uiState.photo = photo
-    uiState.bookmarked = initialBookmarked
+    LaunchedEffect(photo, initialBookmarked) {
+        uiState.photo = photo
+        uiState.bookmarked = initialBookmarked
+    }
     return uiState
 }

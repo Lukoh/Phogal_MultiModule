@@ -49,9 +49,9 @@ android {
     }
 
     lint {
-        checkReleaseBuilds false
+        checkReleaseBuilds true
         checkDependencies true
-        abortOnError false
+        abortOnError true
     }
 
     compileOptions {

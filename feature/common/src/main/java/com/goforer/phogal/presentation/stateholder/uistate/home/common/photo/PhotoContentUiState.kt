@@ -199,8 +199,8 @@ fun rememberPictureViewerInternalCallbacks(
             ),
             onLikedClick = { contentUiState.pictureViewModel.toggleLike() },
             onBookmarkClick = { picture ->
-                picture.bookmarked = !contentUiState.enabledBookmark
-                contentUiState.bookmarkViewModel.setBookmarkPicture(picture)
+                val updatedPicture = picture.copy(bookmarked = !contentUiState.enabledBookmark)
+                contentUiState.bookmarkViewModel.setBookmarkPicture(updatedPicture)
                 contentUiState.enabledBookmark = !contentUiState.enabledBookmark
             },
             onBackPressed = { currentCallbacks.onBackPressed() }
