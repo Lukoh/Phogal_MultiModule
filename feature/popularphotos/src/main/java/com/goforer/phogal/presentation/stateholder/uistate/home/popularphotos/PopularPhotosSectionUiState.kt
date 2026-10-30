@@ -32,7 +32,7 @@ fun rememberPopularPhotosSectionUiState(
     photos: LazyPagingItems<Photo>,
     sessionId: Int,
     scope: CoroutineScope = rememberCoroutineScope(),
-    lazyListState: LazyListState = photos.rememberLazyListState(),
+    lazyListState: LazyListState = photos.rememberLazyListState(key = "popular_photos_list_state_$sessionId"),
 ): PopularPhotosSectionUiState {
     val uiState = remember(sessionId) {
         PopularPhotosSectionUiState(

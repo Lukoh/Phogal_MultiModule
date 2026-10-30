@@ -30,7 +30,7 @@ class FollowingUserSectionUiState internal constructor(
 fun rememberFollowingUserSectionUiState(
     users: LazyPagingItems<User>,
     scope: CoroutineScope = rememberCoroutineScope(),
-    lazyListState: LazyListState = users.rememberLazyListState(),
+    lazyListState: LazyListState = users.rememberLazyListState(key = "following_users_list_state"),
 ): FollowingUserSectionUiState {
     val uiState = remember {
         FollowingUserSectionUiState(

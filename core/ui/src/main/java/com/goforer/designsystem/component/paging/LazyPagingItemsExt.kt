@@ -8,27 +8,30 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import androidx.paging.LoadState
 import androidx.paging.compose.LazyPagingItems
 import androidx.compose.foundation.lazy.rememberLazyListState as rememberStandardLazyListState
 
 /**
- * Remembers a [LazyListState] that survives process recreation and screen unmounting / tab switching
- * when using [LazyPagingItems].
+ * Remembers a [LazyListState] that survives process recreation, screen unmounting, tab switching,
+ * and adaptive layout changes (SinglePane <-> ListDetail 2-Pane) when using [LazyPagingItems].
  *
- * After recreation or tab switching, [LazyPagingItems] initially returns a smaller batch of items (e.g. 20)
+ * After recreation, tab switching, or adaptive layout shifts, [LazyPagingItems] initially returns a smaller batch of items (e.g. 20)
  * before subsequent pages are appended. Standard `scrollToItem` fails if the saved index exceeds initial [itemCount].
  *
- * This workaround saves the target scroll index/offset separately in [rememberSaveable],
+ * This workaround saves the target scroll index/offset separately in [rememberSaveable] with an explicit [key] input,
  * and progressively scrolls to the target index as [itemCount] grows until the exact target item is reached.
  *
  * More info: https://issuetracker.google.com/issues/177245496.
  */
 @Composable
-fun <T : Any> LazyPagingItems<T>.rememberLazyListState(): LazyListState {
-    var savedIndex by rememberSaveable { mutableIntStateOf(0) }
-    var savedOffset by rememberSaveable { mutableIntStateOf(0) }
+fun <T : Any> LazyPagingItems<T>.rememberLazyListState(
+    key: String? = null
+): LazyListState {
+    var savedIndex by rememberSaveable(key) { mutableIntStateOf(0) }
+    var savedOffset by rememberSaveable(key) { mutableIntStateOf(0) }
 
-    val listState = rememberStandardLazyListState(savedIndex, savedOffset)
+    val listState = rememberStandardLazyListState()
 
     // Save scroll position ONLY when the user is actively scrolling by touch.
     // This prevents system-triggered `scrollToItem` transitions from corrupting `savedIndex` with intermediate frames (e.g. index 13 instead of 15).
@@ -47,11 +50,12 @@ fun <T : Any> LazyPagingItems<T>.rememberLazyListState(): LazyListState {
         }
     }
 
-    // Progressively scroll towards savedIndex as Paging3 appends items upon tab re-entry
-    LaunchedEffect(itemCount, savedIndex) {
-        if (itemCount > 0 && (savedIndex > 0 || savedOffset > 0)) {
+    // Progressively scroll towards savedIndex when initial load is complete and itemCount grows
+    LaunchedEffect(itemCount, loadState.refresh, savedIndex, savedOffset) {
+        val refreshState = loadState.refresh
+        if (refreshState is LoadState.NotLoading && itemCount > 0 && (savedIndex > 0 || savedOffset > 0)) {
             val targetIndex = savedIndex.coerceAtMost(itemCount - 1)
-            if (listState.firstVisibleItemIndex < savedIndex) {
+            if (listState.firstVisibleItemIndex < targetIndex || (listState.firstVisibleItemIndex == targetIndex && listState.firstVisibleItemScrollOffset < savedOffset)) {
                 listState.scrollToItem(targetIndex, savedOffset)
             }
         }

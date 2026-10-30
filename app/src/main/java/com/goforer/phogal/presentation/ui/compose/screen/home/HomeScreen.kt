@@ -33,6 +33,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.movableContentOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
@@ -102,22 +103,27 @@ fun HomeScreen(
                 SharedTransitionLayout {
                     CompositionLocalProvider(LocalSharedTransitionScope provides this) {
                         Box(modifier = Modifier.fillMaxSize()) {
-                            NavDisplay(
-                                entries = navigationState.toDecoratedEntries(
-                                    entryProvider = entryProvider { phogalEntries(navigationState) }
-                                ),
-                                onBack = {
-                                    if (!navigationState.pop()) {
-                                        if (navigationState.currentRoute != BottomNavRoute.Gallery) {
-                                            navigationState.selectRoute(BottomNavRoute.Gallery)
-                                        }
-                                    }
-                                },
-                                sceneStrategies = sceneStrategies,
-                                transitionSpec = DefaultTransitions.push,
-                                popTransitionSpec = DefaultTransitions.pop,
-                                predictivePopTransitionSpec = DefaultTransitions.predictivePop
-                            )
+                            val navDisplayContent = remember(navigationState, sceneStrategies) {
+                                movableContentOf {
+                                    NavDisplay(
+                                        entries = navigationState.toDecoratedEntries(
+                                            entryProvider = entryProvider { phogalEntries(navigationState) }
+                                        ),
+                                        onBack = {
+                                            if (!navigationState.pop()) {
+                                                if (navigationState.currentRoute != BottomNavRoute.Gallery) {
+                                                    navigationState.selectRoute(BottomNavRoute.Gallery)
+                                                }
+                                            }
+                                        },
+                                        sceneStrategies = sceneStrategies,
+                                        transitionSpec = DefaultTransitions.push,
+                                        popTransitionSpec = DefaultTransitions.pop,
+                                        predictivePopTransitionSpec = DefaultTransitions.predictivePop
+                                    )
+                                }
+                            }
+                            navDisplayContent()
                         }
                     }
                 }

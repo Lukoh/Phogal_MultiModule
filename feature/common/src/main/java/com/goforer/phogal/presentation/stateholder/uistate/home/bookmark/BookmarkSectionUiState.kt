@@ -30,7 +30,7 @@ class BookmarkSectionUiState internal constructor(
 fun rememberBookmarkSectionUiState(
     photos: LazyPagingItems<Picture>,
     scope: CoroutineScope = rememberCoroutineScope(),
-    lazyListState: LazyListState = photos.rememberLazyListState(),
+    lazyListState: LazyListState = photos.rememberLazyListState(key = "bookmark_photos_list_state"),
 ): BookmarkSectionUiState {
     val uiState = remember {
         BookmarkSectionUiState(

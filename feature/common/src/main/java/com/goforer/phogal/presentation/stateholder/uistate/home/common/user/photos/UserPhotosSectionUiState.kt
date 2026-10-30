@@ -30,7 +30,7 @@ class UserPhotosSectionUiState internal constructor(
 fun rememberUserPhotosSectionUiState(
     photos: LazyPagingItems<Photo>,
     scope: CoroutineScope = rememberCoroutineScope(),
-    lazyListState: LazyListState = photos.rememberLazyListState(),
+    lazyListState: LazyListState = photos.rememberLazyListState(key = "user_photos_list_state"),
 ): UserPhotosSectionUiState {
     val uiState = remember {
         UserPhotosSectionUiState(
