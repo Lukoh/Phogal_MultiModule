@@ -2,7 +2,6 @@ package com.goforer.phogal.presentation.ui.compose.screen.home.gallery
 
 import android.content.res.Configuration
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
@@ -15,10 +14,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -73,7 +70,6 @@ fun SearchPhotosSection(
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun SearchPhotosSectionContent(
     modifier: Modifier = Modifier,
@@ -81,13 +77,13 @@ fun SearchPhotosSectionContent(
     sectionUiState: SearchPhotosSectionUiState,
     callbacks: SearchPhotosCallbacks
 ) {
-    val isRefreshing by remember(sectionUiState.photos.loadState.refresh, sectionUiState.manualRefreshing) {
+    // derivedStateOf dynamically tracks state reads within its lambda.
+    // Keying remember with sectionUiState preserves the derived state instance across recompositions.
+    val isRefreshing by remember(sectionUiState) {
         derivedStateOf {
             sectionUiState.manualRefreshing && sectionUiState.photos.loadState.refresh is LoadState.Loading
         }
     }
-
-
 
     PagingLoadStateEffect(
         pagingItems = sectionUiState.photos,
@@ -134,6 +130,14 @@ fun SearchPhotosSectionContent(
                 .fillMaxSize()
         ) {
             val isInspectionMode = LocalInspectionMode.current
+            val photoItemCallbacks = remember(callbacks) {
+                PhotoItemCallbacks(
+                    onFollowClick = callbacks.onToggleFollow,
+                    onShowUserInfo = callbacks.onShowUserInfo,
+                    onItemClicked = { photo, _ -> callbacks.onItemClicked(photo.id) },
+                    onViewPhotos = callbacks.onViewPhotos
+                )
+            }
 
             LazyColumn(
                 modifier = Modifier
@@ -151,8 +155,8 @@ fun SearchPhotosSectionContent(
                     modifier = modifier,
                     sectionUiState = sectionUiState,
                     callbacks = callbacks,
-                    isInspectionMode = isInspectionMode,
-                    isResettingScroll = sectionUiState.isResettingScroll
+                    photoItemCallbacks = photoItemCallbacks,
+                    isInspectionMode = isInspectionMode
                 )
             }
 
@@ -179,17 +183,16 @@ fun SearchPhotosSectionContent(
  * Kept as a LazyListScope extension so each sub-renderer can emit `item {}` / `items {}`
  * directly without re-wrapping.
  */
-@OptIn(ExperimentalFoundationApi::class)
 private fun LazyListScope.renderLoadState(
     modifier: Modifier = Modifier,
     sectionUiState: SearchPhotosSectionUiState,
     callbacks: SearchPhotosCallbacks,
-    isInspectionMode: Boolean,
-    isResettingScroll: Boolean
+    photoItemCallbacks: PhotoItemCallbacks,
+    isInspectionMode: Boolean
 ) {
     val isInitiallyLoading = sectionUiState.photos.loadState.refresh is LoadState.Loading
     val isAppendLoading = sectionUiState.photos.loadState.append is LoadState.Loading
-    val suppressAnimation = isInitiallyLoading || isAppendLoading || isInspectionMode || isResettingScroll
+    val suppressAnimation = isInitiallyLoading || isAppendLoading || isInspectionMode || sectionUiState.isResettingScroll
 
     renderPagingLoadState(
         state = PagingRenderState(
@@ -216,14 +219,7 @@ private fun LazyListScope.renderLoadState(
                             initialBookmarked = callbacks.isPhotoBookmarked(photo.id)
                         ),
                         isFollowed = callbacks.isUserFollowed(photo.user.id),
-                        callbacks = remember(callbacks) {
-                            PhotoItemCallbacks(
-                                onFollowClick = callbacks.onToggleFollow,
-                                onShowUserInfo = callbacks.onShowUserInfo,
-                                onItemClicked = { p, _ -> callbacks.onItemClicked(p.id) },
-                                onViewPhotos = callbacks.onViewPhotos
-                            )
-                        }
+                        callbacks = photoItemCallbacks
                     )
                 }
             )

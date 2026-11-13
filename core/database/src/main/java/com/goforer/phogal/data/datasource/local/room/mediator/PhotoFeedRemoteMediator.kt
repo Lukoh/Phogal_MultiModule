@@ -8,10 +8,9 @@ import androidx.room.withTransaction
 import com.goforer.phogal.data.datasource.local.room.PhogalDatabase
 import com.goforer.phogal.data.datasource.local.room.entity.PhotoFeedEntity
 import com.goforer.phogal.data.datasource.local.room.entity.RemoteKeyEntity
-import com.goforer.phogal.data.model.BackendException
 import com.goforer.phogal.data.datasource.network.NetworkResult
+import com.goforer.phogal.data.model.BackendException
 import com.goforer.phogal.data.model.remote.response.gallery.common.photo.Photo
-import kotlinx.coroutines.yield
 import timber.log.Timber
 import java.util.concurrent.TimeUnit
 
@@ -79,20 +78,7 @@ class PhotoFeedRemoteMediator(
         state: PagingState<Int, PhotoFeedEntity>
     ): MediatorResult {
         val page = when (loadType) {
-            LoadType.REFRESH -> {
-                // Pre-emptive clear: remove stale data BEFORE the network call
-                // to ensure the Pager observes an empty state during latency.
-                // Critical Fix: Only clear the exact specific feedKey instead of wiping the entire prefix.
-                // Wiping by prefix destroys parallel/subsequent page streams and ruins autoIncrement sequence alignments.
-                database.withTransaction {
-                    photoFeedDao.clearFeed(feedKey)
-                    remoteKeyDao.delete(feedKey)
-                }
-                // Yield thread execution to allow Room's InvalidationTracker to dispatch
-                // empty table signals immediately to any active observers before network calls block.
-                yield()
-                STARTING_PAGE
-            }
+            LoadType.REFRESH -> STARTING_PAGE
             // Unsplash list endpoints are forward-only; nothing to prepend.
             LoadType.PREPEND -> return MediatorResult.Success(endOfPaginationReached = true)
             LoadType.APPEND -> {
@@ -108,7 +94,10 @@ class PhotoFeedRemoteMediator(
 
                 // Atomic swap: readers never observe a half-written feed.
                 database.withTransaction {
-                    // No need to clear here as it was cleared at the start of REFRESH
+                    if (loadType == LoadType.REFRESH) {
+                        photoFeedDao.clearFeed(feedKey)
+                    }
+
                     photoFeedDao.insertAll(photos.mapIndexed { index, photo ->
                         PhotoFeedEntity.of(
                             feedKey = feedKey,
@@ -137,10 +126,9 @@ class PhotoFeedRemoteMediator(
             is NetworkResult.Empty -> {
                 database.withTransaction {
                     if (loadType == LoadType.REFRESH) {
-                        val prefix = feedKey.substringBefore('/') + "/"
-                        photoFeedDao.clearFeedsByPrefix(prefix)
-                        remoteKeyDao.clearByPrefix(prefix)
-                        
+                        photoFeedDao.clearFeed(feedKey)
+                        remoteKeyDao.delete(feedKey)
+
                         remoteKeyDao.upsert(
                             RemoteKeyEntity(
                                 feedKey = feedKey,

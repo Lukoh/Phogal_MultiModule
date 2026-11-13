@@ -24,7 +24,7 @@ class BookmarkRepositoryImpl @Inject constructor(
                 prefetchDistance = 10,
                 enablePlaceholders = false
             ),
-            pagingSourceFactory = { BookmarkPagingSource(bookmarks) }
+            pagingSourceFactory = { BookmarkPagingSource(bookmarks, pageSize) }
         ).flow
 
         return bookmarkPagingFlow

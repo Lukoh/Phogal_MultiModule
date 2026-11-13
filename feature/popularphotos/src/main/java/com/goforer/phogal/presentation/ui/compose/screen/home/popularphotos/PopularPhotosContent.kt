@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -21,7 +20,6 @@ import com.goforer.phogal.presentation.stateholder.uistate.home.popularphotos.Po
 import com.goforer.designsystem.theme.PhogalTheme
 import com.goforer.phogal.presentation.stateholder.uistate.home.popularphotos.rememberPopularPhotosSectionUiState
 
-@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun PopularPhotosContent(
     modifier: Modifier = Modifier,

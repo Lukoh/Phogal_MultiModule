@@ -27,20 +27,25 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 
 @Composable
 fun LazyListState.isScrollingUp(): Boolean {
-    var previousIndex by remember(this) { mutableIntStateOf(firstVisibleItemIndex) }
-    var previousScrollOffset by remember(this) { mutableIntStateOf(firstVisibleItemScrollOffset) }
-    return remember(this) {
-        derivedStateOf {
-            if (previousIndex != firstVisibleItemIndex) {
-                previousIndex > firstVisibleItemIndex
-            } else {
-                previousScrollOffset >= firstVisibleItemScrollOffset
-            }.also {
-                previousIndex = firstVisibleItemIndex
-                previousScrollOffset = firstVisibleItemScrollOffset
+    var isScrollingUp by remember(this) { androidx.compose.runtime.mutableStateOf(false) }
+
+    LaunchedEffect(this) {
+        var previousIndex = firstVisibleItemIndex
+        var previousScrollOffset = firstVisibleItemScrollOffset
+
+        snapshotFlow { firstVisibleItemIndex to firstVisibleItemScrollOffset }
+            .collect { (currentIndex, currentOffset) ->
+                if (currentIndex != previousIndex) {
+                    isScrollingUp = previousIndex > currentIndex
+                } else if (currentOffset != previousScrollOffset) {
+                    isScrollingUp = previousScrollOffset >= currentOffset
+                }
+                previousIndex = currentIndex
+                previousScrollOffset = currentOffset
             }
-        }
-    }.value
+    }
+
+    return isScrollingUp
 }
 
 /**

@@ -4,7 +4,6 @@ package com.goforer.phogal.presentation.ui.compose.screen.home.popularphotos
 
 import android.content.res.Configuration
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
@@ -17,17 +16,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -37,7 +30,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.paging.LoadState
 import androidx.paging.PagingData
-import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItems
 import com.goforer.designsystem.component.paging.PagingLoadStateCallbacks
 import com.goforer.designsystem.component.paging.PagingLoadStateEffect
@@ -45,7 +37,6 @@ import com.goforer.designsystem.component.paging.PagingRenderCallbacks
 import com.goforer.designsystem.component.paging.PagingRenderState
 import com.goforer.designsystem.component.paging.contentItems
 import com.goforer.designsystem.component.paging.rememberIsScrolledPastThreshold
-import com.goforer.designsystem.component.paging.rememberLazyListState
 import com.goforer.designsystem.component.paging.renderPagingLoadState
 import com.goforer.designsystem.theme.Blue15
 import com.goforer.designsystem.theme.Blue95
@@ -63,8 +54,6 @@ import com.goforer.phogal.presentation.ui.compose.screen.home.common.photo.Loadi
 import com.goforer.phogal.presentation.ui.compose.screen.home.common.photo.PhotoItem
 import com.goforer.phogal.presentation.ui.compose.screen.home.common.photo.ShowUpButton
 import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.launch
-import timber.log.Timber
 
 @Composable
 fun PopularPhotosSection(
@@ -81,7 +70,6 @@ fun PopularPhotosSection(
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun PopularPhotosSectionContent(
     modifier: Modifier = Modifier,
@@ -89,13 +77,11 @@ fun PopularPhotosSectionContent(
     sectionUiState: PopularPhotosSectionUiState,
     callbacks: PopularPhotosCallbacks
 ) {
-    val isRefreshing by remember(sectionUiState.photos.loadState.refresh, sectionUiState.manualRefreshing) {
+    val isRefreshing by remember(sectionUiState) {
         derivedStateOf {
             sectionUiState.manualRefreshing && sectionUiState.photos.loadState.refresh is LoadState.Loading
         }
     }
-
-
 
     PagingLoadStateEffect(
         pagingItems = sectionUiState.photos,
@@ -136,6 +122,14 @@ fun PopularPhotosSectionContent(
                 .fillMaxSize()
         ) {
             val isInspectionMode = LocalInspectionMode.current
+            val photoItemCallbacks = remember(callbacks) {
+                PhotoItemCallbacks(
+                    onFollowClick = callbacks.onToggleFollow,
+                    onShowUserInfo = callbacks.onShowUserInfo,
+                    onItemClicked = { photo, index -> callbacks.onItemClicked(photo.id, index) },
+                    onViewPhotos = callbacks.onViewPhotos
+                )
+            }
 
             LazyColumn(
                 modifier = Modifier
@@ -153,8 +147,8 @@ fun PopularPhotosSectionContent(
                     modifier = modifier,
                     sectionUiState = sectionUiState,
                     callbacks = callbacks,
-                    isInspectionMode = isInspectionMode,
-                    isResettingScroll = sectionUiState.isResettingScroll
+                    photoItemCallbacks = photoItemCallbacks,
+                    isInspectionMode = isInspectionMode
                 )
             }
 
@@ -167,9 +161,7 @@ fun PopularPhotosSectionContent(
                     ),
                 visible = isScrolledPastThreshold,
                 onClick = {
-                    sectionUiState.scope.launch {
-                        sectionUiState.lazyListState.animateScrollToItem(0)
-                    }
+                    sectionUiState.scrollToTop()
                 }
             )
         }
@@ -181,17 +173,16 @@ fun PopularPhotosSectionContent(
  * Kept as a LazyListScope extension so each sub-renderer can emit `item {}` / `items {}`
  * directly without re-wrapping.
  */
-@OptIn(ExperimentalFoundationApi::class)
 private fun LazyListScope.renderLoadState(
     modifier: Modifier = Modifier,
     sectionUiState: PopularPhotosSectionUiState,
     callbacks: PopularPhotosCallbacks,
-    isInspectionMode: Boolean,
-    isResettingScroll: Boolean
+    photoItemCallbacks: PhotoItemCallbacks,
+    isInspectionMode: Boolean
 ) {
     val isInitiallyLoading = sectionUiState.photos.loadState.refresh is LoadState.Loading
     val isPopulatingInitial = sectionUiState.photos.itemCount < 20 // PAGE_SIZE
-    val suppressAnimation = isInitiallyLoading || isInspectionMode || isResettingScroll || isPopulatingInitial
+    val suppressAnimation = isInitiallyLoading || isInspectionMode || sectionUiState.isResettingScroll || isPopulatingInitial
 
     renderPagingLoadState(
         state = PagingRenderState(
@@ -218,14 +209,7 @@ private fun LazyListScope.renderLoadState(
                             initialBookmarked = callbacks.isPhotoBookmarked(photo.id)
                         ),
                         isFollowed = callbacks.isUserFollowed(photo.user.id),
-                        callbacks = remember(callbacks) {
-                            PhotoItemCallbacks(
-                                onFollowClick = callbacks.onToggleFollow,
-                                onShowUserInfo = callbacks.onShowUserInfo,
-                                onItemClicked = { p, i -> callbacks.onItemClicked(p.id, i) },
-                                onViewPhotos = callbacks.onViewPhotos
-                            )
-                        }
+                        callbacks = photoItemCallbacks
                     )
                 }
             )

@@ -24,7 +24,7 @@ class FollowUserRepositoryImpl @Inject constructor(
                 prefetchDistance = 10,
                 enablePlaceholders = false
             ),
-            pagingSourceFactory = { FollowUserPagingSource(followedUsers) }
+            pagingSourceFactory = { FollowUserPagingSource(followedUsers, pageSize) }
         ).flow
 
         return followUsersPagingFlow

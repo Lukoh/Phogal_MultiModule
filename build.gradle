@@ -28,4 +28,14 @@ subprojects {
         exclude group: 'com.google.protobuf', module: 'protobuf-lite'
         exclude group: 'com.google.protobuf', module: 'protobuf-java'
     }
+
+    afterEvaluate { project ->
+        if (project.plugins.hasPlugin("com.android.library") || project.plugins.hasPlugin("com.android.application")) {
+            if (!project.tasks.names.contains("compileJava")) {
+                project.tasks.register("compileJava") {
+                    dependsOn("compileDebugJavaWithJavac")
+                }
+            }
+        }
+    }
 }

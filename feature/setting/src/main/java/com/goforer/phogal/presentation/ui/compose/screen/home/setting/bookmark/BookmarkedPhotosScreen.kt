@@ -18,7 +18,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
-import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
@@ -43,7 +42,7 @@ import com.goforer.phogal.presentation.stateholder.uistate.home.bookmark.remembe
 import com.goforer.phogal.presentation.ui.compose.screen.home.common.user.UserInfoBottomSheet
 import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalComposeUiApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BookmarkedPhotosScreen(
     modifier: Modifier = Modifier,

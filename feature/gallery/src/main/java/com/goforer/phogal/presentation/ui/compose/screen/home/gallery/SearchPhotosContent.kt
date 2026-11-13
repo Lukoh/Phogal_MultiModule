@@ -43,11 +43,6 @@ import com.google.accompanist.permissions.rememberMultiplePermissionsState
 import kotlinx.coroutines.delay
 import kotlin.time.Duration.Companion.milliseconds
 
-@OptIn(
-    ExperimentalComposeUiApi::class,
-    ExperimentalPermissionsApi::class,
-    ExperimentalMaterial3Api::class
-)
 @Composable
 fun SearchPhotosContent(
     modifier: Modifier = Modifier,

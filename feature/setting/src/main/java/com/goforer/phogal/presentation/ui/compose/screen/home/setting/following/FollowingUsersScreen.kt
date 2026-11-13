@@ -14,7 +14,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
-import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
@@ -34,7 +33,7 @@ import com.goforer.phogal.presentation.stateholder.uistate.home.following.Follow
 import com.goforer.phogal.presentation.stateholder.uistate.home.following.FollowingUserScreenCallbacks
 import com.goforer.phogal.presentation.stateholder.uistate.home.following.rememberFollowingUserInternalCallbacks
 
-@OptIn(ExperimentalComposeUiApi::class, ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FollowingUsersScreen(
     modifier: Modifier = Modifier,
