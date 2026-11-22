@@ -14,6 +14,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -28,9 +29,10 @@ class BookmarkViewModel @Inject constructor(
 ) : ViewModel() {
 
     val photos: StateFlow<List<Picture>> = bookmarkRepository.getBookmarkList()
+        .distinctUntilChanged()
         .stateIn(
             scope = viewModelScope,
-            started = SharingStarted.Lazily,
+            started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS),
             initialValue = emptyList()
         )
 
@@ -42,7 +44,7 @@ class BookmarkViewModel @Inject constructor(
         .cachedIn(viewModelScope)
         .stateIn(
             scope = viewModelScope,
-            started = SharingStarted.Lazily,
+            started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS),
             initialValue = PagingData.empty()
         )
 

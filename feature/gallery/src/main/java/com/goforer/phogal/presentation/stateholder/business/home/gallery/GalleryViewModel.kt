@@ -7,7 +7,6 @@ import androidx.paging.cachedIn
 import com.goforer.phogal.data.model.remote.response.gallery.common.photo.Photo
 import com.goforer.phogal.data.repository.gallery.PhotosRepository
 import com.goforer.phogal.di.dispatcher.IoDispatcher
-import com.goforer.phogal.presentation.stateholder.business.home.gallery.GalleryViewModel.Companion.MAX_HISTORY_SIZE
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -22,6 +21,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -47,10 +47,12 @@ class GalleryViewModel @Inject constructor(
 
     val searchingQuery: StateFlow<String> = _searchRequest
         .map { it.query }
+        .distinctUntilChanged()
         .stateIn(viewModelScope, SharingStarted.Eagerly, "")
 
     val searchSessionId: StateFlow<Int> = _searchRequest
         .map { it.sessionId }
+        .distinctUntilChanged()
         .stateIn(viewModelScope, SharingStarted.Eagerly, 0)
 
     private val _queryTrigger = MutableSharedFlow<QueryUpdate>(replay = 0, extraBufferCapacity = 1)

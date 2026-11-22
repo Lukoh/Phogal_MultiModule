@@ -8,17 +8,13 @@ import com.goforer.phogal.data.model.remote.response.gallery.common.photo.Photo
 import com.goforer.phogal.data.repository.common.user.photos.UserPhotosRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.flow.onStart
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.transformLatest
 import javax.inject.Inject
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -26,28 +22,30 @@ import javax.inject.Inject
 class UserPhotosViewModel @Inject constructor(
     private val userPhotosRepository: UserPhotosRepository
 ) : ViewModel() {
-    private val _username = MutableStateFlow("")
+    private data class UserRequest(val username: String, val sessionId: Int)
+
+    private val _userRequest = MutableStateFlow(UserRequest("", 0))
 
     /**
      * The Unsplash username whose photos are currently being viewed.
      */
-    val username: StateFlow<String> = _username.asStateFlow()
-
-    private val _refreshTrigger = MutableSharedFlow<Unit>(replay = 0)
+    val username: StateFlow<String> = _userRequest
+        .map { it.username }
+        .distinctUntilChanged()
+        .stateIn(viewModelScope, SharingStarted.Eagerly, "")
 
     /**
      * Stream of paged photos for the current [username].
      * Blank usernames result in an empty paging stream.
      */
-    val photos: StateFlow<PagingData<Photo>> = combine(
-        _username,
-        _refreshTrigger.onStart { emit(Unit) }
-    ) { user, _ -> user }
-        .flatMapLatest { user ->
+    val photos: StateFlow<PagingData<Photo>> = _userRequest
+        .transformLatest { (user, _) ->
             if (user.isBlank()) {
-                flowOf(PagingData.empty())
+                emit(PagingData.empty())
             } else {
-                userPhotosRepository.userPhotos(user, PAGE_SIZE)
+                userPhotosRepository.userPhotos(user, PAGE_SIZE).collect { pagingData ->
+                    emit(pagingData)
+                }
             }
         }
         .cachedIn(viewModelScope)
@@ -64,8 +62,9 @@ class UserPhotosViewModel @Inject constructor(
      * will not trigger a new network request.
      */
     fun loadFor(name: String) {
-        if (_username.value != name) {
-            _username.value = name
+        val current = _userRequest.value
+        if (current.username != name) {
+            _userRequest.value = UserRequest(username = name, sessionId = current.sessionId + 1)
         }
     }
 
@@ -73,8 +72,9 @@ class UserPhotosViewModel @Inject constructor(
      * Forces a refresh of the photo stream for the current user.
      */
     fun refresh() {
-        viewModelScope.launch {
-            _refreshTrigger.emit(Unit)
+        val current = _userRequest.value
+        if (current.username.isNotBlank()) {
+            _userRequest.value = current.copy(sessionId = current.sessionId + 1)
         }
     }
 
